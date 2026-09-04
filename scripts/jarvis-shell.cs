@@ -87,6 +87,94 @@ static class Programa
     static void Correr() { Application.Run(new VentanaJarvis()); }
 }
 
+// Paths and wsl.exe flags for any machine: no hardcoded distro/user/repo.
+//   JARVIS_WSL_DIR    Linux path to the clone (default: $HOME/jarvis-workspace)
+//   JARVIS_WSL_DISTRO WSL distro name (default: whatever `wsl.exe` uses)
+static class JarvisWsl
+{
+    static string repoLinux;
+    static string repoUnc;
+    static readonly object candado = new object();
+
+    internal static string DistroFlag()
+    {
+        string d = Environment.GetEnvironmentVariable("JARVIS_WSL_DISTRO");
+        if (string.IsNullOrEmpty(d)) return "";
+        return "-d " + d.Trim() + " ";
+    }
+
+    // Linux path to the repo. Resolves $HOME via wsl when JARVIS_WSL_DIR is unset.
+    internal static string RepoLinux()
+    {
+        lock (candado)
+        {
+            if (repoLinux != null) return repoLinux;
+            string env = Environment.GetEnvironmentVariable("JARVIS_WSL_DIR");
+            if (!string.IsNullOrEmpty(env))
+            {
+                repoLinux = env.Trim().TrimEnd('/');
+                return repoLinux;
+            }
+            string home = Capturar("printf %s \"$HOME\"").Trim()
+                .Replace("\r", "").Replace("\n", "");
+            if (string.IsNullOrEmpty(home))
+                throw new InvalidOperationException("no pude resolver $HOME en WSL");
+            repoLinux = home + "/jarvis-workspace";
+            return repoLinux;
+        }
+    }
+
+    // UNC via wslpath so we never hardcode \\wsl.localhost\Distro\home\...
+    internal static string ArchivoUnc(string relativo)
+    {
+        lock (candado)
+        {
+            if (repoUnc == null)
+            {
+                string linux = RepoLinux();
+                string unc = Capturar("wslpath -w " + ShQuote(linux)).Trim()
+                    .Replace("\r", "").Replace("\n", "");
+                if (string.IsNullOrEmpty(unc))
+                    throw new InvalidOperationException("wslpath -w fallo para " + linux);
+                repoUnc = unc.TrimEnd('\\');
+            }
+            return repoUnc + "\\" + relativo.Replace('/', '\\');
+        }
+    }
+
+    internal static string ShQuote(string s)
+    {
+        return "'" + s.Replace("'", "'\\''") + "'";
+    }
+
+    internal static void Ejecutar(string comando, int esperaMs)
+    {
+        var psi = new ProcessStartInfo();
+        psi.FileName = "wsl.exe";
+        psi.Arguments = DistroFlag() + "-- bash -lc \"" + comando.Replace("\"", "\\\"") + "\"";
+        psi.UseShellExecute = false;
+        psi.CreateNoWindow = true;
+        using (var p = Process.Start(psi)) p.WaitForExit(esperaMs);
+    }
+
+    internal static string Capturar(string comando)
+    {
+        var psi = new ProcessStartInfo();
+        psi.FileName = "wsl.exe";
+        psi.Arguments = DistroFlag() + "-- bash -lc \"" + comando.Replace("\"", "\\\"") + "\"";
+        psi.UseShellExecute = false;
+        psi.CreateNoWindow = true;
+        psi.RedirectStandardOutput = true;
+        psi.RedirectStandardError = true;
+        using (var p = Process.Start(psi))
+        {
+            string salida = p.StandardOutput.ReadToEnd();
+            if (!p.WaitForExit(60000)) { try { p.Kill(); } catch { } }
+            return salida ?? "";
+        }
+    }
+}
+
 class VentanaJarvis : Form
 {
     // El health va por 127.0.0.1: el NOMBRE localhost resuelve ::1 primero y
@@ -556,6 +644,10 @@ class VentanaJarvis : Form
         web.CoreWebView2.WebMessageReceived += AlMensaje;
         await web.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(Puente);
 
+        // Anclar ANTES de leer el repo / mirar el motor: si la distro está fría,
+        // el ancla ya la bootea (y desbloquea wslpath / $HOME); si está tibia,
+        // evita que se apague en el medio del chequeo.
+        AnclarDistro();
         SembrarToken();   // nunca ver la pantalla de token: la app ya entra logueada
 
         web.CoreWebView2.NavigateToString(Splash());
@@ -564,9 +656,6 @@ class VentanaJarvis : Form
         string build = Build();
         if (build != null) await Js("window.__build && window.__build(" + build + ")");
 
-        // Anclar ANTES de mirar el motor: si la distro está fría, el ancla ya
-        // la bootea; si está tibia, evita que se apague en el medio del chequeo.
-        AnclarDistro();
         if (!await Task.Run((Func<bool>)Responde) && !await LevantarYEsperar()) return;
 
         // Motor arriba: el splash completa la constelación y muestra el botón.
@@ -593,7 +682,7 @@ class VentanaJarvis : Form
         try { if (ancla != null && !ancla.HasExited) return; } catch { }
         var psi = new ProcessStartInfo();
         psi.FileName = "wsl.exe";
-        psi.Arguments = "-d Ubuntu --exec sleep infinity";
+        psi.Arguments = JarvisWsl.DistroFlag() + "--exec sleep infinity";
         psi.UseShellExecute = false;
         psi.CreateNoWindow = true;
         try { ancla = Process.Start(psi); } catch { ancla = null; }
@@ -625,8 +714,9 @@ class VentanaJarvis : Form
             }
         }
         await Estado("No pude levantar el motor tras dos intentos.\n\n" +
-            "Probá a mano dentro de WSL:\n  bash ~/jarvis/scripts/reiniciar-server.sh\n\n" +
-            "(log de los intentos: ~/jarvis/data/lanzador.log)", true);
+            "Cloná el repo en WSL a ~/jarvis-workspace (o setea JARVIS_WSL_DIR).\n" +
+            "Probá a mano:\n  bash ~/jarvis-workspace/scripts/reiniciar-server.sh\n\n" +
+            "(log: ~/jarvis-workspace/data/lanzador.log)", true);
         return false;
     }
 
@@ -737,7 +827,7 @@ class VentanaJarvis : Form
         {
             var psi = new ProcessStartInfo();
             psi.FileName = "wsl.exe";
-            psi.Arguments = "-d Ubuntu -- bash -lc \"curl -s -o /dev/null " +
+            psi.Arguments = JarvisWsl.DistroFlag() + "-- bash -lc \"curl -s -o /dev/null " +
                 "-w '%{http_code}' --max-time 3 http://127.0.0.1:3000/api/health\"";
             psi.UseShellExecute = false;
             psi.CreateNoWindow = true;
@@ -771,8 +861,10 @@ class VentanaJarvis : Form
         try { Wsl("true", 90000); } catch { }          // despierta la distro fría
         try
         {
-            Wsl("cd ~/jarvis && mkdir -p data && { date '+== %F %T lanzado por Jarvis.exe'; } " +
-                ">>data/lanzador.log 2>&1; cd ~/jarvis && setsid nohup bash " +
+            // JARVIS_WSL_DIR from Windows is visible inside WSL; otherwise $HOME/jarvis-workspace.
+            Wsl("REPO=\"${JARVIS_WSL_DIR:-$HOME/jarvis-workspace}\"; " +
+                "cd \"$REPO\" && mkdir -p data && { date '+== %F %T lanzado por Jarvis.exe'; } " +
+                ">>data/lanzador.log 2>&1; cd \"$REPO\" && setsid nohup bash " +
                 "scripts/reiniciar-server.sh >>data/lanzador.log 2>&1 </dev/null & exit 0", 20000);
         }
         catch { }
@@ -780,12 +872,7 @@ class VentanaJarvis : Form
 
     static void Wsl(string comando, int esperaMs)
     {
-        var psi = new ProcessStartInfo();
-        psi.FileName = "wsl.exe";
-        psi.Arguments = "-d Ubuntu -- bash -lc \"" + comando.Replace("\"", "\\\"") + "\"";
-        psi.UseShellExecute = false;
-        psi.CreateNoWindow = true;
-        using (var p = Process.Start(psi)) p.WaitForExit(esperaMs);
+        JarvisWsl.Ejecutar(comando, esperaMs);
     }
 
     // ── Sesión: la app entra sola ────────────────────────────────────────
@@ -802,7 +889,7 @@ class VentanaJarvis : Form
         try
         {
             string token = File.ReadAllText(
-                @"\\wsl.localhost\Ubuntu\home\user\jarvis\data\jarvis_token.txt").Trim();
+                JarvisWsl.ArchivoUnc("data/jarvis_token.txt")).Trim();
             if (token.Length == 0) return;
             var cm = web.CoreWebView2.CookieManager;
             foreach (string host in new[] { "localhost", "127.0.0.1" })
@@ -823,7 +910,7 @@ class VentanaJarvis : Form
     {
         try
         {
-            string v = File.ReadAllText(@"\\wsl.localhost\Ubuntu\home\user\jarvis\VERSION").Trim();
+            string v = File.ReadAllText(JarvisWsl.ArchivoUnc("VERSION")).Trim();
             int corte = v.LastIndexOf('.');
             string n = corte > 0 ? v.Substring(corte + 1) : v;
             int _;
@@ -860,14 +947,13 @@ class PresenciaDiscord
     // y sin spamear; además solo se manda set_activity si algo CAMBIÓ.
     const int PollMs = 15000;
     const string UrlPresence = "http://127.0.0.1:3000/api/system/presence";
-    // El mismo token que siembra SembrarToken(): la API es token-gated.
-    const string RutaToken = @"\\wsl.localhost\Ubuntu\home\user\jarvis\data\jarvis_token.txt";
 
     Thread hilo;
     volatile bool parar;
     NamedPipeClientStream pipe;
     string ultimaFirma;   // firma del último envío: no quemar el rate-limit
     string token;
+    string rutaToken;     // UNC resuelto a data/jarvis_token.txt (misma fuente que SembrarToken)
     long inicioEpoch;
     readonly JavaScriptSerializer json = new JavaScriptSerializer();
 
@@ -919,7 +1005,12 @@ class PresenciaDiscord
         {
             if (token == null)
             {
-                try { token = File.ReadAllText(RutaToken).Trim(); } catch { token = ""; }
+                try
+                {
+                    if (rutaToken == null) rutaToken = JarvisWsl.ArchivoUnc("data/jarvis_token.txt");
+                    token = File.ReadAllText(rutaToken).Trim();
+                }
+                catch { token = ""; }
             }
             var req = (HttpWebRequest)WebRequest.Create(UrlPresence);
             req.Proxy = null;

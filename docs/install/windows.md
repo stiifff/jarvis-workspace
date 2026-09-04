@@ -32,11 +32,11 @@ under `/mnt/c/...`. tmux + heavy I/O on NTFS is painful.
 ```bash
 git clone https://github.com/stiifff/jarvis-workspace ~/jarvis-workspace
 cd ~/jarvis-workspace
-
-# The Windows .bat launcher looks for ~/jarvis — make a symlink once:
-ln -s ~/jarvis-workspace ~/jarvis
 ```
 
+If the repo already lives somewhere else, set `JARVIS_WSL_DIR` (Linux path) before
+using the Windows `.bat` launcher. Another WSL distro than the default:
+`JARVIS_WSL_DISTRO`.
 ### 3. System packages + Python venv
 
 ```bash
@@ -57,12 +57,11 @@ bash scripts/setup-hooks.sh
 ### 4. First start (from inside WSL)
 
 ```bash
-source ~/jarvis/venv/bin/activate
+source ~/jarvis-workspace/venv/bin/activate
 jarvis
 # until the CLI is installed:
 # python3 -m uvicorn plotspace.main:app --host 0.0.0.0 --port 3000 --loop asyncio
 ```
-
 On first boot the server prints an **access token** and also writes it to
 `data/jarvis_token.txt` (under the repo, unless you set `JARVIS_DATA_DIR`).
 
@@ -71,8 +70,9 @@ On first boot the server prints an **access token** and also writes it to
 Pick one:
 
 - **Double-click launcher:** copy `scripts/abrir-jarvis-app.bat` to your Desktop.
-  It warms WSL, starts the server if needed (`~/jarvis/scripts/reiniciar-server.sh`),
-  and opens Chrome in app mode at `http://localhost:3000`.
+  It warms WSL, starts the server if needed
+  (`~/jarvis-workspace/scripts/reiniciar-server.sh`), and opens Chrome in app
+  mode at `http://localhost:3000`.
 - **Compiled shell (optional):** from WSL, run
   `bash scripts/compilar-lanzador-windows.sh`. That builds a thin WebView2
   window (`Jarvis.exe`) — not a native engine, just a desktop chrome around the
@@ -136,7 +136,7 @@ here — if a system step fails, the sensitive spots are commented in the
 
 | | WSL2 path | Docker |
 |---|---|---|
-| Code / engine | `~/jarvis-workspace` (symlink `~/jarvis`) | image + bind mounts |
+| Code / engine | `~/jarvis-workspace` | image + bind mounts |
 | App data (DB, token, CLI account secrets) | `<repo>/data` by default, or `JARVIS_DATA_DIR` (e.g. `~/.local/share/jarvis`) | `./data` → `/app/data` |
 | Your projects | anywhere under the Linux FS (prefer `~/proyectos`, not `/mnt/c`) | host folder from `PROYECTOS_DIR` → `/proyectos` |
 
