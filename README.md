@@ -8,11 +8,40 @@ A local cockpit for several AI coding agents, in parallel, on your machine.
 ![Python](https://img.shields.io/badge/python-3.11+-3b82f6.svg)
 ![BYOK](https://img.shields.io/badge/model-BYOK-8b5cf6.svg)
 
+**[Install · Linux / macOS](#linux--macos)** &nbsp;·&nbsp; **[Install · Windows](#windows)**
+
 </div>
 
 You open a project. Jarvis gives you a grid of live terminals. Claude Code, Codex, OpenCode, Qwen, Antigravity, Grok Build, or a shell — each in its own pane, all on the same branch. You bring the accounts. Jarvis only orchestrates.
 
-**Linux** is native. **Windows** runs the engine in [WSL2](docs/install/windows.md). **macOS** is the [same install as Linux](docs/install/macos.md).
+<table>
+<tr>
+<td width="50%" valign="top">
+
+<h2 id="linux--macos">Linux / macOS</h2>
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/stiifff/jarvis-workspace/main/install.sh | bash
+```
+
+Then `jarvis`. Opens `http://localhost:3000`. macOS needs [Homebrew](https://brew.sh). Details: [Linux](docs/install/linux.md) · [macOS](docs/install/macos.md).
+
+</td>
+<td width="50%" valign="top">
+
+<h2 id="windows">Windows</h2>
+
+```powershell
+irm https://raw.githubusercontent.com/stiifff/jarvis-workspace/main/install.ps1 | iex
+```
+
+Engine runs in [WSL2](docs/install/windows.md). One reboot if WSL is new. Leaves **Jarvis.bat** on the Desktop. Details: [Windows](docs/install/windows.md).
+
+</td>
+</tr>
+</table>
+
+Full app (terminals, voice, preview, Mobile Studio, …). Link your own CLIs in ⚙ → Accounts. Docker: `cp .env.example .env && docker compose up -d --build` (large, experimental).
 
 ---
 
@@ -49,52 +78,6 @@ Pick agents, how many, and a layout. Seven Claude Codes, a mix, or one shell. Th
 </p>
 
 Also in the dock: web preview, editor, tasks, per-agent diff review. Hold your voice key to dictate (Groq’s free Whisper API).
-
----
-
-## Install
-
-The full app (terminals, voice, preview, Mobile Studio, …). You bring the agent CLIs (Claude, Codex, Grok, …) and link them in ⚙ → Accounts.
-
-<table>
-<tr>
-<td width="33%" valign="top">
-
-**Linux**
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/stiifff/jarvis-workspace/main/install.sh | bash
-```
-
-Then `jarvis`. Opens `http://localhost:3000`.
-
-</td>
-<td width="33%" valign="top">
-
-**macOS** (needs [Homebrew](https://brew.sh))
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/stiifff/jarvis-workspace/main/install.sh | bash
-```
-
-Then `jarvis`.
-
-</td>
-<td width="33%" valign="top">
-
-**Windows** (engine in [WSL2](docs/install/windows.md))
-
-```powershell
-irm https://raw.githubusercontent.com/stiifff/jarvis-workspace/main/install.ps1 | iex
-```
-
-One reboot if WSL is new. Leaves **Jarvis.bat** on the Desktop.
-
-</td>
-</tr>
-</table>
-
-Manual steps: [Linux](docs/install/linux.md) · [macOS](docs/install/macos.md) · [Windows](docs/install/windows.md). Docker: `cp .env.example .env && docker compose up -d --build` (large, experimental).
 
 ## Use
 

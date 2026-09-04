@@ -110,3 +110,15 @@ def test_readme_tiene_un_comando_por_sistema():
     assert 'install.sh' in readme
     assert 'install.ps1' in readme
     assert 'stiifff/jarvis-workspace' in readme
+
+
+def test_readme_instalacion_arriba_antes_de_las_capturas():
+    """Un extraño no tiene que scrollear cuatro screenshots para instalar."""
+    readme = _leer(os.path.join(_RAIZ, 'README.md'))
+    shot = readme.find('docs/images/workspace.png')
+    assert shot > 0
+    assert readme.find('install.sh') < shot
+    assert readme.find('install.ps1') < shot
+    # Dos accesos en el header (Unix vs Windows), no tres columnas iguales.
+    assert readme.find('](#linux--macos)') < shot or readme.find('](#install-linux') < shot
+    assert readme.find('](#windows)') < shot or readme.find('](#install-windows)') < shot
