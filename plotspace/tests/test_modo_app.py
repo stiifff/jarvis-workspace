@@ -53,40 +53,15 @@ def test_puerto_jarvis_sigue_env_en_dev_detect():
 
 
 def test_contrato_auto_login_del_shell():
-    """GET /login?token=<válido> → cookie httpOnly + redirect a '/' (lo que usa
-    el shell); token inválido → 401; sin token → página que consume #token=."""
+    """GET /login (con o sin query vieja) → redirect a '/'."""
     from fastapi.testclient import TestClient
 
-    import plotspace.core.auth as auth
     import plotspace.main as main
 
-    # Armado por concatenación para no disparar el escáner anti-secretos
-    # (regla del repo: los secretos falsos de los tests se concatenan).
-    token_fake = 'token-de-' + 'prueba-contrato'
-    token_previo = auth._TOKEN
-    env_previo = os.environ.get('JARVIS_TOKEN')
-    try:
-        auth._TOKEN = None
-        os.environ['JARVIS_TOKEN'] = token_fake
-        client = TestClient(main.app)   # sin context manager: no corre lifespan
-
-        ok = client.get('/login', params={'token': token_fake},
-                        follow_redirects=False)
-        assert ok.status_code == 302
-        assert ok.headers['location'] == '/'
-        set_cookie = ok.headers.get('set-cookie', '')
-        assert 'jarvis_token=' in set_cookie
-        assert 'HttpOnly' in set_cookie
-
-        mal = client.get('/login', params={'token': 'nope'}, follow_redirects=False)
-        assert mal.status_code == 401
-
-        pagina = client.get('/login')
-        assert pagina.status_code == 200
-        assert 'token=' in pagina.text   # el JS que consume el fragmento
-    finally:
-        auth._TOKEN = token_previo
-        if env_previo is None:
-            os.environ.pop('JARVIS_TOKEN', None)
-        else:
-            os.environ['JARVIS_TOKEN'] = env_previo
+    client = TestClient(main.app)
+    ok = client.get('/login', follow_redirects=False)
+    assert ok.status_code == 302
+    assert ok.headers['location'] == '/'
+    legacy = client.get('/login', params={'token': 'ignored'}, follow_redirects=False)
+    assert legacy.status_code == 302
+    assert legacy.headers['location'] == '/'

@@ -14,9 +14,7 @@ from plotspace.tests._harness import fresh_db
 def _client():
     fresh_db()
     import plotspace.main as main
-    from plotspace.core import auth
     client = TestClient(main.app)
-    client.headers.update({'Cookie': f'jarvis_token={auth.obtener_token()}'})
     return client
 
 

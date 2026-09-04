@@ -70,16 +70,14 @@ def test_ruta_data_une_segmentos(tmp_path):
 def test_consumidores_siguen_el_data_dir(tmp_path):
     """Los módulos que persisten estado calculan sus rutas vía datadir."""
     import plotspace.core.database as database
-    import plotspace.core.auth as auth
     import plotspace.core.logs as logs
     import plotspace.core.cli_accounts as cli_accounts
-    mods = [database, auth, logs, cli_accounts]
+    mods = [database, logs, cli_accounts]
     try:
         with _env_datadir(str(tmp_path)):
             for m in mods:
                 importlib.reload(m)
             assert database.DB_PATH == str(tmp_path / 'jarvis.db')
-            assert auth._TOKEN_PATH == str(tmp_path / 'jarvis_token.txt')
             assert logs._LOG_PATH == str(tmp_path / 'jarvis.log')
             assert cli_accounts.SNAPSHOTS_DIR == str(tmp_path / 'cli-accounts')
     finally:
@@ -113,8 +111,8 @@ def test_guard_del_editor_protege_el_data_activo(tmp_path):
     try:
         with _env_datadir(str(tmp_path)):
             pf2 = importlib.reload(pf)
-            secreto = tmp_path / 'jarvis_token.txt'
-            secreto.write_text('super-secreto')
+            secreto = tmp_path / 'jarvis.db'
+            secreto.write_text('no-servible')
             assert not pf2._es_servible(str(secreto))
             # y el data/ del repo sigue bloqueado como siempre
             assert not pf2._es_servible(os.path.join(_REPO_DATA, 'jarvis.db'))

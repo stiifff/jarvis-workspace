@@ -104,7 +104,6 @@ async function cargarProyectos() {
   }
   try {
     const res = await fetch('/api/projects');
-    if (res.status === 401) { exigirToken(); return; }
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const datos = await res.json();
     // Refresh imperceptible: si nada cambió, no tocar el DOM

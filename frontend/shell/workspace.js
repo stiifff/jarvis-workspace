@@ -1226,7 +1226,6 @@ async function inicializar() {
 // Reutilizable al cambiar de proyecto.
 async function cargarProyecto() {
   const res = await fetch(`/api/workspace/${projectId}/state`);
-  if (res.status === 401) { exigirToken(); throw new Error('token requerido'); }
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const estado = await res.json();
 

@@ -24,7 +24,6 @@ cd "$(dirname "$0")/.." || exit 1
 # 127.0.0.1 y NO localhost: en este box el nombre resuelve IPv6-first (::1) y
 # uvicorn escucha solo IPv4 — la regla de la casa (ver memorias wsl-*).
 BASE='http://127.0.0.1:3000'
-TOKEN_FILE='data/jarvis_token.txt'
 
 vivo() { curl -s -o /dev/null -w '%{http_code}' --max-time 3 "$BASE/api/health" 2>/dev/null; }
 
@@ -41,13 +40,13 @@ if [ "$(vivo)" = '200' ]; then
   # --max-time 150: el endpoint corre un canary de arranque (importa backend.main
   # en un subproceso) antes de responder — tarda varios segundos, no es un cuelgue.
   code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 150 -X POST \
-         -b "jarvis_token=$(cat "$TOKEN_FILE")" "$BASE/api/system/restart")
+         "$BASE/api/system/restart")
   if [ "$code" = '409' ]; then
     echo "[reiniciar-server] RECHAZADO: el código nuevo no arranca (canary). El server viejo sigue vivo." >&2
     exit 1
   fi
   if [ "$code" != '200' ]; then
-    echo "[reiniciar-server] ERROR: /api/system/restart devolvió '$code' (¿token de $TOKEN_FILE?)" >&2
+    echo "[reiniciar-server] ERROR: /api/system/restart devolvió '$code'" >&2
     exit 1
   fi
   sleep 3   # el re-exec dispara a ~1s; dejarlo morir antes de pollear

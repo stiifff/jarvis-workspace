@@ -648,7 +648,7 @@ class VentanaJarvis : Form
         // el ancla ya la bootea (y desbloquea wslpath / $HOME); si está tibia,
         // evita que se apague en el medio del chequeo.
         AnclarDistro();
-        SembrarToken();   // nunca ver la pantalla de token: la app ya entra logueada
+
 
         web.CoreWebView2.NavigateToString(Splash());
         await Task.Delay(150);                     // que el <script> del splash exista
@@ -875,34 +875,6 @@ class VentanaJarvis : Form
         JarvisWsl.Ejecutar(comando, esperaMs);
     }
 
-    // ── Sesión: la app entra sola ────────────────────────────────────────
-    // La API y los WS exigen la cookie `jarvis_token`. En el browser eso se
-    // resuelve una vez por /login#token=…; en la APP no se le pide nada al
-    // usuario: el token se lee del repo por el share de WSL y se siembra como
-    // cookie del perfil (que es propio del shell, en %LocalAppData%\Jarvis),
-    // así el workspace abre logueado desde el primer frame.
-    //
-    // Sin token legible (distro dormida, ruta movida) no se rompe nada: cae al
-    // login normal del workspace.
-    void SembrarToken()
-    {
-        try
-        {
-            string token = File.ReadAllText(
-                JarvisWsl.ArchivoUnc("data/jarvis_token.txt")).Trim();
-            if (token.Length == 0) return;
-            var cm = web.CoreWebView2.CookieManager;
-            foreach (string host in new[] { "localhost", "127.0.0.1" })
-            {
-                var c = cm.CreateCookie("jarvis_token", token, host, "/");
-                c.IsHttpOnly = false;
-                c.Expires = DateTime.Now.AddYears(1);
-                cm.AddOrUpdateCookie(c);
-            }
-        }
-        catch { }
-    }
-
     // El número de build sale del VERSION del repo, leído por el share de WSL.
     // Si no se puede (distro dormida, ruta movida) el margen queda sin badge:
     // el splash nace con ese bloque hidden.
@@ -952,8 +924,6 @@ class PresenciaDiscord
     volatile bool parar;
     NamedPipeClientStream pipe;
     string ultimaFirma;   // firma del último envío: no quemar el rate-limit
-    string token;
-    string rutaToken;     // UNC resuelto a data/jarvis_token.txt (misma fuente que SembrarToken)
     long inicioEpoch;
     readonly JavaScriptSerializer json = new JavaScriptSerializer();
 
@@ -997,36 +967,22 @@ class PresenciaDiscord
         else { CerrarPipe(); ultimaFirma = null; } // Discord se reinició: reconectar
     }
 
-    // GET al backend con la cookie del token. 401/403 = token regenerado →
-    // olvidarlo para releerlo del share en la próxima vuelta.
     Dictionary<string, object> TraerPresence()
     {
         try
         {
-            if (token == null)
-            {
-                try
-                {
-                    if (rutaToken == null) rutaToken = JarvisWsl.ArchivoUnc("data/jarvis_token.txt");
-                    token = File.ReadAllText(rutaToken).Trim();
-                }
-                catch { token = ""; }
-            }
             var req = (HttpWebRequest)WebRequest.Create(UrlPresence);
             req.Proxy = null;
             req.Timeout = 3000;
             req.ReadWriteTimeout = 3000;
-            if (token.Length > 0) req.Headers.Add("Cookie", "jarvis_token=" + token);
             using (var resp = (HttpWebResponse)req.GetResponse())
             using (var r = new StreamReader(resp.GetResponseStream(), Encoding.UTF8))
             {
                 return json.Deserialize<Dictionary<string, object>>(r.ReadToEnd());
             }
         }
-        catch (WebException e)
+        catch (WebException)
         {
-            var r = e.Response as HttpWebResponse;
-            if (r != null && ((int)r.StatusCode == 401 || (int)r.StatusCode == 403)) token = null;
             return null;
         }
         catch { return null; }

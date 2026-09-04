@@ -13,16 +13,6 @@ JARVIS_URL="${JARVIS_URL:-http://localhost:3000}"
 RUTA="$(realpath "${1:-.}")"
 NOMBRE="$(basename "$RUTA")"
 
-# ── Token (mismo archivo que usa el server) ──────────────────────────
-SCRIPT_DIR="$(cd "$(dirname "$(realpath "${BASH_SOURCE[0]}")")" && pwd)"
-TOKEN_FILE="$SCRIPT_DIR/../data/jarvis_token.txt"
-if [[ ! -f "$TOKEN_FILE" ]]; then
-  echo "✗ No encuentro el token ($TOKEN_FILE). ¿El server corrió al menos una vez?" >&2
-  exit 1
-fi
-TOKEN="$(cat "$TOKEN_FILE")"
-AUTH=(-H "Cookie: jarvis_token=$TOKEN")
-
 # ── Server vivo? ─────────────────────────────────────────────────────
 if ! curl -s -o /dev/null --max-time 3 "$JARVIS_URL/"; then
   echo "✗ Jarvis no responde en $JARVIS_URL — arrancalo primero." >&2
@@ -30,7 +20,7 @@ if ! curl -s -o /dev/null --max-time 3 "$JARVIS_URL/"; then
 fi
 
 # ── Buscar el proyecto por ruta; crearlo si no existe ────────────────
-ID="$(curl -s "${AUTH[@]}" "$JARVIS_URL/api/projects" \
+ID="$(curl -s "$JARVIS_URL/api/projects" \
   | python3 -c "
 import json, sys
 ruta = '''$RUTA'''
@@ -42,7 +32,7 @@ for p in json.load(sys.stdin):
 
 if [[ -z "$ID" ]]; then
   echo "→ Registrando workspace nuevo: $NOMBRE ($RUTA)"
-  ID="$(curl -s "${AUTH[@]}" -X POST "$JARVIS_URL/api/projects" \
+  ID="$(curl -s -X POST "$JARVIS_URL/api/projects" \
     -H 'Content-Type: application/json' \
     -d "{\"nombre\": \"$NOMBRE\", \"ruta\": \"$RUTA\"}" \
     | python3 -c "import json,sys; print(json.load(sys.stdin)['id'])")"

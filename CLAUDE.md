@@ -84,7 +84,7 @@ for t in $(find frontend -path '*__tests__*' -name '*.test.js' | sort); do node 
 python -m pytest plotspace/tests/ -q
 ```
 
-No hay build step ni linter. Tests: suites Node puras (assert nativo, patrón UMD `_pure`) + pytest en `plotspace/tests/`. El frontend es HTML/CSS/JS vanilla servido directamente por FastAPI como archivos estáticos. La API y los WS exigen el token de `data/jarvis_token.txt` (cookie `jarvis_token`; login por `/login#token=...`).
+No hay build step ni linter. Tests: suites Node puras (assert nativo, patrón UMD `_pure`) + pytest en `plotspace/tests/`. El frontend es HTML/CSS/JS vanilla servido directamente por FastAPI como archivos estáticos. Default bind `127.0.0.1`.
 
 ## Stack fijo — no cambiar sin consultar
 - **Backend**: Python + FastAPI + uvicorn
@@ -252,7 +252,7 @@ API keys / tokens (Anthropic, MCPs, cualquier proveedor) JAMÁS van al repo. `sc
 - **Swarm:** `WATCHDOG` (on) · `SENTINEL` (on) · `AUTO_ROTACION` (on) · `MAILBOX_ENTREGA_TERMINAL` (off) · `ORQUESTADOR_MOTOR` (`suscripcion` — el chat orquestador corre con claude -p y la cuenta OAuth activa, $0 de API; `api` = vía de escape con key) · `ORQUESTADOR_MODEL` (`sonnet` en suscripción / `claude-haiku-4-5` en api) · `ORQ_AUTO_INTERVENCION` (on — ante TASK_BLOCKED/ERROR sin salida el orquestador se llama solo y re-instruye; 1 vez por paso, tope 6/h; solo en motor suscripción) · `ORQ_CLI_TIMEOUT` (240 s de pared por llamada del orquestador) · `MEMORIA_LECCIONES` (on — destilador de lecciones; `MEMORIA_LECCIONES_MODEL` `claude-haiku-4-5` · `MEMORIA_LECCIONES_UMBRAL` 6) · `MEMORIA_CUARENTENA_DIAS` (60 — memoria vigente sin refresco ni uso → cuarentena en la salud)
 - **Terminales:** `TERMINALES_ARRANQUE` (`shell` — al crear una terminal de IA el pane nace como shell de WSL a la vista y el CLI se tipea corto (`claude`) al aparecer el prompt; `limpio` = el CLI arranca como programa del pane, sin verse nada. Workflows, reanudaciones y qwen SIEMPRE van en limpio — ver [[arranque-visible-terminales]])
 - **Voz:** `STT_WORKER` (`on` — el modelo STT carga y corre en un PROCESO worker con nice(5), `core/stt_proc.py`; `off` = in-proc viejo, que congela el event loop 5-20s por el GIL de onnxruntime al crear la sesión — ver [[stt-worker-gil-freeze]]) · `STT_MOTOR` (`parakeet` default de código; en este box va `groq` = whisper-large-v3-turbo remoto en Groq, cero CPU local, fallback a parakeet — requiere `GROQ_API_KEY`; `whisper` = vía de escape) · `GROQ_API_KEY` (key del free tier de Groq — SOLO en `plotspace/.env`, jamás al repo) · `GROQ_STT_MODEL` (`whisper-large-v3-turbo`; `whisper-large-v3` = más calidad, más lento) · `WHISPER_MODEL` (`small` — NO `turbo`: 3,2 GB de RAM y ~48s por dictado en esta CPU) · `WHISPER_COMPUTE` (`float32` — int8 de CTranslate2 es MÁS lento en esta CPU sin VNNI; el int8 de onnx/parakeet NO sufre eso) · `WHISPER_PRELOAD` (`off`; `on` = precarga residente en startup como antes) · `WHISPER_IDLE_UNLOAD` (`600` s de ocio antes de descargar el modelo/matar el worker — aplica al motor activo; `0`/`off` no descarga)
-- **Infra:** `JARVIS_TOKEN` · `JARVIS_ALLOWED_HOSTS` · `JARVIS_HOST` / `JARVIS_PORT` · `AUTO_PUSH` (on — fe_watch pushea `master` a origin al detectar commits; es el backup automático, NO pushees a mano)
+- **Infra:** `JARVIS_ALLOWED_HOSTS` · `JARVIS_HOST` / `JARVIS_PORT` · `AUTO_PUSH` (on — fe_watch pushea `master` a origin al detectar commits; es el backup automático, NO pushees a mano)
 
 <!-- JARVIS_SKILLS_START -->
 ## INSTRUCCIÓN OBLIGATORIA

@@ -180,17 +180,9 @@ def _fragmentos_de_jarvis(mi_tid):
     import json
     import urllib.request
     puerto = os.environ.get('JARVIS_PORT', '3000')
-    data_dir = os.environ.get('JARVIS_DATA_DIR') or os.path.join(
-        os.path.expanduser('~'), 'jarvis', 'data')
-    try:
-        with open(os.path.join(data_dir, 'jarvis_token.txt'), encoding='utf-8') as f:
-            token = f.read().strip()
-    except OSError:
-        token = ''
     try:
         req = urllib.request.Request(
-            f'http://127.0.0.1:{puerto}/api/swarm/fragmentos/{mi_tid}',
-            headers={'Cookie': f'jarvis_token={token}'})
+            f'http://127.0.0.1:{puerto}/api/swarm/fragmentos/{mi_tid}')
         with urllib.request.urlopen(req, timeout=4) as r:
             return json.loads(r.read().decode('utf-8', errors='replace'))
     except Exception:

@@ -224,48 +224,8 @@
     });
   }
 
-  /* ── Login por token (candado de LAN) ────────────────────────── */
-  /**
-   * Llamar ante un 401 de la API. Pide el token (lo imprime el server al
-   * arrancar y vive en data/jarvis_token.txt), lo canjea por la cookie
-   * httpOnly y recarga. Reintenta si el token es inválido.
-   */
-  let _pidiendoToken = false;
-  async function exigirToken() {
-    if (_pidiendoToken) return; // un solo prompt aunque fallen N fetches
-    _pidiendoToken = true;
-    try {
-      for (;;) {
-        const t = await pedirTexto(
-          'El server lo imprime al arrancar (también está en data/jarvis_token.txt).',
-          { titulo: 'Token de acceso', placeholder: 'pegá el token…', confirmText: 'Entrar' },
-        );
-        if (!t) return; // canceló — la página queda bloqueada a propósito
-        const r = await fetch('/api/auth/login', {
-          method:  'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body:    JSON.stringify({ token: t }),
-        });
-        if (r.ok) { location.reload(); return; }
-        toast('Token inválido — probá de nuevo.', 'error');
-      }
-    } finally {
-      _pidiendoToken = false;
-    }
-  }
-
-  /**
-   * fetch para la API de Jarvis con manejo de 401 consistente: ante un 401
-   * dispara exigirToken() (un solo prompt global) y devuelve la respuesta
-   * igual, para que el caller decida qué hacer. Reemplaza el patrón disperso
-   * donde cada sección tragaba el 401 en silencio (solo cargarProyecto lo
-   * manejaba). Mismo contrato que fetch() — drop-in.
-   */
   function apiFetch(url, opts) {
-    return fetch(url, opts).then((r) => {
-      if (r.status === 401) exigirToken();
-      return r;
-    });
+    return fetch(url, opts);
   }
 
   /* ── Logos de CLIs (SVGs vendoreados de @lobehub/icons-static-svg@1.91.0) ── */
@@ -283,7 +243,6 @@
   window.toast = toast;
   window.confirmar = confirmar;
   window.pedirTexto = pedirTexto;
-  window.exigirToken = exigirToken;
   window.apiFetch = apiFetch;
   window.cliLogo = cliLogo;
 })();

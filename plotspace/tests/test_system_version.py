@@ -328,20 +328,19 @@ def test_firma_solo_mira_codigo(monkeypatch):
 
 # ─── Endpoint /version (TestClient) ──────────────────────────────────────────
 
-def _client_token():
+def _client():
     from plotspace.tests._harness import fresh_db
     fresh_db()
     import plotspace.main as main
-    from plotspace.core import auth
     from fastapi.testclient import TestClient
-    return TestClient(main.app), auth.obtener_token()
+    return TestClient(main.app)
 
 
 def test_endpoint_hay_update(monkeypatch):
     monkeypatch.setattr(system, '_estado_git',
                         lambda: (True, 'Hay una nueva versión', [{'area': 'Interfaz', 'icon': '🎨', 'items': ['a', 'b']}]))
-    client, token = _client_token()
-    r = client.get('/api/system/version', headers={'Cookie': f'jarvis_token={token}'})
+    client = _client()
+    r = client.get('/api/system/version')
     assert r.status_code == 200, r.text
     d = r.json()
     assert d['hay_update'] is True
@@ -352,8 +351,8 @@ def test_endpoint_hay_update(monkeypatch):
 
 def test_endpoint_sin_update(monkeypatch):
     monkeypatch.setattr(system, '_estado_git', lambda: (False, '', []))
-    client, token = _client_token()
-    d = client.get('/api/system/version', headers={'Cookie': f'jarvis_token={token}'}).json()
+    client = _client()
+    d = client.get('/api/system/version').json()
     assert d['hay_update'] is False
     assert d['novedades'] == []
 
@@ -365,8 +364,8 @@ def test_endpoint_fallback_sin_git(tmp_path, monkeypatch):
     monkeypatch.setattr(system, '_VERSION_PATH', str(vf))
     monkeypatch.setattr(system, '_CHANGELOG_PATH', str(cf))
     monkeypatch.setattr(system, '_VERSION_BOOT', '4.0.0')
-    client, token = _client_token()
-    d = client.get('/api/system/version', headers={'Cookie': f'jarvis_token={token}'}).json()
+    client = _client()
+    d = client.get('/api/system/version').json()
     assert d['hay_update'] is True
     assert d['novedades'][0]['area'] == 'Novedades'        # fallback: un solo grupo
     assert 'algo nuevo' in d['novedades'][0]['items']
@@ -376,8 +375,8 @@ def test_endpoint_expone_event_loop(monkeypatch):
     # /version informa qué event loop corre el server para que el frontend pueda
     # avisar si quedó en uvloop. El TestClient corre sobre asyncio → loop sano.
     monkeypatch.setattr(system, '_estado_git', lambda: (False, '', []))
-    client, token = _client_token()
-    d = client.get('/api/system/version', headers={'Cookie': f'jarvis_token={token}'}).json()
+    client = _client()
+    d = client.get('/api/system/version').json()
     assert d['event_loop'] == 'asyncio'
     assert d['loop_degradado'] is False
 
@@ -387,8 +386,8 @@ def test_endpoint_loop_degradado_cuando_uvloop(monkeypatch):
     # degradado → el banner de la franja ofrece reiniciar para optimizar el tipeo.
     monkeypatch.setattr(system, '_estado_git', lambda: (False, '', []))
     monkeypatch.setattr(system, 'nombre_event_loop', lambda loop=None: 'uvloop')
-    client, token = _client_token()
-    d = client.get('/api/system/version', headers={'Cookie': f'jarvis_token={token}'}).json()
+    client = _client()
+    d = client.get('/api/system/version').json()
     assert d['event_loop'] == 'uvloop'
     assert d['loop_degradado'] is True
 
@@ -425,8 +424,8 @@ def test_endpoint_incluye_proxima(monkeypatch):
     monkeypatch.setattr(system, '_estado_git', lambda: (True, 'Hay una nueva versión', []))
     monkeypatch.setattr(system, '_commits_con_archivos', lambda: [{'subject': 'feat: x', 'files': []}])
     monkeypatch.setattr(system, '_VERSION_BOOT', '1.5.0')
-    client, token = _client_token()
-    d = client.get('/api/system/version', headers={'Cookie': f'jarvis_token={token}'}).json()
+    client = _client()
+    d = client.get('/api/system/version').json()
     assert d['corriendo'] == '1.5.0'
     assert d['proxima'] == '1.5.01'
 
@@ -436,16 +435,16 @@ def test_endpoint_proxima_hotfix(monkeypatch):
     monkeypatch.setattr(system, '_estado_git', lambda: (True, 'Hay una nueva versión', []))
     monkeypatch.setattr(system, '_commits_con_archivos', lambda: [{'subject': 'fix: bug feo', 'files': []}])
     monkeypatch.setattr(system, '_VERSION_BOOT', '1.5.1')
-    client, token = _client_token()
-    d = client.get('/api/system/version', headers={'Cookie': f'jarvis_token={token}'}).json()
+    client = _client()
+    d = client.get('/api/system/version').json()
     assert d['proxima'] == '1.5.01.1'
 
 
 def test_endpoint_proxima_sin_update_es_la_corriente(monkeypatch):
     monkeypatch.setattr(system, '_estado_git', lambda: (False, '', []))
     monkeypatch.setattr(system, '_VERSION_BOOT', '1.5.0')
-    client, token = _client_token()
-    d = client.get('/api/system/version', headers={'Cookie': f'jarvis_token={token}'}).json()
+    client = _client()
+    d = client.get('/api/system/version').json()
     assert d['proxima'] == '1.5.0'
 
 
@@ -521,8 +520,8 @@ def test_endpoint_expone_agentes_trabajando(monkeypatch):
     # = commit nuevo (ver _estado_git). El campo queda por si lo usa el modal.
     monkeypatch.setattr(system, '_estado_git', lambda: (True, 'Hay una nueva versión', []))
     monkeypatch.setattr(system, '_agentes_trabajando', lambda: True)
-    client, token = _client_token()
-    d = client.get('/api/system/version', headers={'Cookie': f'jarvis_token={token}'}).json()
+    client = _client()
+    d = client.get('/api/system/version').json()
     assert d['hay_update'] is True
     assert d['agentes_trabajando'] is True
 
@@ -530,8 +529,8 @@ def test_endpoint_expone_agentes_trabajando(monkeypatch):
 def test_endpoint_agentes_libres(monkeypatch):
     monkeypatch.setattr(system, '_estado_git', lambda: (True, 'Hay una nueva versión', []))
     monkeypatch.setattr(system, '_agentes_trabajando', lambda: False)
-    client, token = _client_token()
-    d = client.get('/api/system/version', headers={'Cookie': f'jarvis_token={token}'}).json()
+    client = _client()
+    d = client.get('/api/system/version').json()
     assert d['agentes_trabajando'] is False
 
 
@@ -541,8 +540,8 @@ def test_endpoint_fallback_sin_git_tambien_expone_agentes(monkeypatch, tmp_path)
     monkeypatch.setattr(system, '_VERSION_PATH', str(vf))
     monkeypatch.setattr(system, '_VERSION_BOOT', '4.0.0')
     monkeypatch.setattr(system, '_agentes_trabajando', lambda: True)
-    client, token = _client_token()
-    d = client.get('/api/system/version', headers={'Cookie': f'jarvis_token={token}'}).json()
+    client = _client()
+    d = client.get('/api/system/version').json()
     assert d['agentes_trabajando'] is True
 
 
@@ -566,8 +565,8 @@ def _preparar_restart(monkeypatch, tmp_path, canary=(True, ''),
 
 def test_restart_endpoint_no_reinicia_de_verdad(monkeypatch, tmp_path):
     llamado, _ = _preparar_restart(monkeypatch, tmp_path, estado=(False, '', []))
-    client, token = _client_token()
-    r = client.post('/api/system/restart', headers={'Cookie': f'jarvis_token={token}'})
+    client = _client()
+    r = client.post('/api/system/restart')
     assert r.status_code == 200
     assert r.json()['ok'] is True
     assert llamado['reinicios'] == 1   # se llamó al relauncher (mockeado)
@@ -577,8 +576,8 @@ def test_restart_bumpea_patch(monkeypatch, tmp_path):
     # Aplicar un update normal escribe VERSION con el patch siguiente.
     llamado, vf = _preparar_restart(monkeypatch, tmp_path,
                                     commits=[{'subject': 'feat: x', 'files': []}])
-    client, token = _client_token()
-    d = client.post('/api/system/restart', headers={'Cookie': f'jarvis_token={token}'}).json()
+    client = _client()
+    d = client.post('/api/system/restart').json()
     assert d['ok'] is True and d['version'] == '1.5.01'
     assert vf.read_text().strip() == '1.5.01'
     assert llamado['reinicios'] == 1
@@ -587,8 +586,8 @@ def test_restart_bumpea_patch(monkeypatch, tmp_path):
 def test_restart_bumpea_hotfix(monkeypatch, tmp_path):
     llamado, vf = _preparar_restart(monkeypatch, tmp_path,
                                     commits=[{'subject': 'fix: urgente', 'files': []}])
-    client, token = _client_token()
-    d = client.post('/api/system/restart', headers={'Cookie': f'jarvis_token={token}'}).json()
+    client = _client()
+    d = client.post('/api/system/restart').json()
     assert d['version'] == '1.5.00.1'
     assert vf.read_text().strip() == '1.5.00.1'
 
@@ -596,8 +595,8 @@ def test_restart_bumpea_hotfix(monkeypatch, tmp_path):
 def test_restart_sin_update_no_bumpea(monkeypatch, tmp_path):
     # Reinicio sin código nuevo (p. ej. para liberar memoria): la versión no se mueve.
     llamado, vf = _preparar_restart(monkeypatch, tmp_path, estado=(False, '', []))
-    client, token = _client_token()
-    d = client.post('/api/system/restart', headers={'Cookie': f'jarvis_token={token}'}).json()
+    client = _client()
+    d = client.post('/api/system/restart').json()
     assert d['ok'] is True and d['version'] == '1.5.0'
     assert vf.read_text().strip() == '1.5.0'
     assert llamado['reinicios'] == 1
@@ -608,19 +607,14 @@ def test_restart_canary_roto_no_reinicia(monkeypatch, tmp_path):
     # NO se reinicia, NO se bumpea, y el error viaja al frontend.
     llamado, vf = _preparar_restart(monkeypatch, tmp_path,
                                     canary=(False, 'SyntaxError: invalid syntax'))
-    client, token = _client_token()
-    r = client.post('/api/system/restart', headers={'Cookie': f'jarvis_token={token}'})
+    client = _client()
+    r = client.post('/api/system/restart')
     assert r.status_code == 409
     d = r.json()
     assert d['ok'] is False
     assert 'SyntaxError' in d['detalle']
     assert vf.read_text().strip() == '1.5.0'
     assert llamado['reinicios'] == 0
-
-
-def test_version_requiere_token():
-    client, _ = _client_token()
-    assert client.get('/api/system/version').status_code == 401
 
 
 # ─── /ready: gate del reload post-update ─────────────────────────────────────
@@ -657,7 +651,7 @@ def test_server_listo_fail_open(monkeypatch):
 
 def test_endpoint_ready_abierto_y_refleja_reconcile():
     from plotspace.routers import terminals
-    client, _ = _client_token()
+    client = _client()
     ev = terminals.reconcile_listo
     prev = ev.is_set()
     try:

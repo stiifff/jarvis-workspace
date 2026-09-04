@@ -62,8 +62,7 @@ jarvis
 # until the CLI is installed:
 # python3 -m uvicorn plotspace.main:app --host 0.0.0.0 --port 3000 --loop asyncio
 ```
-On first boot the server prints an **access token** and also writes it to
-`data/jarvis_token.txt` (under the repo, unless you set `JARVIS_DATA_DIR`).
+On first boot the server is ready at `http://localhost:3000`.
 
 ### 5. Open it from Windows
 
@@ -78,8 +77,7 @@ Pick one:
   window (`Jarvis.exe`) — not a native engine, just a desktop chrome around the
   same Linux server — and drops a shortcut on your Desktop.
 
-Then open `http://localhost:3000`, paste the token from the WSL logs or
-`data/jarvis_token.txt`, and continue.
+Then open `http://localhost:3000`.
 
 > Health checks should use `http://127.0.0.1:3000` (the name `localhost` often
 > resolves IPv6-first; WSL may only be listening on IPv4). The browser URL can
@@ -120,8 +118,7 @@ docker compose up -d --build
 docker compose logs -f
 ```
 
-Grab the access token from the logs (also persisted under `./data/`), then open
-`http://localhost:3000`.
+Open `http://localhost:3000`.
 
 **Honesty check:** the first `docker compose build` is **slow and large**
 (base image + Python deps; historically also heavy ML/browser layers in the
@@ -137,7 +134,7 @@ here — if a system step fails, the sensitive spots are commented in the
 | | WSL2 path | Docker |
 |---|---|---|
 | Code / engine | `~/jarvis-workspace` | image + bind mounts |
-| App data (DB, token, CLI account secrets) | `<repo>/data` by default, or `JARVIS_DATA_DIR` (e.g. `~/.local/share/jarvis`) | `./data` → `/app/data` |
+| App data (DB, CLI account secrets) | `<repo>/data` by default, or `JARVIS_DATA_DIR` (e.g. `~/.local/share/jarvis`) | `./data` → `/app/data` |
 | Your projects | anywhere under the Linux FS (prefer `~/proyectos`, not `/mnt/c`) | host folder from `PROYECTOS_DIR` → `/proyectos` |
 
 ## What you still need

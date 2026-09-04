@@ -1,6 +1,6 @@
 ---
 name: qa-browser-jarvis
-description: Cómo verificar Jarvis Workspace en browser real (Playwright + token) y correr todos sus tests. Usala antes de dar por terminado cualquier cambio de frontend.
+description: Cómo verificar Jarvis Workspace en browser real (Playwright) y correr todos sus tests. Usala antes de dar por terminado cualquier cambio de frontend.
 ---
 
 # QA en browser de Jarvis Workspace
@@ -22,11 +22,6 @@ description: Cómo verificar Jarvis Workspace en browser real (Playwright + toke
   `scripts/reiniciar-server.sh` (es herramienta del usuario, no de agentes).
 - Si tocaste **frontend**: NO hace falta reiniciar — pero SÍ bumpear el `?v=N` del archivo
   en `workspace.html` (o `index.html`); regla monotónica: valor actual + 1.
-
-## Auth (token-gate)
-- Token en `data/jarvis_token.txt`. Cookie: `jarvis_token=<token>`.
-- curl: `curl -s -b "jarvis_token=$(cat data/jarvis_token.txt)" http://localhost:3000/api/projects`
-- Playwright: setear la cookie en el contexto antes de navegar (domain `localhost`).
 
 ## Playwright en este entorno (WSL sin sudo)
 - `playwright` ya está en el venv; chromium cacheado (`chromium-1148`).

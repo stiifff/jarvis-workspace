@@ -3,8 +3,8 @@
 # Uso:
 #   cp .env.example .env      # editá PROYECTOS_DIR (y opcionalmente la API key)
 #   docker compose up -d --build
-#   docker compose logs -f    # mirá el TOKEN DE ACCESO que imprime al arrancar
-#   # abrí http://localhost:3000 y pegá el token la primera vez
+#   docker compose logs -f
+#   # abrí http://localhost:3000
 #
 # (compose v2: sin clave `version:`, está obsoleta)
 
@@ -33,7 +33,7 @@ services:
       #    cuentas DESDE la UI (⚙ → Cuentas, login en PTY); persisten reinicios.
       #    NO se monta el ~/.claude del host: la auth vive solo en este volumen.
       - jarvis_home:/root
-      # 2) Estado local de la app (SQLite jarvis.db + jarvis_token.txt + perfil
+      # 2) Estado local de la app (SQLite jarvis.db + perfil
       #    del browser remoto + secretos de cuentas). Bind a ./data para que lo
       #    veas/respaldés desde el host. Se auto-crea y auto-bootstrapea vacío.
       - ./data:/app/data

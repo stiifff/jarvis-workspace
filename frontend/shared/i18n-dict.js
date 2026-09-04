@@ -755,11 +755,8 @@
     "¿Confirmás?": "Are you sure?",
     "Confirmar": "Confirm",
     "Ingresá un valor": "Enter a value",
-    "El server lo imprime al arrancar (también está en data/jarvis_token.txt).": "The server prints it on startup (it's also in data/jarvis_token.txt).",
-    "Token de acceso": "Access token",
-    "pegá el token…": "paste the token…",
-    "Entrar": "Enter",
-    "Token inválido — probá de nuevo.": "Invalid token — try again.",
+
+
     "Reconectando…": "Reconnecting…",
     "Sin conexión con el server": "No connection to the server",
     "hecho por": "made by",

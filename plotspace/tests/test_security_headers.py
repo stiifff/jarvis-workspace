@@ -23,11 +23,10 @@ ESPERADOS = {
 }
 
 
-def _client_y_token():
+def _client():
     fresh_db()
     import plotspace.main as main
-    from plotspace.core import auth
-    return TestClient(main.app), auth.obtener_token()
+    return TestClient(main.app)
 
 
 def _assert_headers(r):
@@ -36,32 +35,24 @@ def _assert_headers(r):
 
 
 def test_headers_en_html_home():
-    client, _ = _client_y_token()
+    client = _client()
     _assert_headers(client.get('/'))
 
 
 def test_headers_en_health_ruta_abierta():
-    client, _ = _client_y_token()
+    client = _client()
     _assert_headers(client.get('/api/health'))
 
 
-def test_headers_en_api_autenticada():
-    client, token = _client_y_token()
-    r = client.get('/api/projects', headers={'Cookie': f'jarvis_token={token}'})
+def test_headers_en_api():
+    client = _client()
+    r = client.get('/api/projects')
     assert r.status_code == 200
     _assert_headers(r)
 
 
-def test_headers_tambien_en_401():
-    # Hasta la respuesta de "no autenticado" lleva los headers de endurecimiento.
-    client, _ = _client_y_token()
-    r = client.get('/api/projects')
-    assert r.status_code == 401
-    _assert_headers(r)
-
-
 def test_headers_en_static():
-    client, _ = _client_y_token()
+    client = _client()
     r = client.get('/static/shell/workspace.html')
     assert r.status_code == 200
     _assert_headers(r)
@@ -74,8 +65,8 @@ def test_headers_en_static():
 # navegación → F5 trae siempre el HTML actual con los scripts actuales.
 
 def test_html_pages_son_no_cache():
-    client, token = _client_y_token()
-    cookie = {'Cookie': f'jarvis_token={token}'}
+    client = _client()
+    cookie = {}
     for ruta in ('/', '/workspace', '/editor'):
         r = client.get(ruta, headers=cookie)
         assert r.status_code == 200, f'{ruta} → {r.status_code}'
@@ -86,7 +77,7 @@ def test_html_pages_son_no_cache():
 def test_static_no_recibe_no_cache():
     # Los estáticos versionados con ?v= NO deben heredar no-cache: su URL cambia
     # cuando cambia el contenido, así que se cachean fuerte (cero revalidación).
-    client, _ = _client_y_token()
+    client = _client()
     r = client.get('/static/sections/terminals/terminal.js')
     assert r.status_code == 200
     assert r.headers.get('cache-control') != 'no-cache', \
@@ -96,7 +87,7 @@ def test_static_no_recibe_no_cache():
 def test_html_de_static_si_es_no_cache():
     # Los .html de /static (el shell del workspace, los prototipos) son
     # DOCUMENTOS: referencian .js/.css con ?v=N y deben revalidar en cada carga.
-    client, _ = _client_y_token()
+    client = _client()
     r = client.get('/static/shell/workspace.html')
     assert r.status_code == 200
     assert r.headers.get('cache-control') == 'no-cache', \

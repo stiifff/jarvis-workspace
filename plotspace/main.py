@@ -226,7 +226,6 @@ async def _startup():
         ThreadPoolExecutor(max_workers=32, thread_name_prefix='jarvis')
     )
 
-    # 0.5 Token de acceso: generarlo/cargarlo y mostrarlo en consola
     jarvis_auth.imprimir_banner()
 
     # 0.6 Avisar temprano si falta la API key: sin esto, el primer chat al
@@ -537,12 +536,10 @@ app.include_router(review.router)
 app.include_router(system.router)   # /api/system: versión + reinicio in-app (re-exec in place)
 app.include_router(cuentas.router)  # /api/cuentas: vincular/switchear cuentas de CLIs
 
-# ─── Autenticación por token (candado de LAN) ────────────────────────────────
-# Las terminales son shells: sin esto, cualquiera en la red local tendría
-# ejecución de comandos en esta máquina. Ver plotspace/core/auth.py.
+# ─── Host / Origin (anti DNS-rebinding y CSRF). No hay token de acceso. ──────
 
 from fastapi import Request
-from fastapi.responses import JSONResponse, RedirectResponse, HTMLResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from plotspace.core import auth as jarvis_auth
 
 
@@ -553,8 +550,7 @@ from plotspace.core import auth as jarvis_auth
 #   embeber Jarvis en un iframe (anti-clickjacking del workspace). No afecta a
 #   Jarvis embebiendo OTROS sitios (eso lo gobiernan los headers del hijo).
 # - Referrer-Policy no-referrer: ninguna URL de Jarvis viaja en el header
-#   Referer hacia afuera — tapa la fuga del token de /login?token= (y de rutas
-#   internas) cuando el preview carga un sitio externo.
+#   Referer hacia afuera cuando el preview carga un sitio externo.
 # CSP completa se deja fuera a propósito: el front usa estilos/scripts inline +
 # CDN (xterm) + Google Fonts; una CSP estricta a ciegas rompería la app.
 SECURITY_HEADERS = {
@@ -636,7 +632,7 @@ async def _handler_body_grande(request: Request, exc: _BodyDemasiadoGrande):
 
 
 @app.middleware("http")
-async def _middleware_token(request: Request, call_next):
+async def _middleware_http(request: Request, call_next):
     # Anti DNS-rebinding: rechazar Host que no sea localhost/IP (un dominio del
     # atacante resolviendo a 127.0.0.1 quedaría afuera). El acceso legítimo
     # —localhost o la IP de LAN— pasa.
@@ -651,21 +647,13 @@ async def _middleware_token(request: Request, call_next):
     else:
         path = request.url.path
         resp = None
-        if path.startswith('/api/') and not jarvis_auth.ruta_abierta(path):
-            if not jarvis_auth.cookie_valida(request.cookies):
-                resp = JSONResponse(
-                    status_code=401,
-                    content={'detail': 'Token de acceso requerido (lo imprime el server al arrancar)'},
-                )
-            # CSRF defensa-en-profundidad: una mutación disparada por una web
-            # maliciosa abierta en el mismo browser SIEMPRE viaja con un Origin
-            # cross-site → afuera. El lado WS ya valida Origin; replicarlo acá cubre
-            # el lado HTTP. Origin ausente = cliente no-browser (curl) o navegación
-            # same-origin con el token → permitido (mismo criterio que el WS).
-            elif request.method not in ('GET', 'HEAD', 'OPTIONS'):
-                if not jarvis_auth.origen_permitido(request.headers.get('origin'),
-                                                    jarvis_auth.hosts_extra()):
-                    resp = JSONResponse(status_code=403, content={'detail': 'Origin no permitido'})
+        # CSRF: una mutación disparada por una web maliciosa viaja con Origin
+        # cross-site → afuera. Origin ausente = curl o same-origin → permitido.
+        if (path.startswith('/api/')
+                and request.method not in ('GET', 'HEAD', 'OPTIONS')
+                and not jarvis_auth.origen_permitido(request.headers.get('origin'),
+                                                     jarvis_auth.hosts_extra())):
+            resp = JSONResponse(status_code=403, content={'detail': 'Origin no permitido'})
         if resp is None:
             resp = await call_next(request)
     # Endurecer headers en toda respuesta (setdefault: no pisa headers propios de la ruta).
@@ -682,56 +670,10 @@ async def _middleware_token(request: Request, call_next):
     return resp
 
 
-@app.post("/api/auth/login")
-async def auth_login(request: Request):
-    """Valida el token y lo deja en una cookie httpOnly (1 año)."""
-    datos = await request.json()
-    if not jarvis_auth.token_valido((datos.get('token') or '').strip()):
-        return JSONResponse(status_code=401, content={'detail': 'Token inválido'})
-    resp = JSONResponse(content={'ok': True})
-    resp.set_cookie(
-        jarvis_auth.COOKIE_NAME, jarvis_auth.obtener_token(),
-        max_age=60 * 60 * 24 * 365, httponly=True, samesite='lax', path='/',
-    )
-    return resp
-
-
-# Página que consume el token desde el FRAGMENTO de la URL (#token=...). El
-# fragmento NUNCA viaja al server, así que NO queda en el access-log de uvicorn
-# ni en el scrollback de tmux — a diferencia de ?token= en la query. El JS lo
-# lee y lo POSTea a /api/auth/login (que setea la cookie httpOnly). Esta es la
-# forma RECOMENDADA de loguear el celular: /login#token=XXX
-_LOGIN_HTML = """<!DOCTYPE html><html lang="es"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Jarvis — acceso</title><link rel="icon" href="data:,">
-<style>html{color-scheme:dark}body{margin:0;height:100vh;display:grid;place-items:center;
-background:#0c0c12;color:#cfcce0;font:15px/1.5 system-ui,sans-serif}</style></head>
-<body><div id="m">Validando acceso…</div><script>
-(function(){var m=(location.hash||'').match(/token=([^&]+)/);
-if(!m){document.getElementById('m').textContent='Falta el token en el enlace (#token=...).';return;}
-fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},
-body:JSON.stringify({token:decodeURIComponent(m[1])})}).then(function(r){
-if(r.ok){location.replace('/');}else{document.getElementById('m').textContent='Token inválido.';}
-}).catch(function(){document.getElementById('m').textContent='No se pudo validar.';});})();
-</script></body></html>"""
-
-
 @app.get("/login")
-async def auth_login_url(token: str = ''):
-    """Acceso del celular. SIN token en query → sirve la página que lee el token
-    del FRAGMENTO (#token=, no se loguea). CON ?token= (forma legacy) sigue
-    funcionando por compatibilidad: setea la cookie y redirige."""
-    if not token:
-        # Forma segura: el token viaja en el fragmento; lo consume el JS.
-        return HTMLResponse(_LOGIN_HTML)
-    if not jarvis_auth.token_valido(token.strip()):
-        return JSONResponse(status_code=401, content={'detail': 'Token inválido'})
-    resp = RedirectResponse('/', status_code=302)
-    resp.set_cookie(
-        jarvis_auth.COOKIE_NAME, jarvis_auth.obtener_token(),
-        max_age=60 * 60 * 24 * 365, httponly=True, samesite='lax', path='/',
-    )
-    return resp
+async def auth_login_url():
+    """Ruta vieja del token: ahora no hay login. Manda al home."""
+    return RedirectResponse('/', status_code=302)
 
 
 # ─── Páginas HTML ─────────────────────────────────────────────────────────────
@@ -751,17 +693,13 @@ async def pagina_workspace():
 
 @app.get("/editor")
 async def pagina_editor():
-    # Editor standalone (pestaña de navegador). Como /workspace, es shell estático
-    # sin token-gate; el JS pide /api/* con la cookie jarvis_token.
+    # Editor standalone (pestaña de navegador).
     return FileResponse(os.path.join(FRONTEND, 'shell', 'editor-standalone.html'))
 
 
 @app.get("/api/health")
 async def health():
-    """Health check liviano (ruta ABIERTA, sin token — el launcher/monitoreo lo
-    cura). Solo confirma que el proceso responde: NO filtra datos de recon
-    (antes exponía si la ANTHROPIC_API_KEY estaba configurada y el estado de
-    Whisper a cualquiera en la LAN sin autenticar)."""
+    """Health check liviano. Solo confirma que el proceso responde."""
     return {'status': 'ok'}
 
 
@@ -788,13 +726,9 @@ async def manifest():
 async def ws_events(websocket: WebSocket, project_id: int):
     """Canal de eventos en tiempo real para el workspace.
     Broadcasts: task_event, workflow_update, orquestador_mensaje."""
-    # El middleware http NO corre para websockets: check propio de cookie +
-    # Origin (anti CSWSH — una web externa no puede abrir este canal).
+    # El middleware http NO corre para websockets: Origin anti CSWSH.
     if not jarvis_auth.origen_permitido(websocket.headers.get('origin'), jarvis_auth.hosts_extra()):
         await websocket.close(code=4403)
-        return
-    if not jarvis_auth.cookie_valida(websocket.cookies):
-        await websocket.close(code=4401)
         return
     if not await broadcaster.connect(websocket, project_id):
         return   # tope global de WS alcanzado (el broadcaster ya cerró el socket)

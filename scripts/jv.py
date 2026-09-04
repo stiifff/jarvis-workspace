@@ -42,16 +42,6 @@ def _base():
     return f"http://127.0.0.1:{os.environ.get('JARVIS_PORT', '3000')}"
 
 
-def _token():
-    d = os.environ.get('JARVIS_DATA_DIR') or os.path.join(
-        os.path.expanduser('~'), 'jarvis', 'data')
-    try:
-        with open(os.path.join(d, 'jarvis_token.txt'), encoding='utf-8') as f:
-            return f.read().strip()
-    except OSError:
-        return ''
-
-
 def _tid():
     tid = os.environ.get('JARVIS_TERMINAL_ID')
     if tid:
@@ -74,8 +64,7 @@ def _pedir(ruta, cuerpo=None, timeout=TIMEOUT_S):
     req = urllib.request.Request(
         _base() + ruta,
         data=json.dumps(cuerpo).encode() if cuerpo is not None else None,
-        headers={'Content-Type': 'application/json',
-                 'Cookie': f'jarvis_token={_token()}'},
+        headers={'Content-Type': 'application/json'},
         method='POST' if cuerpo is not None else 'GET')
     with urllib.request.urlopen(req, timeout=timeout) as r:
         return json.loads(r.read().decode('utf-8', errors='replace'))

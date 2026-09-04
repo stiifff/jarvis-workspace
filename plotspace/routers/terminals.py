@@ -1969,14 +1969,10 @@ async def ws_terminal(websocket: WebSocket, terminal_id: int,
     demasiado sin confirmar, para que la cola de xterm nunca llegue a los 50MB
     donde tira datos en pestañas ocultas. Un cliente legacy (JS cacheado viejo)
     no manda fc y conserva el comportamiento histórico. Ver _FlujoWS."""
-    # Candado de LAN: las terminales son shells. El middleware http NO corre
-    # para websockets, así que el check de cookie + Origin (anti CSWSH) va acá.
+    # El middleware http NO corre para websockets: Origin anti CSWSH.
     from plotspace.core import auth as jarvis_auth
     if not jarvis_auth.origen_permitido(websocket.headers.get('origin'), jarvis_auth.hosts_extra()):
         await websocket.close(code=4403)
-        return
-    if not jarvis_auth.cookie_valida(websocket.cookies):
-        await websocket.close(code=4401)
         return
     # Red de seguridad anti-desplazamiento: un browser headless (QA de un agente)
     # que se conecta sin ?qa=1 se degrada a observer para no robarle el tamaño al

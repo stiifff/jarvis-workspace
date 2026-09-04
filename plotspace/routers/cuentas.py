@@ -2,7 +2,7 @@
 # Vincular múltiples cuentas por agente de IA (claude/codex/qwen/opencode)
 # y switchear la activa sin re-loguear. La lógica sensible (snapshot/restore de
 # los archivos de credencial del HOME) vive en plotspace/core/cli_accounts.py; este
-# router es la capa HTTP fina. Queda token-gateado solo por el middleware global
+# router es la capa HTTP fina.
 # de main.py (todo /api/* lo está). Ver CLAUDE.md → sección Cuentas.
 
 import asyncio

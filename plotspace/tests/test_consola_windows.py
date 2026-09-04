@@ -70,7 +70,6 @@ def test_un_banner_con_dibujo_de_caja_no_tumba_el_arranque(monkeypatch):
     # el motor nunca llega a escuchar el puerto.
     from plotspace.core import auth
     monkeypatch.setattr(sys, 'stdout', _ConsolaWindows())
-    monkeypatch.setenv('JARVIS_TOKEN', 'token-de-prueba')
     consola.asegurar_utf8(sys.stdout)
     auth.imprimir_banner()          # no debe levantar
 

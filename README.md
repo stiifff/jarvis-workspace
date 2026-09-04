@@ -67,7 +67,7 @@ pip install -e .
 jarvis
 ```
 
-Paste the first-boot token (`data/jarvis_token.txt`) at `http://localhost:3000`.
+Open `http://localhost:3000`.
 
 Need **Python 3.11+**, **tmux**, **git**, and the CLIs you actually run. On WSL clone **inside Linux** (`~/jarvis-workspace`), not `/mnt/c`.
 

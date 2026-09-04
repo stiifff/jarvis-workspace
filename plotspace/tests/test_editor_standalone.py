@@ -2,7 +2,7 @@
 
 La página HTML NO está detrás del token-gate (el middleware de main.py sólo
 protege /api/*, igual que /workspace y /). La auth ocurre cuando el JS de la
-página hace fetch a /api/... con la cookie jarvis_token. Por eso este test sólo
+página hace fetch a /api/.... Por eso este test sólo
 verifica que la ruta exista y devuelva el HTML esperado, sin cookie.
 
 Patrón: importamos la app completa (backend.main) con la DB repuntada a un

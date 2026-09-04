@@ -19,7 +19,6 @@ from playwright.async_api import async_playwright
 
 BASE = os.environ.get('JARVIS_QA_BASE', 'http://127.0.0.1:5731')
 WT = os.environ.get('JARVIS_QA_DIR', '/home/user/jarvis/.claude/worktrees/terminales-un-emulador')
-TOKEN = open(f'{WT}/data/jarvis_token.txt').read().strip()
 CHROMIUM = os.path.expanduser('~/.cache/ms-playwright/chromium-1148/chrome-linux/chrome')
 
 R = {}
@@ -63,13 +62,12 @@ async def convergencia(page, tids):
 
 async def main():
     errores = []
-    ck = {'jarvis_token': TOKEN}
-    r = requests.post(f'{BASE}/api/projects', cookies=ck,
+    r = requests.post(f'{BASE}/api/projects',
                       json={'nombre': 'bateria-b2', 'ruta': f'{WT}/data/qa-proj'})
     pid = r.json()['id']
     tids = []
     for n in ('QA1', 'QA2', 'QA3', 'QA4'):
-        r = requests.post(f'{BASE}/api/projects/{pid}/terminals', cookies=ck,
+        r = requests.post(f'{BASE}/api/projects/{pid}/terminals',
                           json={'nombre': n, 'tipo_ia': 'manual'})
         tids.append(r.json()['id'])
     assert not (set(tids) & {821, 831, 883}), 'colisión con sesiones vivas'
@@ -80,8 +78,6 @@ async def main():
     async with async_playwright() as p:
         browser = await p.chromium.launch(executable_path=CHROMIUM, headless=True)
         ctx = await browser.new_context(viewport={'width': 1400, 'height': 800})
-        await ctx.add_cookies([{'name': 'jarvis_token', 'value': TOKEN,
-                                'domain': '127.0.0.1', 'path': '/'}])
         page = await ctx.new_page()
         page.on('console', lambda m: errores.append(m.text) if m.type == 'error' else None)
         page.on('pageerror', lambda e: errores.append(str(e)))
@@ -251,8 +247,6 @@ async def main():
 
         # ── 9. observador (?qa=1) ──
         ctx2 = await browser.new_context(viewport={'width': 1100, 'height': 700})
-        await ctx2.add_cookies([{'name': 'jarvis_token', 'value': TOKEN,
-                                 'domain': '127.0.0.1', 'path': '/'}])
         page2 = await ctx2.new_page()
         await page2.goto(f'{BASE}/workspace?id={pid}&qa=1', wait_until='domcontentloaded')
         # POLL hasta que el seed pinte (8 attaches simultáneos pueden tardar), y

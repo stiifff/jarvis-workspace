@@ -30,8 +30,7 @@ jarvis
 # python3 -m uvicorn plotspace.main:app --host 127.0.0.1 --port 3000 --loop asyncio
 ```
 
-Open `http://127.0.0.1:3000` and paste the access token printed on first boot
-(also written to the data dir as `jarvis_token.txt`).
+Open `http://127.0.0.1:3000`.
 
 Use `--host 0.0.0.0` only if you intentionally want LAN access.
 
@@ -64,8 +63,7 @@ jarvis
 # or: jarvis --datos ~/.local/share/jarvis
 ```
 
-That directory holds `jarvis.db`, `jarvis_token.txt`, CLI account secrets, and
-logs. Never commit it.
+That directory holds `jarvis.db`, CLI account secrets, and logs. Never commit it.
 
 ## Docker (optional)
 

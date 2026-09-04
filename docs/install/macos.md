@@ -31,8 +31,7 @@ jarvis
 # python3 -m uvicorn plotspace.main:app --host 127.0.0.1 --port 3000 --loop asyncio
 ```
 
-Open `http://127.0.0.1:3000` and paste the access token from the first-boot
-logs (also in the data dir as `jarvis_token.txt`).
+Open `http://127.0.0.1:3000`.
 
 ## What you need besides the app
 

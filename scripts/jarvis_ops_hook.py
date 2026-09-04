@@ -67,14 +67,6 @@ def _marcar_caido(data_dir, caido=True):
         pass
 
 
-def _token(data_dir):
-    try:
-        with open(os.path.join(data_dir, "jarvis_token.txt"), encoding="utf-8") as f:
-            return f.read().strip()
-    except OSError:
-        return ""
-
-
 def _anfitriones():
     """A qué direcciones intentar, en orden.
 
@@ -123,7 +115,7 @@ def _conectar(puerto, timeout):
     return None
 
 
-def _http_crudo(puerto, ruta, token, cuerpo, timeout):
+def _http_crudo(puerto, ruta, cuerpo, timeout):
     """POST JSON por socket pelado. Devuelve el dict de respuesta.
 
     Por qué no `urllib.request`: importarlo cuesta 82 ms (arrastra http.client →
@@ -138,7 +130,6 @@ def _http_crudo(puerto, ruta, token, cuerpo, timeout):
         f"POST {ruta} HTTP/1.1\r\n"
         f"Host: 127.0.0.1:{puerto}\r\n"
         f"Content-Type: application/json\r\n"
-        f"Cookie: jarvis_token={token}\r\n"
         f"Content-Length: {len(body)}\r\n"
         f"Connection: close\r\n\r\n"
     ).encode() + body
@@ -167,13 +158,12 @@ def _http_crudo(puerto, ruta, token, cuerpo, timeout):
     return json.loads(datos[corte + 4:].decode("utf-8", errors="replace") or "{}")
 
 
-def _http_get(puerto, ruta, token, timeout):
+def _http_get(puerto, ruta, timeout):
     """GET JSON por socket pelado (mismo motivo que _http_crudo: urllib cuesta
     82 ms de import y este hook corre en el camino caliente del agente)."""
     pedido = (
         f"GET {ruta} HTTP/1.1\r\n"
         f"Host: 127.0.0.1:{puerto}\r\n"
-        f"Cookie: jarvis_token={token}\r\n"
         f"Connection: close\r\n\r\n"
     ).encode()
     s = _conectar(puerto, timeout)
@@ -206,8 +196,7 @@ def _get(ruta, timeout):
     if _corta_corriente_abierto(data_dir):
         return None
     try:
-        out = _http_get(os.environ.get("JARVIS_PORT", "3000"), ruta,
-                        _token(data_dir), timeout)
+        out = _http_get(os.environ.get("JARVIS_PORT", "3000"), ruta, timeout)
     except Exception:
         _marcar_caido(data_dir, True)
         raise
@@ -223,8 +212,7 @@ def _post(ruta, cuerpo, timeout):
     if _corta_corriente_abierto(data_dir):
         return None
     try:
-        out = _http_crudo(os.environ.get("JARVIS_PORT", "3000"), ruta,
-                          _token(data_dir), cuerpo, timeout)
+        out = _http_crudo(os.environ.get("JARVIS_PORT", "3000"), ruta, cuerpo, timeout)
     except Exception:
         _marcar_caido(data_dir, True)
         raise

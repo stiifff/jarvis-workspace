@@ -30,21 +30,13 @@ def main() -> None:
         return
 
     puerto = os.environ.get("JARVIS_PORT", "3000")
-    data_dir = os.environ.get("JARVIS_DATA_DIR") or os.path.join(
-        os.path.expanduser("~"), "jarvis", "data")
-    try:
-        with open(os.path.join(data_dir, "jarvis_token.txt"), encoding="utf-8") as f:
-            token = f.read().strip()
-    except OSError:
-        token = ""
 
     try:
         import urllib.request
         req = urllib.request.Request(
             f"http://127.0.0.1:{puerto}/api/terminals/{tid}/session-uuid",
             data=json.dumps({"session_uuid": session_id}).encode(),
-            headers={"Content-Type": "application/json",
-                     "Cookie": f"jarvis_token={token}"},
+            headers={"Content-Type": "application/json"},
             method="POST",
         )
         urllib.request.urlopen(req, timeout=2).read()

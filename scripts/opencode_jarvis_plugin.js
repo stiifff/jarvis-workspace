@@ -14,20 +14,10 @@
 // opencode que se lancen en tmux. La identidad viene de JARVIS_TERMINAL_ID, que
 // Jarvis inyecta en el entorno de cada pane (terminals.py); sin esa var (opencode
 // fuera de Jarvis) el plugin es un no-op.
-import { readFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
-import { homedir } from "node:os";
-import { join } from "node:path";
 
 const TID = process.env.JARVIS_TERMINAL_ID;
 const PORT = process.env.JARVIS_PORT || "3000";
-const DATA_DIR = process.env.JARVIS_DATA_DIR || join(homedir(), "jarvis", "data");
-
-function token() {
-  try { return readFileSync(join(DATA_DIR, "jarvis_token.txt"), "utf8").trim(); }
-  catch { return ""; }
-}
-
 // Devuelve la respuesta del server (o null). El caller decide si espera: para
 // registrar la edición no hace falta, pero el BRIEFING viaja en esa respuesta y
 // opencode no tiene hook de prompt — este es su único canal para enterarse de
@@ -36,7 +26,7 @@ async function post(tool_name, tool_input, cwd) {
   try {
     const r = await fetch(`http://127.0.0.1:${PORT}/api/swarm/op`, {
       method: "POST",
-      headers: { "content-type": "application/json", cookie: `jarvis_token=${token()}` },
+      headers: { "content-type": "application/json" },
       body: JSON.stringify({ terminal_id: Number(TID), tool_name, tool_input, cwd, source: "opencode" }),
       signal: AbortSignal.timeout(1500),
     });
