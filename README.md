@@ -54,24 +54,47 @@ Also in the dock: web preview, editor, tasks, per-agent diff review. Hold your v
 
 ## Install
 
-[Linux](docs/install/linux.md) · [macOS](docs/install/macos.md) · [Windows](docs/install/windows.md)
+The full app (terminals, voice, preview, Mobile Studio, …). You bring the agent CLIs (Claude, Codex, Grok, …) and link them in ⚙ → Accounts.
+
+<table>
+<tr>
+<td width="33%" valign="top">
+
+**Linux**
 
 ```bash
-git clone https://github.com/stiifff/jarvis-workspace
-cd jarvis-workspace
-sudo apt install -y python3 python3-venv python3-pip tmux git curl   # Debian / Ubuntu / WSL
-
-python3 -m venv venv && source venv/bin/activate
-pip install -r plotspace/requirements.txt
-pip install -e .
-jarvis
+curl -fsSL https://raw.githubusercontent.com/stiifff/jarvis-workspace/main/install.sh | bash
 ```
 
-Open `http://localhost:3000`.
+Then `jarvis`. Opens `http://localhost:3000`.
 
-Need **Python 3.11+**, **tmux**, **git**, and the CLIs you actually run. On WSL clone **inside Linux** (`~/jarvis-workspace`), not `/mnt/c`.
+</td>
+<td width="33%" valign="top">
 
-Docker: `cp .env.example .env && docker compose up -d --build` — large first build, still experimental.
+**macOS** (needs [Homebrew](https://brew.sh))
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/stiifff/jarvis-workspace/main/install.sh | bash
+```
+
+Then `jarvis`.
+
+</td>
+<td width="33%" valign="top">
+
+**Windows** (engine in [WSL2](docs/install/windows.md))
+
+```powershell
+irm https://raw.githubusercontent.com/stiifff/jarvis-workspace/main/install.ps1 | iex
+```
+
+One reboot if WSL is new. Leaves **Jarvis.bat** on the Desktop.
+
+</td>
+</tr>
+</table>
+
+Manual steps: [Linux](docs/install/linux.md) · [macOS](docs/install/macos.md) · [Windows](docs/install/windows.md). Docker: `cp .env.example .env && docker compose up -d --build` (large, experimental).
 
 ## Use
 

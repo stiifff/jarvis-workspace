@@ -4,7 +4,7 @@ Fork, branch, PR. Keep it small.
 
 ## Setup
 
-Follow the [native install](README.md#install), then:
+Follow the [native install](README.md#install) (`./install.sh` from a clone, or the one-liner there), then:
 
 ```bash
 bash scripts/setup-hooks.sh   # blocks secrets; don't skip

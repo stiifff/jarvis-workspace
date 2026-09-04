@@ -1,15 +1,22 @@
 # Install on macOS
 
-There is no DMG / notarized app yet. Install the same way as Linux: clone the
-repo, create a venv, run `jarvis` (or uvicorn). Terminals are **tmux** sessions.
+One command (needs [Homebrew](https://brew.sh); Xcode CLT if you don't have git yet):
 
-## Native (from source)
+```bash
+curl -fsSL https://raw.githubusercontent.com/stiifff/jarvis-workspace/main/install.sh | bash
+```
+
+Same script as Linux: full app, `jarvis` on your PATH, opens `http://127.0.0.1:3000`.
+
+There is no DMG / notarized app yet. Terminals are **tmux** sessions.
+
+## Native (from source, manual)
 
 ```bash
 # Xcode CLT if you don't have them yet (git, clang, …)
 xcode-select --install
 
-brew install python@3.12 tmux git
+brew install python@3.12 tmux git ffmpeg
 
 git clone https://github.com/stiifff/jarvis-workspace
 cd jarvis-workspace

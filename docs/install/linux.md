@@ -1,17 +1,27 @@
 # Install on Linux
 
-Install from source. Terminals are **tmux** sessions. No `.deb` / AppImage yet.
+One command (full app: Python venv, tmux, ffmpeg, every Jarvis feature):
 
-## Native (from source)
+```bash
+curl -fsSL https://raw.githubusercontent.com/stiifff/jarvis-workspace/main/install.sh | bash
+```
+
+That clones to `~/jarvis-workspace`, puts `jarvis` on your PATH (`~/.local/bin`), and opens `http://127.0.0.1:3000`. Next time: `jarvis`.
+
+Already cloned? `./install.sh` from the repo root. `--no-start` skips launching the server. `--dry-run` prints the plan.
+
+No `.deb` / AppImage yet. Terminals are **tmux** sessions.
+
+## Native (from source, manual)
 
 ```bash
 git clone https://github.com/stiifff/jarvis-workspace
 cd jarvis-workspace
 
 sudo apt update
-sudo apt install -y python3 python3-venv python3-pip tmux git curl
-# Fedora: sudo dnf install python3 python3-pip tmux git curl
-# Arch:   sudo pacman -S python python-pip tmux git curl
+sudo apt install -y python3 python3-venv python3-pip tmux git curl ffmpeg
+# Fedora: sudo dnf install python3 python3-pip tmux git curl ffmpeg
+# Arch:   sudo pacman -S python python-pip tmux git curl ffmpeg
 
 python3 -m venv venv
 source venv/bin/activate

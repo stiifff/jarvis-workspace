@@ -1,17 +1,27 @@
 # Install on Windows
 
 Jarvis Workspace is a **Linux** app (Python + uvicorn + **tmux**). On Windows
-the engine runs inside **WSL2 Ubuntu** (recommended) or **Docker Desktop**.
-There is no native Windows installer and no GitHub Releases `.exe` yet — the old
-MSI / PowerShell-terminal app was removed.
+the engine runs inside **WSL2 Ubuntu**. One command does the rest:
+
+```powershell
+irm https://raw.githubusercontent.com/stiifff/jarvis-workspace/main/install.ps1 | iex
+```
+
+If WSL is missing, that installs Ubuntu and asks you to **reboot**, then run
+the same line again. After it finishes you get **Jarvis.bat** on the Desktop —
+double-click next time (warms WSL, starts the server, opens Chrome as an app
+window at `http://localhost:3000`).
 
 You bring your own agent CLIs (Claude Code, Codex, etc.) and link them in
-⚙ → **Cuentas** (BYOK). Jarvis orchestrates them; it does not ship or pay for
-those models.
+⚙ → **Accounts**. Jarvis does not ship those products.
+
+Docker Desktop is Path B below (still uses WSL2 under the hood).
 
 ---
 
-## Path A — WSL2 (recommended)
+## Path A — WSL2, step by step
+
+Skip this if the one-liner above already ran.
 
 ### 1. Install WSL2 + Ubuntu
 
@@ -37,11 +47,12 @@ cd ~/jarvis-workspace
 If the repo already lives somewhere else, set `JARVIS_WSL_DIR` (Linux path) before
 using the Windows `.bat` launcher. Another WSL distro than the default:
 `JARVIS_WSL_DISTRO`.
+
 ### 3. System packages + Python venv
 
 ```bash
 sudo apt update
-sudo apt install -y python3 python3-venv python3-pip tmux git curl
+sudo apt install -y python3 python3-venv python3-pip tmux git curl ffmpeg
 
 python3 -m venv venv
 source venv/bin/activate
@@ -66,16 +77,12 @@ On first boot the server is ready at `http://localhost:3000`.
 
 ### 5. Open it from Windows
 
-Pick one:
-
-- **Double-click launcher:** copy `scripts/abrir-jarvis-app.bat` to your Desktop.
-  It warms WSL, starts the server if needed
+- **Desktop launcher (what `install.ps1` copies):** `scripts/abrir-jarvis-app.bat`
+  as `Jarvis.bat` on the Desktop. It warms WSL, starts the server if needed
   (`~/jarvis-workspace/scripts/reiniciar-server.sh`), and opens Chrome in app
   mode at `http://localhost:3000`.
-- **Compiled shell (optional):** from WSL, run
-  `bash scripts/compilar-lanzador-windows.sh`. That builds a thin WebView2
-  window (`Jarvis.exe`) — not a native engine, just a desktop chrome around the
-  same Linux server — and drops a shortcut on your Desktop.
+- **Compiled window (optional):** from WSL, `bash scripts/compilar-lanzador-windows.sh`
+  builds a thin WebView2 window (`Jarvis.exe`) around the same Linux server.
 
 Then open `http://localhost:3000`.
 

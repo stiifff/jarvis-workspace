@@ -4,6 +4,9 @@ Las novedades del aviso de actualización se **auto-detectan del git** (los comm
 nuevos, agrupados por área). Este archivo es solo el respaldo por si algún día no
 hay git. Formato: `## X.Y.Z` + bullets `- …`, más nuevo arriba.
 
+## 1.7.2
+- Install: one command per OS (`install.sh` on Linux/macOS, `install.ps1` on Windows). Full app; Windows leaves Jarvis.bat on the Desktop.
+
 ## 1.7.1
 - Sin token de acceso: abrís `http://localhost:3000` y entrás. El default sigue siendo 127.0.0.1.
 
