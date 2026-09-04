@@ -2,29 +2,55 @@
 
 # Jarvis Workspace
 
-A local cockpit for running several AI coding agents in parallel.
+A local cockpit for several AI coding agents, in parallel, on your machine.
 
 [![License](https://img.shields.io/badge/license-MIT-22c55e.svg)](LICENSE)
 ![Python](https://img.shields.io/badge/python-3.11+-3b82f6.svg)
 ![BYOK](https://img.shields.io/badge/model-BYOK-8b5cf6.svg)
 
-<img src="docs/images/workspace.png" alt="Jarvis Workspace — empty project" width="920">
-
-<img src="docs/images/new-terminal.png" alt="Launch a swarm of terminals" width="920">
-
 </div>
 
-Open `localhost:3000`. Each agent (Claude Code, Codex, OpenCode, Qwen, Antigravity, Grok Build, or a shell) gets its own terminal. They share one branch. You bring the accounts — Jarvis only orchestrates.
+You open a project. Jarvis gives you a grid of live terminals. Claude Code, Codex, OpenCode, Qwen, Antigravity, Grok Build, or a shell — each in its own pane, all on the same branch. You bring the accounts. Jarvis only orchestrates.
 
-**Linux** is the native path. **Windows** runs the engine inside [WSL2](docs/install/windows.md) (or Docker). **macOS** follows [the same native install](docs/install/macos.md).
+**Linux** is native. **Windows** runs the engine in [WSL2](docs/install/windows.md). **macOS** is the [same install as Linux](docs/install/macos.md).
 
-## Features
+---
 
-- **Terminal grid** — persistent tmux sessions, live status, layouts
-- **Coordination** — who owns which file, 1-to-1 mailbox, pre-commit lock
-- **Accounts** — several logins per CLI, auto-rotate on rate limit
-- **Dock** — web preview, editor, tasks, per-agent diff review
-- **Voice** — push-to-talk (optional Groq or local STT)
+### Start here
+
+The empty workspace. One project, nothing running yet. New terminal, talk to Jarvis, or open the editor.
+
+<p align="center">
+  <img src="docs/images/workspace.png" alt="Empty Jarvis workspace — What are we building today?" width="920">
+</p>
+
+### Launch a swarm
+
+Pick agents, how many, and a layout. Seven Claude Codes, a mix, or one shell. They land in a live grid.
+
+<p align="center">
+  <img src="docs/images/new-terminal.png" alt="New terminal — pick Claude, Codex, Grok, layout, launch" width="920">
+</p>
+
+### Your accounts, not ours
+
+⚙ → **Accounts**. Several logins per CLI, switch without logging in again. Native sessions (Grok, Claude, …) show up even if you never clicked Connect. Rate-limit? It rotates.
+
+<p align="center">
+  <img src="docs/images/accounts.png" alt="Settings → Accounts — Claude, Codex, Antigravity switchboard" width="920">
+</p>
+
+### Make it yours
+
+⚙ → **Appearance**. 24 themes, tint, language, scale. The bench at the top is the live workspace.
+
+<p align="center">
+  <img src="docs/images/appearance.png" alt="Settings → Appearance — 24 themes, tint, scale" width="920">
+</p>
+
+Also in the dock: web preview, editor, tasks, per-agent diff review. Hold your voice key to dictate (Groq’s free Whisper API).
+
+---
 
 ## Install
 
@@ -33,7 +59,7 @@ Open `localhost:3000`. Each agent (Claude Code, Codex, OpenCode, Qwen, Antigravi
 ```bash
 git clone https://github.com/stiifff/jarvis-workspace
 cd jarvis-workspace
-sudo apt install -y python3 python3-venv python3-pip tmux git curl   # Debian/Ubuntu/WSL
+sudo apt install -y python3 python3-venv python3-pip tmux git curl   # Debian / Ubuntu / WSL
 
 python3 -m venv venv && source venv/bin/activate
 pip install -r plotspace/requirements.txt
@@ -41,22 +67,22 @@ pip install -e .
 jarvis
 ```
 
-Paste the access token printed on first boot (`data/jarvis_token.txt`) at `http://localhost:3000`.
+Paste the first-boot token (`data/jarvis_token.txt`) at `http://localhost:3000`.
 
-You need **Python 3.11+**, **tmux**, **git**, and the CLIs you actually want to run. Clone **inside the Linux filesystem** on WSL (`~/jarvis-workspace`), not `/mnt/c`.
+Need **Python 3.11+**, **tmux**, **git**, and the CLIs you actually run. On WSL clone **inside Linux** (`~/jarvis-workspace`), not `/mnt/c`.
 
-Docker: `cp .env.example .env && docker compose up -d --build` — first build is large; treat it as experimental.
+Docker: `cp .env.example .env && docker compose up -d --build` — large first build, still experimental.
 
 ## Use
 
-1. **Ctrl+T** — add a project (path to your code)
-2. **Ctrl+\\** — launch terminals (Claude, Codex, Grok, …)
-3. **⚙ → Accounts** — link your own CLI logins (BYOK)
-4. **Ctrl+P** — dock (preview, editor, review)
+| | |
+|---|---|
+| **Ctrl+T** | New project |
+| **Ctrl+\\** | New terminals |
+| **⚙** | Accounts, appearance, voice |
+| **Ctrl+P** | Dock |
 
-Shortcuts: `Ctrl+B` strip · `Ctrl+E` editor · `Ctrl+J` Jarvis chat · `Ctrl+1…9` project.
-
-Port **3000** is Jarvis. Put dev servers on 5000–5999 or 8081–8999.
+Also: `Ctrl+B` strip · `Ctrl+E` editor · `Ctrl+J` Jarvis chat · `Ctrl+1…9` jump to a project. Port **3000** is Jarvis — put dev servers on 5000–5999 or 8081–8999.
 
 ## Tests
 
@@ -66,7 +92,7 @@ python -m pytest
 node frontend/sections/**/__tests__/*.test.js
 ```
 
-Vanilla HTML/CSS/JS, no npm. PRs: [`CONTRIBUTING.md`](CONTRIBUTING.md). Secrets never go in git (`data/`, `.env`).
+Vanilla HTML/CSS/JS, no npm. PRs: [`CONTRIBUTING.md`](CONTRIBUTING.md). Keep secrets out of git (`data/`, `.env`).
 
 ## License
 
