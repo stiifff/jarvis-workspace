@@ -1,11 +1,11 @@
 ---
-name: Una idea
-about: Algo que te gustaría que hiciera
+name: Idea
+about: Something you'd like Jarvis to do
 labels: idea
 ---
 
-**Qué querés hacer que hoy no se puede**
+**What you want that you can't do today**
 
-**Cómo lo resolvés ahora** (aunque sea a mano)
+**How you work around it now**
 
-**Por qué importa** — qué se desbloquea si existe
+**Why it matters**

@@ -1,7 +1,6 @@
 # Install on Linux
 
-There is no `.deb`, AppImage, or `uvx`/`pipx install plotspace` release flow.
-Install from the repo (native). Terminals are **tmux** sessions.
+Install from source. Terminals are **tmux** sessions. No `.deb` / AppImage yet.
 
 ## Native (from source)
 
