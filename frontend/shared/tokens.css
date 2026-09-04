@@ -1,0 +1,655 @@
+/* ═══════════════════════════════════════════════════════════════
+   JARVIS — Obsidian Glass · Sistema de diseño canónico
+   ÚNICA fuente de verdad de tokens. Se carga ANTES que cualquier
+   otro CSS en index.html y workspace.html.
+   Dirección: docs/redesign/PLAN_REDISENO_UI.md
+═══════════════════════════════════════════════════════════════ */
+
+:root {
+  /* ── Viewport AJUSTADO por la Escala de la app (shared/escala.js) ──
+     Las unidades vh/vw NO se ajustan por el `zoom` de <html>: con la app
+     al 125%, un 100vh pelado mide 25% MÁS que la pantalla (el shell
+     desborda, los diálogos se cortan abajo, el breadcrumb pisa la marca).
+     escala.js pisa estas dos con calc(100vh / factor). REGLA: en todo el
+     workspace se usan estas variables, nunca vh/vw pelados. */
+  --jw-vh: 100vh;
+  --jw-vw: 100vw;
+
+  /* ── PLANO 0 — Obsidiana (fondos, de más profundo a más alto) ── */
+  --ob-bg-void:    oklch(11% 0.016 300); /* lienzo (profundo: las capas respiran) */
+  --ob-bg-terminal: oklch(14.5% 0.015 300); /* fondo suave para terminales (obsidiana con tinte violeta) */
+  --ob-bg-0:       oklch(13% 0.018 300); /* fondo app */
+  --ob-bg-1:       oklch(17% 0.020 300); /* panel sólido (sidebar, editor) */
+  --ob-bg-2:       oklch(20% 0.022 300);   /* card / terminal chrome */
+  --ob-bg-3:       oklch(23% 0.024 300);   /* hover / elevación 1 */
+  --ob-bg-4:       oklch(27% 0.026 300);   /* selección / elevación 2 */
+
+  /* ── Vidrio (plano 2, CON backdrop-filter — máx 2 visibles) ── */
+  --ob-glass:      oklch(18% 0.020 300 / 0.62);
+  --ob-glass-hi:   oklch(85% 0.02 300 / 0.10);  /* highlight del canto biselado */
+  --ob-glass-lo:   oklch(0% 0 0 / 0.30);
+
+  /* ── Líneas ── */
+  --ob-line-1:     oklch(28% 0.022 300);   /* divisor sutil */
+  --ob-line-2:     oklch(34% 0.024 300);   /* borde de card */
+  --ob-line-3:     oklch(42% 0.026 300);   /* énfasis / focus base */
+
+  /* ── Texto (5 niveles, AA sobre bg-0/1) ── */
+  --ob-fg-0:       oklch(97% 0.006 300);   /* títulos        ~16:1 */
+  --ob-fg-1:       oklch(86% 0.010 300);   /* cuerpo         ~10:1 */
+  --ob-fg-2:       oklch(70% 0.014 300);   /* secundario     ~5.4:1 — piso para texto normal */
+  --ob-fg-3:       oklch(64% 0.016 300);   /* muted — AA 4.5:1 hasta bg-2 (5.1:1 sobre bg-1) */
+  --ob-fg-4:       oklch(44% 0.016 300);   /* SOLO disabled / placeholder */
+
+  /* ── ACENTO único: violeta-índigo (señal de vida) ── */
+  --ob-accent:     oklch(61% 0.22 293);
+  --ob-accent-fg:  oklch(80% 0.14 293);
+  --ob-accent-dim: oklch(52% 0.18 293);
+  --ob-accent-08:  color-mix(in oklch, var(--ob-accent) 8%,  transparent);
+  --ob-accent-14:  color-mix(in oklch, var(--ob-accent) 14%, transparent);
+  --ob-accent-24:  color-mix(in oklch, var(--ob-accent) 24%, transparent);
+  --ob-accent-glow:color-mix(in oklch, var(--ob-accent) 40%, transparent);
+  --ob-on-accent:  #fff;                                            /* texto/ícono SOBRE relleno de --ob-accent (violeta/azul/rosa/rojo = acentos oscuros → blanco) */
+  --ob-bevel-accent: color-mix(in oklch, var(--ob-accent) 35%, white);  /* highlight superior de los CTA — deriva del acento, sigue al tema */
+
+  /* ── Señales (estado de agentes/git/workflow — JAMÁS decoración) ── */
+  --ob-run:        oklch(78% 0.16 150);    /* corriendo / éxito */
+  --ob-work:       oklch(82% 0.14 80);     /* trabajando / warning */
+  --ob-err:        oklch(68% 0.20 22);     /* error / danger */
+  --ob-info:       oklch(75% 0.13 230);    /* info / voz escuchando (cian) */
+  --ob-run-08:     color-mix(in oklch, var(--ob-run)  10%, transparent);
+  --ob-work-08:    color-mix(in oklch, var(--ob-work) 10%, transparent);
+  --ob-err-08:     color-mix(in oklch, var(--ob-err)  10%, transparent);
+
+  /* ── Magenta: aurora de Home (era también el acento del Web Builder,
+     eliminado 2026-07-25) ── */
+  --ob-magenta:    oklch(68% 0.24 350);
+
+  /* ── Terminal (paleta del lienzo xterm — terminal.js la lee de acá) ──
+     En los temas oscuros trackean los tokens de siempre. Los temas CLAROS
+     los overridean: la terminal queda OSCURA (grafito) dentro del chrome
+     claro — el contenido ANSI de los CLIs está pensado para fondo oscuro
+     y así no hay resplandor donde más se lee. */
+  --ob-term-fg:        var(--ob-fg-1);
+  --ob-term-cursor:    var(--ob-accent);
+  --ob-term-sel:       var(--ob-accent-24);
+  --ob-term-red:       var(--ob-err);
+  --ob-term-green:     var(--ob-run);
+  --ob-term-cyan:      var(--ob-info);
+  --ob-term-blue:      var(--ob-accent-dim);
+  --ob-term-blue-b:    var(--ob-accent-fg);
+  --ob-term-magenta:   var(--ob-accent);
+  --ob-term-magenta-b: var(--ob-accent-fg);
+
+  /* ── Atmósfera (aurora de Home — presente, no tímida) ── */
+  --ob-aurora-1:   color-mix(in oklch, var(--ob-accent) 17%, transparent);
+  --ob-aurora-2:   color-mix(in oklch, var(--ob-info)   10%, transparent);
+
+  /* ── Tipografía ── */
+  --font-ui:       'Inter', system-ui, -apple-system, sans-serif;
+  --font-display:  'Instrument Serif', 'EB Garamond', Georgia, serif; /* SOLO italic ≥20px */
+  --font-mono:     'JetBrains Mono', 'Cascadia Code', ui-monospace, monospace;
+
+  --text-2xs:10px; --text-xs:11px; --text-sm:12px; --text-base:13px;
+  --text-md:15px;  --text-lg:18px; --text-xl:22px; --text-2xl:28px; --text-3xl:40px;
+  --lh-tight:1.2;  --lh-snug:1.4;  --lh-base:1.6;
+  --ls-tight:-0.01em; --ls-wide:0.04em; --ls-caps:0.12em;
+
+  /* ── Espaciado (grid-4) y radios ── */
+  --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:20px; --sp-6:24px; --sp-8:32px;
+  --radius-sm:6px; --radius-btn:7px; --radius:8px; --radius-lg:12px; --radius-xl:16px; --radius-pill:999px;
+
+  /* ── Elevación (tinte frío) ── */
+  --shadow-1:0 1px 2px oklch(0% 0 0/.4), 0 2px 6px -2px oklch(0% 0 0/.4);
+  --shadow-2:0 4px 12px -4px oklch(0% 0 0/.5), 0 8px 24px -8px oklch(0% 0 0/.45);
+  --shadow-3:0 12px 32px -8px oklch(0% 0 0/.6), 0 24px 60px -20px oklch(0% 0 0/.55);
+  --shadow-pop:var(--shadow-3), 0 0 0 1px var(--ob-line-2);
+
+  /* ── Motion ── */
+  --ease-out:   cubic-bezier(0.22, 0.61, 0.36, 1);  /* entradas, lifts */
+  --ease-in-out:cubic-bezier(0.65, 0, 0.35, 1);     /* loops respirando */
+  --ease-snap:  cubic-bezier(0.2, 0.8, 0.3, 1);     /* menús, chips */
+  --dur-1:120ms;    /* hover, color, focus */
+  --dur-2:180ms;    /* menús, lift de card */
+  --dur-3:280ms;    /* modal, panel */
+  --dur-glow:500ms; /* cambio de glow de estado */
+  --transition: var(--dur-1) var(--ease-out);       /* legacy: transition shorthand */
+
+  /* ── Z-index ── */
+  --z-panel:100; --z-dropdown:500; --z-modal:1000; --z-toast:1100; --z-ptt:1200;
+
+  /* ── Layout de terminales ── */
+  --terminal-gap: 4px;   /* gutter (lo lee terminal-layout.js) — 8→4 (pedido 2026-07-03): sin barritas, el agarre vive en el borde de la card y las terminales ganan el espacio */
+}
+
+/* ════ TEMAS (selector en Configuración → Apariencia; default = violeta, sin atributo).
+   El override va en html[data-theme] (mismo elemento que :root) para que las derivadas
+   color-mix y los aliases legacy, que se computan en este elemento, trackeen el acento. ════ */
+html[data-theme="azul"] {
+  --ob-bg-void: oklch(11% 0.010 250); --ob-bg-terminal: oklch(15% 0.010 250); --ob-bg-0: oklch(13.5% 0.012 250);
+  --ob-bg-1: oklch(17.5% 0.014 250); --ob-bg-2: oklch(20% 0.016 250);
+  --ob-bg-3: oklch(23% 0.018 250);   --ob-bg-4: oklch(27% 0.020 250);
+  --ob-line-1: oklch(28% 0.016 250); --ob-line-2: oklch(34% 0.018 250); --ob-line-3: oklch(42% 0.020 250);
+  --ob-accent: oklch(65% 0.16 255);  --ob-accent-fg: oklch(78% 0.11 255); --ob-accent-dim: oklch(55% 0.13 255);
+}
+html[data-theme="verde"] {
+  --ob-bg-void: oklch(10.5% 0.010 145); --ob-bg-terminal: oklch(14% 0.010 145); --ob-bg-0: oklch(12.5% 0.012 145);
+  --ob-bg-1: oklch(16.5% 0.014 145); --ob-bg-2: oklch(19% 0.016 145);
+  --ob-bg-3: oklch(22% 0.018 145);   --ob-bg-4: oklch(26% 0.020 145);
+  --ob-line-1: oklch(27% 0.016 145); --ob-line-2: oklch(33% 0.018 145); --ob-line-3: oklch(41% 0.020 145);
+  --ob-accent: oklch(78% 0.16 150);  --ob-accent-fg: oklch(86% 0.12 150); --ob-accent-dim: oklch(62% 0.13 150);
+  --ob-on-accent: var(--ob-bg-void); /* acento claro → texto oscuro (contraste AA sobre el relleno) */
+  --ob-run: oklch(82% 0.14 80); /* el "vivo" pasa a ámbar para no chocar con el acento (spec §4) */
+}
+html[data-theme="rosa"] {
+  --ob-bg-void: oklch(11% 0.016 330); --ob-bg-terminal: oklch(15% 0.016 330); --ob-bg-0: oklch(13% 0.018 330);
+  --ob-bg-1: oklch(17% 0.020 330); --ob-bg-2: oklch(20% 0.022 330);
+  --ob-bg-3: oklch(23% 0.024 330); --ob-bg-4: oklch(27% 0.026 330);
+  --ob-line-1: oklch(28% 0.022 330); --ob-line-2: oklch(34% 0.024 330); --ob-line-3: oklch(42% 0.026 330);
+  --ob-accent: oklch(70% 0.19 350); --ob-accent-fg: oklch(82% 0.13 350); --ob-accent-dim: oklch(58% 0.16 350);
+}
+html[data-theme="rojo"] {
+  --ob-bg-void: oklch(11% 0.010 20);  --ob-bg-terminal: oklch(15% 0.010 20); --ob-bg-0: oklch(13% 0.012 20);
+  --ob-bg-1: oklch(17% 0.014 20);  --ob-bg-2: oklch(20% 0.016 20);
+  --ob-bg-3: oklch(23% 0.018 20);  --ob-bg-4: oklch(27% 0.020 20);
+  --ob-line-1: oklch(28% 0.016 20); --ob-line-2: oklch(34% 0.018 20); --ob-line-3: oklch(42% 0.020 20);
+  --ob-accent: oklch(65% 0.19 25);  --ob-accent-fg: oklch(80% 0.13 25); --ob-accent-dim: oklch(54% 0.16 25);
+}
+
+/* ── Colección 2026-07. Regla de contraste: acento con L ≥ 65% →
+   --ob-on-accent oscuro (texto/ícono legible sobre el relleno). ── */
+html[data-theme="oceano"] {
+  --ob-bg-void: oklch(11% 0.012 210); --ob-bg-terminal: oklch(15% 0.012 210); --ob-bg-0: oklch(13% 0.014 210);
+  --ob-bg-1: oklch(17% 0.016 210); --ob-bg-2: oklch(20% 0.018 210);
+  --ob-bg-3: oklch(23% 0.020 210); --ob-bg-4: oklch(27% 0.022 210);
+  --ob-line-1: oklch(28% 0.018 210); --ob-line-2: oklch(34% 0.020 210); --ob-line-3: oklch(42% 0.022 210);
+  --ob-accent: oklch(74% 0.13 200); --ob-accent-fg: oklch(84% 0.09 200); --ob-accent-dim: oklch(60% 0.11 200);
+  --ob-on-accent: var(--ob-bg-void);
+}
+html[data-theme="esmeralda"] {
+  --ob-bg-void: oklch(10.5% 0.011 168); --ob-bg-terminal: oklch(14% 0.011 168); --ob-bg-0: oklch(12.5% 0.013 168);
+  --ob-bg-1: oklch(16.5% 0.015 168); --ob-bg-2: oklch(19% 0.017 168);
+  --ob-bg-3: oklch(22% 0.019 168);   --ob-bg-4: oklch(26% 0.021 168);
+  --ob-line-1: oklch(27% 0.017 168); --ob-line-2: oklch(33% 0.019 168); --ob-line-3: oklch(41% 0.021 168);
+  --ob-accent: oklch(72% 0.15 168); --ob-accent-fg: oklch(84% 0.10 168); --ob-accent-dim: oklch(58% 0.12 168);
+  --ob-on-accent: var(--ob-bg-void);
+  --ob-run: oklch(82% 0.14 80); /* acento ≈ verde señal → el "vivo" pasa a ámbar (patrón del tema verde) */
+}
+html[data-theme="lima"] {
+  --ob-bg-void: oklch(11% 0.011 122); --ob-bg-terminal: oklch(15% 0.011 122); --ob-bg-0: oklch(13% 0.013 122);
+  --ob-bg-1: oklch(17% 0.015 122); --ob-bg-2: oklch(20% 0.017 122);
+  --ob-bg-3: oklch(23% 0.019 122); --ob-bg-4: oklch(27% 0.021 122);
+  --ob-line-1: oklch(28% 0.017 122); --ob-line-2: oklch(34% 0.019 122); --ob-line-3: oklch(42% 0.021 122);
+  --ob-accent: oklch(82% 0.19 125); --ob-accent-fg: oklch(88% 0.13 125); --ob-accent-dim: oklch(66% 0.15 125);
+  --ob-on-accent: var(--ob-bg-void);
+}
+html[data-theme="naranja"] {
+  --ob-bg-void: oklch(11% 0.012 50);  --ob-bg-terminal: oklch(15% 0.012 50); --ob-bg-0: oklch(13% 0.014 50);
+  --ob-bg-1: oklch(17% 0.016 50);  --ob-bg-2: oklch(20% 0.018 50);
+  --ob-bg-3: oklch(23% 0.020 50);  --ob-bg-4: oklch(27% 0.022 50);
+  --ob-line-1: oklch(28% 0.018 50); --ob-line-2: oklch(34% 0.020 50); --ob-line-3: oklch(42% 0.022 50);
+  --ob-accent: oklch(72% 0.17 50);  --ob-accent-fg: oklch(84% 0.11 50); --ob-accent-dim: oklch(60% 0.14 50);
+  --ob-on-accent: var(--ob-bg-void);
+}
+html[data-theme="oro"] {
+  --ob-bg-void: oklch(11% 0.009 90);  --ob-bg-terminal: oklch(15% 0.009 90); --ob-bg-0: oklch(13% 0.011 90);
+  --ob-bg-1: oklch(17% 0.013 90);  --ob-bg-2: oklch(20% 0.015 90);
+  --ob-bg-3: oklch(23% 0.017 90);  --ob-bg-4: oklch(27% 0.019 90);
+  --ob-line-1: oklch(28% 0.015 90); --ob-line-2: oklch(34% 0.017 90); --ob-line-3: oklch(42% 0.019 90);
+  --ob-accent: oklch(78% 0.09 90);  --ob-accent-fg: oklch(86% 0.07 90); --ob-accent-dim: oklch(64% 0.08 90);
+  --ob-on-accent: var(--ob-bg-void);
+}
+html[data-theme="orquidea"] {
+  --ob-bg-void: oklch(11% 0.016 320); --ob-bg-terminal: oklch(15% 0.016 320); --ob-bg-0: oklch(13% 0.018 320);
+  --ob-bg-1: oklch(17% 0.020 320); --ob-bg-2: oklch(20% 0.022 320);
+  --ob-bg-3: oklch(23% 0.024 320); --ob-bg-4: oklch(27% 0.026 320);
+  --ob-line-1: oklch(28% 0.022 320); --ob-line-2: oklch(34% 0.024 320); --ob-line-3: oklch(42% 0.026 320);
+  --ob-accent: oklch(66% 0.21 320); --ob-accent-fg: oklch(80% 0.14 320); --ob-accent-dim: oklch(56% 0.17 320);
+  --ob-on-accent: var(--ob-bg-void);
+}
+html[data-theme="grafito"] {
+  --ob-bg-void: oklch(11% 0 0);  --ob-bg-terminal: oklch(14.5% 0 0); --ob-bg-0: oklch(13% 0 0);
+  --ob-bg-1: oklch(17% 0 0);  --ob-bg-2: oklch(20% 0 0);
+  --ob-bg-3: oklch(23% 0 0);  --ob-bg-4: oklch(27% 0 0);
+  --ob-line-1: oklch(28% 0 0); --ob-line-2: oklch(34% 0 0); --ob-line-3: oklch(42% 0 0);
+  --ob-fg-0: oklch(97% 0 0); --ob-fg-1: oklch(86% 0 0); --ob-fg-2: oklch(70% 0 0);
+  --ob-fg-3: oklch(64% 0 0); --ob-fg-4: oklch(44% 0 0);
+  --ob-accent: oklch(83% 0 0);  --ob-accent-fg: oklch(90% 0 0); --ob-accent-dim: oklch(68% 0 0);
+  --ob-on-accent: var(--ob-bg-void);
+}
+html[data-theme="hielo"] {
+  --ob-bg-void: oklch(11% 0.007 240); --ob-bg-terminal: oklch(15% 0.007 240); --ob-bg-0: oklch(13% 0.008 240);
+  --ob-bg-1: oklch(17% 0.009 240); --ob-bg-2: oklch(20% 0.010 240);
+  --ob-bg-3: oklch(23% 0.011 240); --ob-bg-4: oklch(27% 0.012 240);
+  --ob-line-1: oklch(28% 0.010 240); --ob-line-2: oklch(34% 0.011 240); --ob-line-3: oklch(42% 0.012 240);
+  --ob-accent: oklch(85% 0.06 240); --ob-accent-fg: oklch(90% 0.04 240); --ob-accent-dim: oklch(70% 0.05 240);
+  --ob-on-accent: var(--ob-bg-void);
+}
+html[data-theme="medianoche"] {
+  --ob-bg-void: oklch(8% 0.014 290);  --ob-bg-terminal: oklch(11.5% 0.014 290); --ob-bg-0: oklch(10% 0.016 290);
+  --ob-bg-1: oklch(13.5% 0.018 290); --ob-bg-2: oklch(16.5% 0.020 290);
+  --ob-bg-3: oklch(19.5% 0.022 290); --ob-bg-4: oklch(23% 0.024 290);
+  --ob-line-1: oklch(24% 0.020 290); --ob-line-2: oklch(30% 0.022 290); --ob-line-3: oklch(38% 0.024 290);
+  --ob-accent: oklch(58% 0.21 288); --ob-accent-fg: oklch(78% 0.14 288); --ob-accent-dim: oklch(50% 0.17 288);
+}
+
+/* ── Colección 2026-07-10 (6 nuevos): reemplazan a indigo/cian/ambar/bordo
+   (casi duplicados de vecinos) y abren ejes que la rueda no tenía:
+   pasteles (sakura, salvia), OLED profundo (neon), pareja bg/acento de
+   tonos distintos (crepusculo, aurora) y editorial neutro cálido (tinta). ── */
+html[data-theme="sakura"] {
+  --ob-bg-void: oklch(11% 0.014 345); --ob-bg-terminal: oklch(15% 0.014 345); --ob-bg-0: oklch(12.5% 0.016 345);
+  --ob-bg-1: oklch(16.5% 0.018 345); --ob-bg-2: oklch(19.5% 0.020 345);
+  --ob-bg-3: oklch(22.5% 0.022 345); --ob-bg-4: oklch(26.5% 0.024 345);
+  --ob-line-1: oklch(27.5% 0.020 345); --ob-line-2: oklch(33% 0.022 345); --ob-line-3: oklch(41% 0.024 345);
+  --ob-accent: oklch(83% 0.09 350); --ob-accent-fg: oklch(88% 0.06 350); --ob-accent-dim: oklch(68% 0.08 350);
+  --ob-on-accent: var(--ob-bg-void);
+}
+html[data-theme="salvia"] {
+  --ob-bg-void: oklch(11% 0.007 155); --ob-bg-terminal: oklch(15% 0.007 155); --ob-bg-0: oklch(13% 0.008 155);
+  --ob-bg-1: oklch(17% 0.010 155); --ob-bg-2: oklch(20% 0.011 155);
+  --ob-bg-3: oklch(23% 0.012 155); --ob-bg-4: oklch(27% 0.014 155);
+  --ob-line-1: oklch(28% 0.011 155); --ob-line-2: oklch(34% 0.013 155); --ob-line-3: oklch(42% 0.015 155);
+  --ob-accent: oklch(84% 0.07 160); --ob-accent-fg: oklch(89% 0.05 160); --ob-accent-dim: oklch(68% 0.06 160);
+  --ob-on-accent: var(--ob-bg-void);
+  --ob-run: oklch(82% 0.14 80); /* acento ≈ verde señal → el "vivo" pasa a ámbar (patrón del tema verde) */
+}
+html[data-theme="neon"] {
+  --ob-bg-void: oklch(7% 0.004 230);  --ob-bg-terminal: oklch(10.5% 0.005 230); --ob-bg-0: oklch(9% 0.006 230);
+  --ob-bg-1: oklch(12.5% 0.008 230); --ob-bg-2: oklch(15.5% 0.010 230);
+  --ob-bg-3: oklch(18.5% 0.012 230); --ob-bg-4: oklch(22% 0.014 230);
+  --ob-line-1: oklch(23% 0.012 230); --ob-line-2: oklch(30% 0.014 230); --ob-line-3: oklch(38% 0.016 230);
+  --ob-accent: oklch(80% 0.15 215); --ob-accent-fg: oklch(87% 0.10 215); --ob-accent-dim: oklch(64% 0.12 215);
+  --ob-on-accent: var(--ob-bg-void);
+}
+html[data-theme="crepusculo"] {
+  --ob-bg-void: oklch(10.5% 0.016 285); --ob-bg-terminal: oklch(14.5% 0.016 285); --ob-bg-0: oklch(12.5% 0.018 285);
+  --ob-bg-1: oklch(16.5% 0.020 285); --ob-bg-2: oklch(19.5% 0.022 285);
+  --ob-bg-3: oklch(22.5% 0.024 285); --ob-bg-4: oklch(26.5% 0.026 285);
+  --ob-line-1: oklch(27.5% 0.022 285); --ob-line-2: oklch(33% 0.024 285); --ob-line-3: oklch(41% 0.026 285);
+  --ob-accent: oklch(74% 0.14 55); --ob-accent-fg: oklch(84% 0.10 55); --ob-accent-dim: oklch(60% 0.12 55);
+  --ob-on-accent: var(--ob-bg-void);
+}
+html[data-theme="aurora"] {
+  --ob-bg-void: oklch(10.5% 0.010 250); --ob-bg-terminal: oklch(14.5% 0.010 250); --ob-bg-0: oklch(12.5% 0.012 250);
+  --ob-bg-1: oklch(16.5% 0.014 250); --ob-bg-2: oklch(19.5% 0.016 250);
+  --ob-bg-3: oklch(22.5% 0.018 250); --ob-bg-4: oklch(26.5% 0.020 250);
+  --ob-line-1: oklch(27.5% 0.016 250); --ob-line-2: oklch(33% 0.018 250); --ob-line-3: oklch(41% 0.020 250);
+  --ob-accent: oklch(80% 0.13 165); --ob-accent-fg: oklch(87% 0.09 165); --ob-accent-dim: oklch(64% 0.11 165);
+  --ob-on-accent: var(--ob-bg-void);
+  --ob-run: oklch(82% 0.14 80); /* acento ≈ verde señal → el "vivo" pasa a ámbar */
+}
+html[data-theme="tinta"] {
+  --ob-bg-void: oklch(9% 0.004 270);  --ob-bg-terminal: oklch(13% 0.005 270); --ob-bg-0: oklch(11% 0.005 270);
+  --ob-bg-1: oklch(15% 0.006 270); --ob-bg-2: oklch(18% 0.007 270);
+  --ob-bg-3: oklch(21% 0.008 270); --ob-bg-4: oklch(25% 0.009 270);
+  --ob-line-1: oklch(26% 0.008 270); --ob-line-2: oklch(32% 0.009 270); --ob-line-3: oklch(40% 0.010 270);
+  --ob-accent: oklch(90% 0.04 85); --ob-accent-fg: oklch(92% 0.03 85); --ob-accent-dim: oklch(72% 0.035 85);
+  --ob-on-accent: var(--ob-bg-void);
+}
+
+/* ── Colección 2026-07-10b (4 nuevos): dos parejas bg/acento de tonos
+   distintos (bosque, petroleo) y los PRIMEROS temas claros (papel, alba).
+   Los claros invierten la escala completa: fondos altos, texto oscuro
+   (5 niveles --ob-fg-*), vidrio blanco y señales run/work/err/info
+   oscurecidas para conservar AA sobre fondo claro. ── */
+html[data-theme="bosque"] {
+  --ob-bg-void: oklch(10.5% 0.014 160); --ob-bg-terminal: oklch(14% 0.014 160); --ob-bg-0: oklch(12.5% 0.016 160);
+  --ob-bg-1: oklch(16.5% 0.018 160); --ob-bg-2: oklch(19.5% 0.020 160);
+  --ob-bg-3: oklch(22.5% 0.022 160); --ob-bg-4: oklch(26.5% 0.024 160);
+  --ob-line-1: oklch(27.5% 0.020 160); --ob-line-2: oklch(33% 0.022 160); --ob-line-3: oklch(41% 0.024 160);
+  --ob-accent: oklch(78% 0.12 90); --ob-accent-fg: oklch(86% 0.08 90); --ob-accent-dim: oklch(63% 0.10 90);
+  --ob-on-accent: var(--ob-bg-void);
+}
+html[data-theme="petroleo"] {
+  --ob-bg-void: oklch(10.5% 0.014 195); --ob-bg-terminal: oklch(14% 0.014 195); --ob-bg-0: oklch(12.5% 0.016 195);
+  --ob-bg-1: oklch(16.5% 0.018 195); --ob-bg-2: oklch(19.5% 0.020 195);
+  --ob-bg-3: oklch(22.5% 0.022 195); --ob-bg-4: oklch(26.5% 0.024 195);
+  --ob-line-1: oklch(27.5% 0.020 195); --ob-line-2: oklch(33% 0.022 195); --ob-line-3: oklch(41% 0.024 195);
+  --ob-accent: oklch(72% 0.15 35); --ob-accent-fg: oklch(82% 0.10 35); --ob-accent-dim: oklch(58% 0.13 35);
+  --ob-on-accent: var(--ob-bg-void);
+}
+html[data-theme="papel"] {
+  /* Reglas de light-mode (2026-07-10, «era muy claro»): lienzo TONADO
+     (papel crema de verdad, no blanco quemado), superficies elevadas MÁS
+     BLANCAS que el lienzo — en claro la jerarquía se INVIERTE: lo elevado
+     se aclara y el hover/selección OSCURECEN (bg-3/bg-4 < bg-0) — y la
+     profundidad se lee por sombras SUAVES (~10-18% de negro cálido, no
+     el negro denso de los oscuros) + bordes presentes. Inputs (void) más
+     blancos que los paneles. La terminal queda OSCURA (grafito cálido):
+     --ob-bg-terminal pinta lienzo xterm + interior de la card, y los
+     --ob-term-* le dan una paleta vívida propia. */
+  --ob-bg-void: oklch(99% 0.004 95);  --ob-bg-terminal: oklch(19% 0.010 60); --ob-bg-0: oklch(94.5% 0.014 92);
+  --ob-bg-1: oklch(97% 0.008 94);   --ob-bg-2: oklch(98.2% 0.006 95);
+  --ob-bg-3: oklch(92.5% 0.015 90); --ob-bg-4: oklch(89.5% 0.018 88);
+  --ob-line-1: oklch(88% 0.013 90); --ob-line-2: oklch(82% 0.015 90); --ob-line-3: oklch(70% 0.017 85);
+  --ob-fg-0: oklch(18% 0.02 60); --ob-fg-1: oklch(28% 0.02 60); --ob-fg-2: oklch(42% 0.018 60);
+  --ob-fg-3: oklch(48% 0.016 60); --ob-fg-4: oklch(64% 0.014 60);
+  /* accent-fg (texto de acento: título de las cards de terminal, etc.) va
+     BIEN profundo: a 12-13px sobre pill clara, L 40% se veía lavado. */
+  --ob-accent: oklch(46% 0.09 55); --ob-accent-fg: oklch(32% 0.10 55); --ob-accent-dim: oklch(56% 0.08 55);
+  --ob-glass: oklch(98.5% 0.005 95 / 0.85); --ob-glass-hi: oklch(100% 0 0 / 0.9); --ob-glass-lo: oklch(40% 0.02 90 / 0.10);
+  --ob-run: oklch(50% 0.13 150); --ob-work: oklch(55% 0.12 80); --ob-err: oklch(52% 0.19 25); --ob-info: oklch(50% 0.11 230);
+  --shadow-1: 0 1px 2px oklch(35% 0.03 80 / .10), 0 2px 6px -2px oklch(35% 0.03 80 / .08);
+  --shadow-2: 0 4px 12px -4px oklch(35% 0.03 80 / .14), 0 8px 24px -8px oklch(35% 0.03 80 / .10);
+  --shadow-3: 0 12px 32px -8px oklch(35% 0.03 80 / .18), 0 24px 60px -20px oklch(35% 0.03 80 / .14);
+  --ob-term-fg: oklch(86% 0.012 60); --ob-term-cursor: oklch(74% 0.10 55); --ob-term-sel: oklch(74% 0.10 55 / 0.30);
+  --ob-term-red: oklch(68% 0.20 22); --ob-term-green: oklch(78% 0.16 150); --ob-term-cyan: oklch(75% 0.13 230);
+  --ob-term-blue: oklch(70% 0.09 55); --ob-term-blue-b: oklch(80% 0.08 55);
+  --ob-term-magenta: oklch(74% 0.10 55); --ob-term-magenta-b: oklch(82% 0.08 55);
+}
+html[data-theme="alba"] {
+  /* Mismas reglas de light-mode que papel, en frío: lienzo niebla tonado,
+     paneles/cards más blancos, hover oscurece, sombras suaves frías.
+     Terminal grafito (frío) dentro del chrome claro. */
+  --ob-bg-void: oklch(99% 0.002 250); --ob-bg-terminal: oklch(18% 0.012 265); --ob-bg-0: oklch(94.5% 0.010 245);
+  --ob-bg-1: oklch(97% 0.006 248);  --ob-bg-2: oklch(98.2% 0.004 250);
+  --ob-bg-3: oklch(92.5% 0.012 246); --ob-bg-4: oklch(89.5% 0.014 246);
+  --ob-line-1: oklch(88% 0.011 248); --ob-line-2: oklch(82% 0.013 248); --ob-line-3: oklch(70% 0.015 250);
+  --ob-fg-0: oklch(18% 0.015 265); --ob-fg-1: oklch(28% 0.015 265); --ob-fg-2: oklch(42% 0.014 265);
+  --ob-fg-3: oklch(48% 0.013 265); --ob-fg-4: oklch(64% 0.012 265);
+  /* accent-fg profundo (título de terminales legible, mismo criterio que papel) */
+  --ob-accent: oklch(50% 0.19 268); --ob-accent-fg: oklch(34% 0.15 268); --ob-accent-dim: oklch(60% 0.15 268);
+  --ob-glass: oklch(98.5% 0.003 250 / 0.85); --ob-glass-hi: oklch(100% 0 0 / 0.9); --ob-glass-lo: oklch(40% 0.015 250 / 0.10);
+  --ob-run: oklch(50% 0.13 150); --ob-work: oklch(55% 0.12 80); --ob-err: oklch(52% 0.19 25); --ob-info: oklch(50% 0.11 230);
+  --shadow-1: 0 1px 2px oklch(35% 0.025 260 / .10), 0 2px 6px -2px oklch(35% 0.025 260 / .08);
+  --shadow-2: 0 4px 12px -4px oklch(35% 0.025 260 / .14), 0 8px 24px -8px oklch(35% 0.025 260 / .10);
+  --shadow-3: 0 12px 32px -8px oklch(35% 0.025 260 / .18), 0 24px 60px -20px oklch(35% 0.025 260 / .14);
+  --ob-term-fg: oklch(86% 0.012 265); --ob-term-cursor: oklch(70% 0.15 268); --ob-term-sel: oklch(70% 0.15 268 / 0.30);
+  --ob-term-red: oklch(68% 0.20 22); --ob-term-green: oklch(78% 0.16 150); --ob-term-cyan: oklch(75% 0.13 230);
+  --ob-term-blue: oklch(68% 0.14 268); --ob-term-blue-b: oklch(78% 0.11 268);
+  --ob-term-magenta: oklch(70% 0.15 268); --ob-term-magenta-b: oklch(80% 0.11 268);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ALIAS DE COMPATIBILIDAD — los nombres legacy resuelven al
+   sistema nuevo. NO usar en código nuevo: usar --ob-* directo.
+   (Los :root literales viejos de base.css / home.css /
+   orchestrator.css fueron vaciados; esto los reemplaza.)
+═══════════════════════════════════════════════════════════════ */
+:root {
+  /* set global legacy (base.css) */
+  --bg-app:var(--ob-bg-0); --bg-panel:var(--ob-bg-1); --bg-card:var(--ob-bg-2);
+  --bg-hover:var(--ob-bg-3); --bg-input:var(--ob-bg-void); --border:var(--ob-line-1);
+  --border-focus:var(--ob-line-3); --accent:var(--ob-accent); --accent-hover:var(--ob-accent-dim);
+  --accent-soft:var(--ob-accent-14); --accent-text:var(--ob-accent-fg);
+  --text-primary:var(--ob-fg-1); --text-secondary:var(--ob-fg-2); --text-muted:var(--ob-fg-3);
+  --success:var(--ob-run); --warning:var(--ob-work); --danger:var(--ob-err);
+
+  /* set sidebar (base.css segundo :root) */
+  --sb-bg-0:var(--ob-bg-0); --sb-bg-1:var(--ob-bg-1); --sb-bg-2:var(--ob-bg-2);
+  --sb-bg-3:var(--ob-bg-3);
+  --sb-bg-4:var(--ob-bg-4);             /* FIX: se usaba (base.css:960,1148) y NO existía */
+  --sb-line-1:var(--ob-line-1); --sb-line-2:var(--ob-line-2); --sb-line-3:var(--ob-line-3);
+  --sb-fg-0:var(--ob-fg-0); --sb-fg-1:var(--ob-fg-1); --sb-fg-2:var(--ob-fg-2);
+  --sb-fg-3:var(--ob-fg-3); --sb-fg-4:var(--ob-fg-4);
+  --sb-violet:var(--ob-accent); --sb-violet-soft:var(--ob-accent-14);
+  --sb-violet-line:var(--ob-accent-24); /* FIX: se usaba (base.css:2826) y NO existía */
+  --sb-signal-run:var(--ob-run); --sb-signal-work:var(--ob-work); --sb-signal-err:var(--ob-err);
+  --sb-mono:var(--font-mono); --sb-serif:var(--font-display);
+
+  /* set home (--hc-*, home.css) */
+  --hc-bg-0:var(--ob-bg-0); --hc-bg-1:var(--ob-bg-1); --hc-bg-2:var(--ob-bg-2);
+  --hc-bg-3:var(--ob-bg-3); --hc-bg-4:var(--ob-bg-4);
+  --hc-line-1:var(--ob-line-1); --hc-line-2:var(--ob-line-2); --hc-line-3:var(--ob-line-3);
+  --hc-fg-0:var(--ob-fg-0); --hc-fg-1:var(--ob-fg-1); --hc-fg-2:var(--ob-fg-2);
+  --hc-fg-3:var(--ob-fg-3); --hc-fg-4:var(--ob-fg-4);
+  --hc-violet:var(--ob-accent); --hc-violet-soft:var(--ob-accent-14);
+  --hc-violet-line:var(--ob-accent-24);
+  --hc-green:var(--ob-run); --hc-amber:var(--ob-work); --hc-rose:var(--ob-err);
+  --hc-mono:var(--font-mono); --hc-serif:var(--font-display); --hc-sans:var(--font-ui);
+
+  /* set orquestador (sin prefijo, orchestrator.css) */
+  --bg-0:var(--ob-bg-0); --bg-1:var(--ob-bg-1); --bg-2:var(--ob-bg-2);
+  --bg-3:var(--ob-bg-3); --bg-4:var(--ob-bg-4);
+  --line-1:var(--ob-line-1); --line-2:var(--ob-line-2); --line-3:var(--ob-line-3);
+  --fg-0:var(--ob-fg-0); --fg-1:var(--ob-fg-1); --fg-2:var(--ob-fg-2);
+  --fg-3:var(--ob-fg-3); --fg-4:var(--ob-fg-4);
+  --violet:var(--ob-accent); --violet-soft:var(--ob-accent-14); --violet-line:var(--ob-accent-24);
+  --cyan:var(--ob-info); --green:var(--ob-run); --amber:var(--ob-work); --rose:var(--ob-err);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   GLOBALES — focus, reduced-motion, scrollbars, selection
+═══════════════════════════════════════════════════════════════ */
+
+/* Foco: SIN rectángulo (regla [[sin-rectangulo-de-foco]], pedido del usuario).
+   Este era el focus-ring GLOBAL de acento por box-shadow (2px+4px) que se veía
+   como un cuadro alrededor de CUALQUIER elemento enfocado/seleccionado —chat
+   (`[tabindex]`), inputs, botones—: la causa raíz del "rectángulo que sale
+   siempre". Neutralizado (`box-shadow: none`); el `outline` ya lo mata base.css.
+   El foco se indica con el diseño (fondo/borde/caret), nunca con un anillo. */
+:where(button, a, input, select, textarea, [tabindex]):focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+/* Guard global: el estado se sigue leyendo por color + glow estático */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+::-webkit-scrollbar            { width: 6px; height: 6px; }
+::-webkit-scrollbar-track      { background: transparent; }
+::-webkit-scrollbar-thumb      { background: var(--ob-line-2); border-radius: var(--radius-pill); }
+::-webkit-scrollbar-thumb:hover{ background: var(--ob-line-3); }
+* { scrollbar-width: thin; scrollbar-color: var(--ob-line-2) transparent; }
+
+::selection { background: var(--ob-accent-24); color: var(--ob-fg-0); }
+
+/* ═══════════════════════════════════════════════════════════════
+   UTILIDADES FIRMA
+═══════════════════════════════════════════════════════════════ */
+
+/* Lámina de vidrio con canto biselado (plano 2). */
+.ob-glass {
+  backdrop-filter: blur(16px) saturate(150%);
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
+  border: 1px solid transparent;
+  border-radius: var(--radius-lg);
+  background-image:
+    linear-gradient(var(--ob-glass), var(--ob-glass)),
+    linear-gradient(160deg, var(--ob-glass-hi), transparent 40%, transparent 60%, var(--ob-glass-lo));
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+  box-shadow:
+    0 1px 0 var(--ob-glass-hi) inset,
+    0 24px 60px -20px oklch(0% 0 0 / 0.7),
+    0 2px 8px -2px oklch(0% 0 0 / 0.5);
+}
+
+/* Borde-gradiente SIN blur (plano 1: cards que conviven con xterm). */
+.ob-edge {
+  border: 1px solid transparent;
+  border-radius: var(--radius-lg);
+  background:
+    linear-gradient(var(--ob-bg-2), var(--ob-bg-2)) padding-box,
+    linear-gradient(160deg, var(--ob-line-3), var(--ob-line-1) 50%) border-box;
+}
+
+/* Pip de estado que respira. El JS togglea data-state. */
+.ob-pip {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--ob-fg-4);
+  flex-shrink: 0;
+  transition: background var(--dur-glow) var(--ease-out),
+              box-shadow var(--dur-glow) var(--ease-out);
+}
+.ob-pip[data-state="thinking"] {
+  background: var(--ob-accent);
+  box-shadow: 0 0 0 3px var(--ob-accent-14), 0 0 10px var(--ob-accent-glow);
+  animation: ob-pulse 1.8s var(--ease-in-out) infinite;
+}
+.ob-pip[data-state="running"] {
+  background: var(--ob-run);
+  box-shadow: 0 0 0 3px var(--ob-run-08),
+              0 0 12px color-mix(in oklch, var(--ob-run) 45%, transparent);
+}
+.ob-pip[data-state="working"] {
+  background: var(--ob-work);
+  box-shadow: 0 0 0 3px var(--ob-work-08);
+}
+.ob-pip[data-state="error"] {
+  background: var(--ob-err);
+  box-shadow: 0 0 0 3px var(--ob-err-08);
+  animation: ob-pulse 1s var(--ease-in-out) infinite;
+}
+
+/* Skeleton shimmer (reemplaza los "Cargando…" planos). */
+.skeleton {
+  border-radius: var(--radius-sm);
+  background: linear-gradient(90deg, var(--ob-bg-2) 25%, var(--ob-bg-3) 50%, var(--ob-bg-2) 75%);
+  background-size: 200% 100%;
+  animation: ob-shimmer 1.4s linear infinite;
+}
+
+/* Spinner: anillo cónico de acento. */
+.ob-spinner {
+  width: 18px; height: 18px; border-radius: 50%;
+  background: conic-gradient(from 0deg, transparent 10%, var(--ob-accent));
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2.5px), #000 0);
+          mask: radial-gradient(farthest-side, transparent calc(100% - 2.5px), #000 0);
+  animation: ob-spin .8s linear infinite;
+}
+.ob-spinner.lg { width: 28px; height: 28px; }
+
+/* ═══════════════════════════════════════════════════════════════
+   KEYFRAMES COMPARTIDOS
+═══════════════════════════════════════════════════════════════ */
+@keyframes ob-pulse   { 0%,100% { opacity:.6; transform:scale(.88) } 50% { opacity:1; transform:scale(1.12) } }
+@keyframes ob-shimmer { to { background-position: -200% 0 } }
+@keyframes ob-spin    { to { transform: rotate(1turn) } }
+@keyframes ob-pop-in  {
+  from { opacity:0; transform: scale(.97) translateY(4px) }
+  to   { opacity:1; transform: scale(1)   translateY(0)   }
+}
+@keyframes ob-modal-in {
+  from { opacity:0; transform: scale(.96) translateY(8px) }
+  to   { opacity:1; transform: scale(1)   translateY(0)   }
+}
+@keyframes ob-fade-in { from { opacity:0 } to { opacity:1 } }
+
+/* ═══════════════════════════════════════════════════════════════
+   TOASTS (reemplazan alert()) — ver shared/ui.js
+═══════════════════════════════════════════════════════════════ */
+#ob-toasts {
+  position: fixed;
+  right: var(--sp-4); bottom: var(--sp-4);
+  z-index: var(--z-toast);
+  display: flex; flex-direction: column; gap: var(--sp-2);
+  pointer-events: none;
+  max-width: 380px;
+}
+.ob-toast {
+  pointer-events: auto;
+  display: flex; align-items: flex-start; gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--radius-lg);
+  backdrop-filter: blur(16px) saturate(150%);
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
+  background: var(--ob-glass);
+  border: 1px solid var(--ob-line-2);
+  border-left: 2px solid var(--ob-fg-3);
+  box-shadow: 0 1px 0 var(--ob-glass-hi) inset, var(--shadow-2);
+  color: var(--ob-fg-1);
+  font: 400 var(--text-base)/var(--lh-snug) var(--font-ui);
+  position: relative; overflow: hidden;
+  animation: ob-pop-in var(--dur-2) var(--ease-snap);
+}
+.ob-toast.saliendo { opacity: 0; transform: translateY(6px);
+  transition: opacity var(--dur-2) var(--ease-out), transform var(--dur-2) var(--ease-out); }
+.ob-toast svg { flex-shrink: 0; margin-top: 1px; }
+.ob-toast.success { border-left-color: var(--ob-run);  } .ob-toast.success svg { color: var(--ob-run); }
+.ob-toast.error   { border-left-color: var(--ob-err);  } .ob-toast.error   svg { color: var(--ob-err); }
+.ob-toast.warning { border-left-color: var(--ob-work); } .ob-toast.warning svg { color: var(--ob-work); }
+.ob-toast.info    { border-left-color: var(--ob-info); } .ob-toast.info    svg { color: var(--ob-info); }
+.ob-toast::after { /* barra de auto-dismiss */
+  content: ""; position: absolute; left: 0; bottom: 0; height: 2px;
+  background: currentColor; opacity: .25;
+  width: 100%; transform-origin: left;
+  animation: ob-toast-bar var(--ob-toast-dur, 4000ms) linear forwards;
+}
+@keyframes ob-toast-bar { from { transform: scaleX(1) } to { transform: scaleX(0) } }
+
+/* ═══════════════════════════════════════════════════════════════
+   CONFIRM (reemplaza confirm()) — ver shared/ui.js
+═══════════════════════════════════════════════════════════════ */
+.ob-confirm-overlay {
+  position: fixed; inset: 0; z-index: var(--z-modal);
+  display: flex; align-items: center; justify-content: center;
+  background: oklch(0% 0 0 / 0.55);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  animation: ob-fade-in var(--dur-2) var(--ease-out);
+}
+.ob-confirm {
+  width: min(400px, calc(var(--jw-vw, 100vw) - 48px));
+  padding: var(--sp-6);
+  border-radius: var(--radius-xl);
+  background-image:
+    linear-gradient(var(--ob-glass), var(--ob-glass)),
+    linear-gradient(160deg, var(--ob-glass-hi), transparent 40%, transparent 60%, var(--ob-glass-lo));
+  background-origin: border-box; background-clip: padding-box, border-box;
+  border: 1px solid transparent;
+  backdrop-filter: blur(16px) saturate(150%);
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
+  box-shadow: 0 1px 0 var(--ob-glass-hi) inset, var(--shadow-3);
+  animation: ob-modal-in var(--dur-3) var(--ease-out);
+}
+.ob-confirm-title {
+  font: italic 400 var(--text-xl) var(--font-display);
+  color: var(--ob-fg-0);
+  margin: 0 0 var(--sp-2);
+}
+.ob-confirm-msg {
+  font: 400 var(--text-base)/var(--lh-base) var(--font-ui);
+  color: var(--ob-fg-2);
+  margin: 0 0 var(--sp-5);
+}
+.ob-confirm-input {
+  width: 100%;
+  margin: 0 0 var(--sp-5);
+  padding: 8px 11px;
+  background: var(--ob-bg-void);
+  border: 1px solid var(--ob-line-2);
+  border-radius: var(--radius);
+  color: var(--ob-fg-0);
+  font: 400 var(--text-base) var(--font-ui);
+  outline: none;
+  transition: border-color var(--dur-1) var(--ease-out),
+              box-shadow var(--dur-1) var(--ease-out);
+}
+.ob-confirm-input:focus {
+  border-color: var(--ob-accent-24);
+  box-shadow: 0 0 0 3px var(--ob-accent-08);
+}
+.ob-confirm-actions { display: flex; justify-content: flex-end; gap: var(--sp-2); }
+.ob-confirm-btn {
+  padding: 7px 14px;
+  border-radius: var(--radius);
+  border: 1px solid var(--ob-line-2);
+  background: transparent;
+  color: var(--ob-fg-1);
+  font: 500 var(--text-sm) var(--font-ui);
+  cursor: pointer;
+  transition: background var(--dur-1) var(--ease-out),
+              border-color var(--dur-1) var(--ease-out),
+              transform var(--dur-1) var(--ease-out);
+}
+.ob-confirm-btn:hover { background: var(--ob-bg-3); border-color: var(--ob-line-3); }
+.ob-confirm-btn:active { transform: scale(.98); }
+.ob-confirm-btn.primario {
+  background: var(--ob-accent); border-color: var(--ob-accent); color: #fff;
+}
+.ob-confirm-btn.primario:hover { background: var(--ob-accent-dim); border-color: var(--ob-accent-dim); }
+.ob-confirm-btn.peligro {
+  background: var(--ob-err); border-color: var(--ob-err); color: #fff;
+}
+.ob-confirm-btn.peligro:hover {
+  background: color-mix(in oklch, var(--ob-err) 80%, black);
+}

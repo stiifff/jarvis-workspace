@@ -1,0 +1,386 @@
+/* ═══════════════════════════════════════════════════════════════
+   SECTION — Memoria compartida del proyecto (grafo de conocimiento)
+   Modal glass con lista + viewer + vista de grafo.  Prefijo: mem-
+═══════════════════════════════════════════════════════════════ */
+
+.mem-overlay {
+  position: fixed; inset: 0;
+  z-index: var(--z-modal);
+  display: flex; align-items: center; justify-content: center;
+  background: oklch(0% 0 0 / 0.55);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  animation: ob-fade-in var(--dur-2) var(--ease-out);
+  padding: 24px;
+}
+.mem-modal {
+  width: min(1160px, calc(var(--jw-vw, 100vw) * .96));
+  height: min(760px, calc(var(--jw-vh, 100vh) * .9));
+  display: flex; flex-direction: column;
+  border: 1px solid transparent;
+  border-radius: var(--radius-xl);
+  background-image:
+    linear-gradient(var(--ob-glass), var(--ob-glass)),
+    linear-gradient(160deg, var(--ob-glass-hi), transparent 40%, transparent 60%, var(--ob-glass-lo));
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+  backdrop-filter: blur(16px) saturate(150%);
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
+  box-shadow: 0 1px 0 var(--ob-glass-hi) inset, var(--shadow-3);
+  animation: ob-modal-in var(--dur-3) var(--ease-out);
+  overflow: hidden;
+}
+
+/* ── Topbar ── */
+.mem-top {
+  display: flex; align-items: center; gap: 10px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--ob-line-1);
+  flex-shrink: 0;
+}
+.mem-titulo { font: italic 400 var(--text-xl) var(--font-display); color: var(--ob-fg-0); }
+.mem-count  { font: 500 var(--text-2xs) var(--font-mono); letter-spacing: var(--ls-caps);
+              text-transform: uppercase; color: var(--ob-fg-3); }
+.mem-tabs {
+  margin-left: auto;
+  display: flex; gap: 2px;
+  background: var(--ob-bg-2);
+  border: 1px solid var(--ob-line-1);
+  border-radius: var(--radius);
+  padding: 3px;
+}
+.mem-tab {
+  padding: 4px 12px;
+  background: transparent; border: none; border-radius: var(--radius-sm);
+  color: var(--ob-fg-3);
+  font: 500 var(--text-sm) var(--font-ui);
+  cursor: pointer;
+  transition: background var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out);
+}
+.mem-tab:hover  { color: var(--ob-fg-1); }
+.mem-tab.activo { background: var(--ob-bg-4); color: var(--ob-fg-0); }
+/* .mem-nueva — CTA premium; base + :hover comunes viven en base.css (cargado antes).
+   Acá solo los overrides propios (padding/glow 12px/transición). NO define :active
+   a propósito (sin scale al click): el grupo común tampoco lo incluye. */
+.mem-nueva {
+  gap: 6px;
+  padding: 6px 13px;
+  box-shadow: inset 0 1px 0 var(--ob-bevel-accent), 0 0 12px -5px var(--ob-accent-glow);
+  transition: background var(--dur-1) var(--ease-out), transform var(--dur-1) var(--ease-out);
+}
+.mem-cerrar {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px;
+  background: none; border: 1px solid var(--ob-line-1); border-radius: var(--radius-sm);
+  color: var(--ob-fg-2); cursor: pointer;
+  transition: color var(--dur-1), border-color var(--dur-1), background var(--dur-1);
+}
+.mem-cerrar:hover { color: var(--ob-fg-0); border-color: var(--ob-line-3); background: var(--ob-bg-3); }
+
+/* ── Cuerpo: lista + viewer ── */
+.mem-body { flex: 1; display: flex; min-height: 0; }
+
+.mem-lista {
+  width: 290px; flex-shrink: 0;
+  display: flex; flex-direction: column;
+  border-right: 1px solid var(--ob-line-1);
+  min-height: 0;
+}
+.mem-search {
+  margin: 10px;
+  display: flex; align-items: center; gap: 7px;
+  padding: 6px 10px;
+  background: var(--ob-bg-void);
+  border: 1px solid var(--ob-line-2);
+  border-radius: var(--radius);
+  transition: border-color var(--dur-1) var(--ease-out);
+}
+.mem-search:focus-within { border-color: var(--ob-accent-24); }
+.mem-search svg { color: var(--ob-fg-3); flex-shrink: 0; }
+.mem-search input {
+  flex: 1; min-width: 0;
+  background: transparent; border: none; outline: none;
+  font: 400 var(--text-sm) var(--font-ui);
+  color: var(--ob-fg-1);
+}
+.mem-items { flex: 1; overflow-y: auto; padding: 0 8px 10px; display: flex; flex-direction: column; gap: 4px; }
+.mem-item {
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  cursor: pointer;
+  text-align: left;
+  background: none;
+  transition: background var(--dur-1) var(--ease-out), border-color var(--dur-1) var(--ease-out);
+  animation: ob-pop-in var(--dur-2) var(--ease-out) calc(var(--i, 0) * 20ms) both;
+}
+.mem-item:hover  { background: var(--ob-bg-3); }
+.mem-item.activo { background: var(--ob-accent-08); border-color: var(--ob-accent-14); }
+.mem-item-titulo {
+  font: 500 var(--text-sm) var(--font-ui); color: var(--ob-fg-0);
+  display: block;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.mem-item-sub {
+  margin-top: 2px;
+  font: 400 var(--text-2xs) var(--font-mono); color: var(--ob-fg-3);
+  display: block;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.mem-vacio {
+  padding: 28px 18px; text-align: center;
+  font: 400 var(--text-xs) var(--font-ui); color: var(--ob-fg-3);
+  line-height: var(--lh-base);
+}
+
+/* ── Viewer ── */
+.mem-viewer { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.mem-view-head {
+  display: flex; align-items: baseline; gap: 10px;
+  padding: 14px 18px 10px;
+  border-bottom: 1px solid var(--ob-line-1);
+}
+.mem-view-titulo { font: italic 400 var(--text-xl) var(--font-display); color: var(--ob-fg-0); }
+.mem-view-meta   { font: 400 var(--text-2xs) var(--font-mono); color: var(--ob-fg-3); }
+.mem-view-acciones { margin-left: auto; display: flex; gap: 4px; }
+.mem-view-acciones button {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 4px 10px;
+  background: transparent;
+  border: 1px solid var(--ob-line-2); border-radius: var(--radius-sm);
+  color: var(--ob-fg-2);
+  font: 500 var(--text-xs) var(--font-ui);
+  cursor: pointer;
+  transition: color var(--dur-1), border-color var(--dur-1), background var(--dur-1);
+}
+.mem-view-acciones button:hover { color: var(--ob-fg-0); border-color: var(--ob-line-3); background: var(--ob-bg-3); }
+.mem-view-acciones button.peligro:hover { color: var(--ob-err); border-color: color-mix(in oklch, var(--ob-err) 40%, transparent); }
+
+.mem-contenido {
+  flex: 1; overflow-y: auto;
+  padding: 16px 20px;
+  font: 400 var(--text-base)/var(--lh-base) var(--font-ui);
+  color: var(--ob-fg-1);
+}
+.mem-contenido h1, .mem-contenido h2, .mem-contenido h3 {
+  color: var(--ob-fg-0); margin: 14px 0 6px; font-weight: 600;
+}
+.mem-contenido h1 { font-size: var(--text-lg); }
+.mem-contenido h2 { font-size: var(--text-md); }
+.mem-contenido h3 { font-size: var(--text-base); }
+.mem-contenido p  { margin: 0 0 10px; }
+.mem-contenido code {
+  font: 400 0.92em var(--font-mono);
+  background: var(--ob-bg-void);
+  border: 1px solid var(--ob-line-1);
+  border-radius: 4px; padding: 1px 5px;
+}
+.mem-contenido li { margin: 0 0 4px 18px; }
+.mem-wikilink {
+  display: inline-flex; align-items: center; gap: 3px;
+  padding: 0 7px;
+  background: var(--ob-accent-08);
+  border: 1px solid var(--ob-accent-14);
+  border-radius: var(--radius-pill);
+  color: var(--ob-accent-fg);
+  font: 500 0.9em var(--font-ui);
+  cursor: pointer;
+  transition: background var(--dur-1) var(--ease-out);
+}
+.mem-wikilink:hover { background: var(--ob-accent-14); }
+.mem-tag {
+  display: inline-block; margin-right: 4px;
+  padding: 0 7px;
+  border: 1px solid var(--ob-line-2); border-radius: var(--radius-pill);
+  font: 500 var(--text-2xs) var(--font-mono);
+  color: var(--ob-fg-3);
+}
+
+/* Editor inline */
+.mem-editor {
+  flex: 1; display: flex; flex-direction: column; gap: 10px;
+  padding: 14px 18px;
+}
+.mem-editor textarea {
+  flex: 1; resize: none;
+  background: var(--ob-bg-void);
+  border: 1px solid var(--ob-line-2); border-radius: var(--radius);
+  padding: 12px;
+  font: 400 var(--text-sm)/1.6 var(--font-mono);
+  color: var(--ob-fg-1);
+  outline: none;
+  transition: border-color var(--dur-1) var(--ease-out);
+}
+.mem-editor textarea:focus { border-color: var(--ob-accent-24); }
+.mem-editor-acciones { display: flex; justify-content: flex-end; gap: 8px; }
+
+/* ── Grafo ── */
+.mem-grafo { flex: 1; min-height: 0; position: relative; }
+.mem-grafo svg { width: 100%; height: 100%; display: block; cursor: grab; }
+.mem-grafo-hint {
+  position: absolute; bottom: 10px; left: 14px;
+  font: 500 var(--text-2xs) var(--font-mono);
+  letter-spacing: var(--ls-wide);
+  text-transform: uppercase;
+  color: var(--ob-fg-4);
+  pointer-events: none;
+}
+.mem-nodo circle {
+  fill: var(--ob-bg-3);
+  stroke: var(--ob-accent);
+  stroke-width: 1.5;
+  transition: fill var(--dur-1) var(--ease-out);
+  cursor: pointer;
+}
+.mem-nodo:hover circle { fill: var(--ob-accent-24); }
+.mem-nodo text {
+  fill: var(--ob-fg-1);
+  font: 500 10px var(--font-ui);
+  pointer-events: none;
+}
+.mem-edge {
+  stroke: var(--ob-accent-24);
+  stroke-width: 1;
+}
+
+/* ══ Pestaña Live — constelación del enjambre ══════════════════════ */
+.mem-live { display: flex; flex: 1; min-height: 0; width: 100%; }
+.mem-live-main { flex: 1; min-width: 0; display: flex; flex-direction: column; min-height: 0; }
+.mem-live-toolbar { display: flex; gap: 12px; align-items: center; justify-content: space-between;
+  padding: 12px 14px; border-bottom: 1px solid var(--ob-line-1); flex-shrink: 0; }
+.mem-live-vistas { display: flex; gap: 2px; background: var(--ob-bg-2); border: 1px solid var(--ob-line-2); border-radius: var(--radius); padding: 2px; }
+.mem-live-v { background: none; border: 0; color: var(--ob-fg-3); font: 500 12px var(--font-ui); padding: 4px 14px; border-radius: var(--radius-sm); cursor: pointer; transition: color var(--dur-1), background var(--dur-1); }
+.mem-live-v:hover { color: var(--ob-fg-1); }
+.mem-live-v.activo { background: var(--ob-accent-14); color: var(--ob-fg-0); box-shadow: inset 0 1px 0 var(--ob-glass-hi); }
+.mem-live-stats { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+.mem-live-stat { display: inline-flex; align-items: center; gap: 6px; font: 500 var(--text-2xs) var(--font-mono); letter-spacing: var(--ls-wide); text-transform: uppercase; color: var(--ob-fg-3); }
+.mem-live-stat .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ob-fg-4); }
+.mem-live-stat .dot.trab { background: var(--ob-run); box-shadow: 0 0 8px -1px var(--ob-run); animation: memLivePulso 2s ease-in-out infinite; }
+.mem-live-cuerpo { flex: 1; min-height: 0; overflow-y: auto; padding: 14px; }
+
+/* puntito vivo en la tab */
+.mem-live-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--ob-run); margin-right: 5px; animation: memLivePulso 2.2s ease-in-out infinite; }
+@keyframes memLivePulso { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+/* ── Pulso: cards de agente ── */
+.mem-live-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(258px, 1fr)); gap: 12px; }
+.mem-live-card { position: relative; overflow: hidden; padding: 13px; border-radius: var(--radius-lg);
+  border: 1px solid var(--ob-line-2);
+  background: linear-gradient(var(--ob-glass), var(--ob-glass)), linear-gradient(150deg, var(--ob-glass-hi), transparent 45%);
+  background-origin: border-box; background-clip: padding-box, border-box;
+  transition: border-color var(--dur-1) var(--ease-out); }
+.mem-live-card::before { content: ''; position: absolute; inset: 0 auto 0 0; width: 2px; background: var(--ob-fg-4); opacity: .5; }
+.mem-live-card[data-estado="trabajando"] { border-color: color-mix(in oklch, var(--ob-run) 34%, transparent); }
+.mem-live-card[data-estado="trabajando"]::before { background: var(--ob-run); opacity: 1; box-shadow: 0 0 12px -1px var(--ob-run); }
+.mem-live-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.mem-live-nombre { font: 600 13px var(--font-ui); color: var(--ob-fg-0); flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mem-live-estado { font: 500 var(--text-2xs) var(--font-mono); letter-spacing: var(--ls-wide); text-transform: uppercase; color: var(--ob-fg-4); padding: 2px 7px; border: 1px solid var(--ob-line-2); border-radius: var(--radius-pill); }
+.mem-live-card[data-estado="trabajando"] .mem-live-estado { color: var(--ob-run); border-color: color-mix(in oklch, var(--ob-run) 34%, transparent); background: var(--ob-run-08); }
+
+/* anillo de actividad: pseudo-elemento, anima transform/opacity — NUNCA box-shadow */
+.mem-live-anillo { position: relative; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: var(--ob-bg-2); border: 1px solid var(--ob-line-2); flex-shrink: 0; }
+.mem-live-anillo .cli-logo { display: block; }
+.mem-live-anillo[data-estado="trabajando"] { border-color: color-mix(in oklch, var(--ob-run) 40%, transparent); }
+.mem-live-anillo[data-estado="trabajando"]::after { content: ''; position: absolute; inset: -3px; border-radius: 50%; border: 1.5px solid var(--ob-run); animation: memLiveAnillo 1.9s ease-out infinite; pointer-events: none; }
+@keyframes memLiveAnillo { 0% { transform: scale(0.85); opacity: 0.9; } 100% { transform: scale(1.4); opacity: 0; } }
+
+/* chips de archivo */
+.mem-live-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.mem-live-chip { display: inline-flex; align-items: center; gap: 5px; font: 500 11px var(--font-mono); color: var(--ob-fg-2);
+  background: var(--ob-bg-void); border: 1px solid var(--ob-line-2); border-radius: var(--radius-btn); padding: 3px 8px;
+  transition: border-color var(--dur-1), background var(--dur-1); }
+.mem-live-chip.write { color: var(--ob-fg-1); border-color: color-mix(in oklch, var(--ob-accent) 22%, var(--ob-line-2)); }
+.mem-live-chip.read { color: var(--ob-fg-3); border-style: dashed; }
+.mem-live-chip .lock { font-style: normal; font-size: 9px; }
+.mem-live-chip .x { font-style: normal; color: var(--ob-fg-4); }
+.mem-live-chip.flash { animation: memLiveFlash 2s ease-out 1; }
+@keyframes memLiveFlash { 0% { background: var(--ob-accent-24); border-color: var(--ob-accent); color: var(--ob-fg-0); box-shadow: 0 0 14px -4px var(--ob-accent-glow); } 100% { background: var(--ob-bg-void); } }
+.mem-live-sinops { font: italic 400 11px var(--font-ui); color: var(--ob-fg-4); }
+.mem-live-permiso { font-size: 10px; cursor: help; margin-left: 1px; }
+
+/* feed lateral */
+.mem-live-feed { width: 248px; flex-shrink: 0; border-left: 1px solid var(--ob-line-1); padding: 14px 12px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; background: linear-gradient(180deg, transparent, var(--ob-bg-void) 220%); }
+.mem-live-feed-titulo { font: 600 var(--text-2xs) var(--font-mono); letter-spacing: var(--ls-caps); text-transform: uppercase; color: var(--ob-fg-4); }
+.mem-live-feed-items { display: flex; flex-direction: column; gap: 2px; }
+.mem-live-evento { position: relative; display: flex; gap: 8px; font: 400 11px/1.45 var(--font-ui); color: var(--ob-fg-2); padding: 6px 8px 6px 12px; border-radius: var(--radius-sm); animation: memLiveEntra 0.28s var(--ease-out) both; animation-delay: calc(var(--i) * 20ms); }
+.mem-live-evento::before { content: ''; position: absolute; left: 3px; top: 9px; width: 4px; height: 4px; border-radius: 50%; background: var(--ob-fg-4); }
+.mem-live-evento .tx { min-width: 0; word-break: break-word; }
+.mem-live-evento.alerta { color: var(--ob-fg-1); background: var(--ob-err-08); }
+.mem-live-evento.alerta::before { background: var(--ob-err); box-shadow: 0 0 8px -1px var(--ob-err); }
+.mem-live-evento.permiso::before { background: var(--ob-work); }
+@keyframes memLiveEntra { from { opacity: 0; transform: translateX(8px); } to { opacity: 1; transform: none; } }
+.mem-live-hora { color: var(--ob-fg-4); font: 400 10px var(--font-mono); flex-shrink: 0; padding-top: 1px; }
+
+/* ── Live: vista Mapa (constelación) ── */
+.mem-live-cuerpo:has(.mem-live-mapa) { padding: 0; }
+.mem-live-mapa { position: relative; flex: 1; height: 100%; min-height: 0; }
+.mem-live-mapa svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.mem-live-arista { fill: none; stroke: var(--ob-line-3); stroke-width: var(--w, 1); stroke-linecap: round; opacity: .7; }
+.mem-live-arista.write { stroke: var(--ob-accent); opacity: .55; stroke-dasharray: 1 7; animation: memLiveFlujo 1.1s linear infinite; }
+.mem-live-arista.read { stroke: var(--ob-line-3); stroke-dasharray: 2 6; opacity: .5; }
+.mem-live-arista.pendiente { stroke: var(--ob-work); opacity: .8; stroke-dasharray: 1 7; animation: memLiveFlujo 1.1s linear infinite; }
+.mem-live-arista.denegada { stroke: var(--ob-err); opacity: .85; stroke-width: calc(var(--w, 1) + .4px); }
+.mem-live-arista.activa { opacity: .95; animation-duration: .7s; filter: drop-shadow(0 0 3px var(--ob-accent-glow)); }
+@keyframes memLiveFlujo { to { stroke-dashoffset: -16; } }
+
+.mem-live-narchivo .halo { fill: var(--ob-accent); opacity: .10; }
+.mem-live-narchivo .dot { fill: var(--ob-bg-4); stroke: var(--ob-accent-dim); stroke-width: 1.5; }
+.mem-live-narchivo .lbl { fill: var(--ob-fg-3); font: 500 9.5px var(--font-mono); text-anchor: middle; pointer-events: none;
+  paint-order: stroke; stroke: var(--ob-bg-void); stroke-width: 3px; stroke-linejoin: round; }
+.mem-live-narchivo.flash .dot { fill: var(--ob-accent); stroke: var(--ob-accent); }
+.mem-live-narchivo.flash .lbl { fill: var(--ob-fg-1); }
+.mem-live-narchivo.flash .halo { opacity: .24; animation: memLiveHalo 2s ease-out infinite; }
+@keyframes memLiveHalo { 0% { transform: scale(.7); opacity: .3; } 100% { transform: scale(1.6); opacity: 0; } }
+
+.mem-live-nagente .aura { opacity: .18; }
+.mem-live-nagente[data-estado="idle"] .aura { opacity: .06; }
+.mem-live-nagente .disco { fill: var(--ob-bg-1); stroke: var(--ob-line-1); stroke-width: 1; }
+.mem-live-nagente .anillo { fill: none; stroke-width: 1.75; opacity: .92; }
+.mem-live-nagente[data-estado="trabajando"] .anillo { animation: memLivePulso 2.4s ease-in-out infinite; }
+.mem-live-nagente .pip { fill: var(--ob-run); stroke: var(--ob-bg-1); stroke-width: 1.5; }
+.mem-live-nagente .lbl { fill: var(--ob-fg-0); font: 600 11px var(--font-ui); text-anchor: middle; pointer-events: none;
+  paint-order: stroke; stroke: var(--ob-bg-void); stroke-width: 3.5px; stroke-linejoin: round; }
+.mem-live-nagente[data-estado="idle"] .lbl { fill: var(--ob-fg-3); font-weight: 500; }
+.mem-live-nagente .lg { width: 24px; height: 24px; display: grid; place-items: center; }
+.mem-live-nagente .lg .cli-logo { width: 19px; height: 19px; display: block; }
+.mem-live-nagente .lg .cli-logo-shell { display: grid; place-items: center; font: 700 13px var(--font-mono); color: var(--ob-fg-2); }
+
+.mem-live-legend { position: absolute; left: 14px; bottom: 12px; display: flex; gap: 14px; flex-wrap: wrap; align-items: center;
+  padding: 7px 12px; background: var(--ob-glass); border: 1px solid var(--ob-line-1); border-radius: var(--radius-pill);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  font: 500 var(--text-2xs) var(--font-mono); letter-spacing: var(--ls-wide); text-transform: uppercase; color: var(--ob-fg-3); }
+.mem-live-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.mem-live-legend .ln { width: 16px; height: 0; border-top: 2px solid var(--ob-line-3); border-radius: 2px; }
+.mem-live-legend .ln.write { border-color: var(--ob-accent); }
+.mem-live-legend .ln.read { border-top-style: dashed; }
+.mem-live-legend .ln.pendiente { border-color: var(--ob-work); }
+.mem-live-legend .ln.denegada { border-color: var(--ob-err); }
+.mem-live-legend .lock { font-style: normal; }
+
+/* ── Salud del linter + badges de estado (capa Higiene 2026-07) ─────────── */
+.mem-salud { display: flex; align-items: center; gap: 7px; margin: 0 10px 8px;
+  padding: 6px 10px; border: 1px solid color-mix(in oklab, var(--ob-work) 35%, transparent);
+  border-radius: var(--radius-sm); background: color-mix(in oklab, var(--ob-work) 9%, transparent);
+  font: 500 var(--text-2xs) var(--font-mono); color: var(--ob-fg-2); }
+.mem-salud svg { color: var(--ob-work); flex: none; }
+.mem-salud { flex-wrap: wrap; }
+
+/* v3: línea del loop de lecciones + candidatas a memoria global */
+.mem-salud-alerta { border-color: color-mix(in oklab, var(--ob-err) 45%, transparent);
+  background: color-mix(in oklab, var(--ob-err) 10%, transparent); }
+.mem-salud-alerta svg { color: var(--ob-err); }
+.mem-global-chip { display: inline-flex; align-items: center; gap: 5px; }
+.mem-promover { padding: 1px 8px; border: 1px solid color-mix(in oklab, var(--ob-accent) 45%, transparent);
+  border-radius: var(--radius-pill); background: color-mix(in oklab, var(--ob-accent) 12%, transparent);
+  color: var(--ob-fg-1); font: 600 10px var(--font-mono); cursor: pointer; }
+.mem-promover:hover { background: color-mix(in oklab, var(--ob-accent) 22%, transparent); }
+.mem-promover:disabled { opacity: .5; cursor: default; }
+
+.mem-badge { display: inline-block; margin-left: 7px; padding: 1px 7px; vertical-align: 1px;
+  border-radius: var(--radius-pill); font: 600 10px var(--font-mono);
+  letter-spacing: var(--ls-wide); text-transform: uppercase;
+  border: 1px solid var(--ob-line-2); color: var(--ob-fg-3); }
+.mem-badge-lapida   { border-color: color-mix(in oklab, var(--ob-fg-3) 50%, transparent); text-decoration: line-through; }
+.mem-badge-obsoleta { border-color: color-mix(in oklab, var(--ob-work) 55%, transparent); color: var(--ob-work); }
+.mem-badge-leccion  { border-color: color-mix(in oklab, var(--ob-accent) 55%, transparent); color: var(--ob-accent); }
+.mem-item-apagada .mem-item-titulo { opacity: .62; }

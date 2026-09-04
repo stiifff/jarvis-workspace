@@ -1,0 +1,206 @@
+[
+  {
+    "id": "terminales",
+    "nombre": "Terminales & tmux",
+    "keywords": [
+      "clamping",
+      "copy-mode",
+      "eco",
+      "fit",
+      "garble",
+      "pty",
+      "resize",
+      "scrollback",
+      "seleccion",
+      "terminal",
+      "terminales",
+      "tmux",
+      "xterm"
+    ]
+  },
+  {
+    "id": "ui",
+    "nombre": "UI · Workspace",
+    "keywords": [
+      "atajos",
+      "aura",
+      "barra",
+      "cards",
+      "chrome",
+      "css",
+      "dock",
+      "editor",
+      "foco",
+      "franja",
+      "frontend",
+      "glass",
+      "header",
+      "home",
+      "i18n",
+      "idioma",
+      "launcher",
+      "layout",
+      "monaco",
+      "oklch",
+      "panel",
+      "popover",
+      "pwa",
+      "seam",
+      "sidebar",
+      "strip",
+      "temas",
+      "ui",
+      "workspace"
+    ]
+  },
+  {
+    "id": "swarm",
+    "nombre": "Backend & Swarm",
+    "keywords": [
+      "agents-live",
+      "backend",
+      "enjambre",
+      "fastapi",
+      "leccion",
+      "logs",
+      "mailbox",
+      "memoria",
+      "orquestador",
+      "poller",
+      "protocolo",
+      "quality-gate",
+      "reconciliar",
+      "reviewer",
+      "roles",
+      "sentinel",
+      "sqlite",
+      "swarm",
+      "watchdog",
+      "websocket",
+      "workflow"
+    ]
+  },
+  {
+    "id": "diseno",
+    "nombre": "Diseño & Craft",
+    "keywords": [
+      "craft",
+      "diseno",
+      "impeccable",
+      "motion",
+      "movimiento",
+      "slop",
+      "ux"
+    ]
+  },
+  {
+    "id": "preview",
+    "nombre": "Web Preview & Radio",
+    "keywords": [
+      "browser",
+      "dev-server",
+      "iframe",
+      "localhost",
+      "pestanas",
+      "preview",
+      "radio",
+      "remote-browser",
+      "serp",
+      "snap",
+      "youtube"
+    ]
+  },
+  {
+    "id": "cuentas",
+    "nombre": "Cuentas & CLIs",
+    "keywords": [
+      "antigravity",
+      "cli",
+      "codex",
+      "cuentas",
+      "gemini",
+      "grok",
+      "login",
+      "oauth",
+      "opencode",
+      "qwen",
+      "rate-limit",
+      "rotacion"
+    ]
+  },
+  {
+    "id": "voz",
+    "nombre": "Voz & Audio",
+    "keywords": [
+      "audio",
+      "dictado",
+      "mic",
+      "parakeet",
+      "ptt",
+      "speechrecognition",
+      "stt",
+      "transcripcion",
+      "tts",
+      "voz",
+      "whisper"
+    ]
+  },
+  {
+    "id": "desktop",
+    "nombre": "Desktop",
+    "keywords": [
+      "desktop",
+      "discord",
+      "fullscreen",
+      "instalador",
+      "renderer",
+      "shell",
+      "tauri",
+      "updater",
+      "webview2"
+    ]
+  },
+  {
+    "id": "entorno",
+    "nombre": "Entorno · WSL & Git",
+    "keywords": [
+      "branches",
+      "candado",
+      "cicatriz",
+      "commit",
+      "git",
+      "hooks",
+      "incidente",
+      "indice",
+      "playwright",
+      "puertos",
+      "qa",
+      "secretos",
+      "seguridad",
+      "ssrf",
+      "token",
+      "wsl"
+    ]
+  },
+  {
+    "id": "producto",
+    "nombre": "Producto & Roadmap",
+    "keywords": [
+      "app-desktop",
+      "backlog",
+      "decision",
+      "deuda",
+      "distribucion",
+      "feature",
+      "lan",
+      "movil",
+      "n8n",
+      "negocio",
+      "qr",
+      "roadmap",
+      "saas",
+      "usuario",
+      "vision"
+    ]
+  }
+]

@@ -1,0 +1,1388 @@
+/* ═══════════════════════════════════════════════════════════════
+   JARVIS — OrchestratorPanel (panel izquierdo premium)
+═══════════════════════════════════════════════════════════════ */
+
+/* Fuentes: cargadas vía <link> en workspace.html.
+   Tokens (--bg-*, --fg-*, --violet, etc.): ahora son alias del
+   sistema --ob-* en shared/tokens.css. */
+
+/* ─── Panel root ─────────────────────────────────────────────── */
+.orch-panel {
+  --orch-gutter: 39px;   /* sangría del cuerpo de mensajes (alineado al avatar) */
+  width: 100%;    /* dentro del pane del dock; el ancho lo fija .jw-dock */
+  height: 100%;   /* llenar el pane a altura completa */
+  background: var(--ob-bg-void);      /* lienzo oscuro → la constelación respira */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  font-family: var(--font-ui);
+  color: var(--ob-fg-1);
+  position: relative;
+  container-type: inline-size;   /* el saludo escala con el ANCHO del panel (cqw) */
+}
+/* Todos los hijos directos (header, mensajes, composer, telemetría) por ENCIMA
+   del canvas. */
+.orch-panel > header,
+.orch-panel > .orch-messages-wrap,
+.orch-panel > .orch-composer,
+.orch-panel > .orch-telemetry { position: relative; z-index: 1; }
+/* El header contiene el menú ⋯ (desplegable): debe pintar por ENCIMA de los
+   mensajes/hero. Sin esto, messages-wrap (mismo z-index, más tarde en el DOM)
+   se pintaba sobre el menú y lo tapaba (parecía "transparente"). */
+.orch-panel > header { z-index: 40; }
+
+/* ── Constelación viva (Jarvis = nodo central) ─────────────────── */
+.orch-net {
+  position: absolute; inset: 0; z-index: 0;
+  display: block; width: 100%; height: 100%;
+  pointer-events: none;
+  transition: opacity var(--dur-3, 280ms) var(--ease-out, ease);
+}
+.orch-halo {
+  position: absolute; left: 50%; top: 44%; z-index: 0;
+  width: min(150%, 1150px); height: min(150%, 1150px);
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  /* vaho de acento más amplio y cálido → la red respira sobre luz, no sobre
+     negro plano (así se veía "muerta" vs el concepto d4). */
+  background: radial-gradient(circle,
+    var(--ob-accent-14),
+    var(--ob-accent-08) 34%,
+    transparent 66%);
+  filter: blur(40px); opacity: 1; pointer-events: none;
+  transition: opacity var(--dur-glow, 500ms) var(--ease-out, ease), background var(--dur-glow, 500ms) ease;
+}
+.orch-vignette {
+  position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  background: radial-gradient(130% 100% at 50% 42%, transparent 44%, var(--ob-bg-void) 100%);
+}
+/* Grano fílmico sutil sobre el fondo → textura premium (concepto d4). */
+.orch-grain {
+  position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  opacity: .05; mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+/* al escuchar/responder, el halo respira más fuerte y vira a cian en listening */
+.orch-panel[data-state="listening"] .orch-halo {
+  opacity: 1.25; background: radial-gradient(circle, color-mix(in oklch, var(--ob-info) 12%, transparent), transparent 62%);
+}
+.orch-panel[data-state="responding"] .orch-halo { opacity: 1.2; }
+/* con conversación activa, la red se atenúa más (el chat editorial de Jarvis va
+   directo sobre ella: le blindamos la legibilidad). */
+.orch-panel[data-conv="1"] .orch-net { opacity: .30; }
+
+/* Scrollbar: la global de tokens.css (6px) aplica. */
+
+/* ═══════════════════════════════════════════════════════════════
+   HEADER (44px)
+═══════════════════════════════════════════════════════════════ */
+.orch-header {
+  height: 56px;
+  flex-shrink: 0;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;   /* la marca Jarvis, centrada y prominente */
+  padding: 0 14px;
+}
+/* hairline inferior del header: separa la marca del chat con LUZ, no con un borde */
+.orch-header::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 22%;
+  right: 22%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--ob-line-1), transparent);
+  opacity: .7;
+  pointer-events: none;
+}
+
+/* La marca: orbe + "Jarvis" grande en serif italic — bien visible, arriba */
+.orch-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.orch-brand-name {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 25px;
+  font-weight: 400;
+  color: var(--ob-fg-0);
+  line-height: 1;
+  letter-spacing: 0.005em;
+  text-shadow: 0 2px 24px var(--ob-bg-void);
+}
+
+/* El "⋯" queda discreto, anclado a la derecha (historial/nueva sesión adentro) */
+.orch-more-wrap {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+/* Menú ⋯ — LIQUID GLASS (mismo lenguaje del chrome de terminal): base OPACA
+   (background-color, se pinta siempre) + aurora de acento y gloss como imagen;
+   el "vidrio" lo dan el canto (borde + bisel inset), el gloss (::before) y el
+   item-hover como lozenge de vidrio líquido. Sin backdrop-filter: con base opaca
+   no aporta y evita el glitch de composición. */
+.orch-more-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 210px;
+  padding: 5px;
+  background-color: var(--ob-bg-2);
+  background-image:
+    radial-gradient(120% 55% at 50% -10%, var(--ob-accent-14), transparent 58%),
+    linear-gradient(180deg, oklch(100% 0 0 / 0.06), transparent 42%);
+  border: 1px solid var(--ob-line-2);
+  border-radius: 15px;
+  overflow: hidden;
+  box-shadow:
+    inset 0 1px 0 oklch(100% 0 0 / 0.16),
+    inset 0 -10px 20px -12px oklch(0% 0 0 / 0.4),
+    var(--shadow-3);
+  z-index: 300;
+  display: none;
+}
+.orch-more-menu::before {
+  content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: 0;
+  background:
+    linear-gradient(180deg, oklch(100% 0 0 / 0.09), transparent 40%),
+    radial-gradient(130% 80% at 20% -26%, oklch(100% 0 0 / 0.10), transparent 55%);
+}
+.orch-more-menu.open {
+  display: block;
+  animation: ob-pop-in var(--dur-2) var(--ease-snap);
+}
+.orch-more-item {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  padding: 9px 12px;
+  margin: 1px 0;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  font-family: var(--font-ui);
+  font-size: 12.5px;
+  color: var(--ob-fg-1);
+  cursor: pointer;
+  text-align: left;
+  transition: background 140ms var(--ease-out), box-shadow 140ms var(--ease-out), color 140ms ease;
+}
+/* hover: la opción se vuelve una LOZENGE de vidrio líquido (bisel + canto + asiento) */
+.orch-more-item:hover {
+  color: var(--ob-fg-0);
+  background:
+    linear-gradient(180deg, oklch(42% 0.03 300 / 0.55), oklch(27% 0.024 300 / 0.5)) padding-box,
+    linear-gradient(180deg, oklch(100% 0 0 / 0.45), oklch(100% 0 0 / 0.03) 55%, transparent) border-box;
+  border-color: transparent;
+  box-shadow:
+    inset 0 1px 0 oklch(100% 0 0 / 0.16),
+    inset 0 -6px 12px -9px oklch(0% 0 0 / 0.4),
+    0 3px 10px -4px oklch(0% 0 0 / 0.5);
+}
+.orch-icon-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  border-radius: var(--radius-btn);
+  color: var(--ob-fg-3);
+  cursor: pointer;
+  transition: background 140ms ease, color 140ms ease;
+  outline: none;
+}
+.orch-icon-btn:hover        { background: var(--ob-bg-3); color: var(--ob-fg-1); }
+.orch-icon-btn:focus-visible { outline: 2px solid var(--ob-accent); outline-offset: 1px; }
+.orch-icon-btn svg { width: 16px; height: 16px; flex-shrink: 0; }
+
+/* ── Orbe de la marca (comunica el estado por color) ─────────── */
+.orch-orb {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  flex: none;
+  position: relative;
+  background: radial-gradient(circle at 38% 32%,
+    var(--ob-fg-0),
+    var(--ob-accent-fg) 42%,
+    var(--ob-accent) 78%);
+  box-shadow: 0 0 0 1px var(--ob-accent-24), 0 0 14px var(--ob-accent-40);
+}
+/* aro que late alrededor del orbe */
+.orch-orb::after {
+  content: ""; position: absolute; inset: -5px;
+  border-radius: 50%;
+  border: 1px solid var(--ob-accent-24);
+  animation: orch-id-pulse 3.4s var(--ease-in-out, ease-in-out) infinite;
+}
+@keyframes orch-id-pulse {
+  0%, 100% { transform: scale(.9); opacity: .5; }
+  50%      { transform: scale(1.3); opacity: 0; }
+}
+.orch-orb[data-state="listening"] {
+  background: radial-gradient(circle at 35% 30%,
+    color-mix(in oklch, var(--ob-info) 55%, white),
+    color-mix(in oklch, var(--ob-info) 80%, black) 70%);
+}
+.orch-orb[data-state="processing"] {
+  animation: orch-orb-pulse 1.6s ease-in-out infinite;
+}
+.orch-orb[data-state="responding"] {
+  background: radial-gradient(circle at 35% 30%,
+    color-mix(in oklch, var(--ob-run) 55%, white),
+    color-mix(in oklch, var(--ob-run) 75%, black) 70%);
+}
+@keyframes orch-orb-pulse {
+  0%, 100% { filter: brightness(1); }
+  50%      { filter: brightness(1.25); }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   TELEMETRÍA (abajo): RED · AGENTES · COSTO
+═══════════════════════════════════════════════════════════════ */
+.orch-telemetry {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  height: 28px;
+  padding: 0 16px 2px;
+  /* se funde con el composer como UNA sola base de instrumentos (sin border-top
+     ni backdrop propios: son parte de la misma superficie inferior). */
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+}
+/* micro-punto vivo antes de RED: la red "respira" (señal de vida barata). */
+.orch-tl-net-dot {
+  width: 5px; height: 5px; border-radius: 50%; flex: none;
+  background: var(--ob-accent-fg);
+  box-shadow: 0 0 8px var(--ob-accent-glow);
+  animation: orch-tl-breath 3s var(--ease-in-out) infinite;
+}
+@keyframes orch-tl-breath {
+  0%, 100% { opacity: .45; transform: scale(.85); }
+  50%      { opacity: 1;   transform: scale(1); }
+}
+.orch-tl-item {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  color: var(--ob-fg-4);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.orch-tl-item b { color: var(--ob-fg-2); font-weight: 600; }
+.orch-tl-sep { width: 3px; height: 3px; border-radius: 50%; background: var(--ob-line-3); flex: none; }
+/* el costo se tiñe del acento (dato "de plata") */
+#orch-tl-cost { color: var(--ob-accent-fg); }
+/* AGENTES > 0 → el número toma el verde de "corriendo" */
+.orch-panel[data-state="processing"] #orch-tl-agents,
+.orch-panel[data-state="responding"] #orch-tl-agents { color: var(--ob-run); }
+
+/* ═══════════════════════════════════════════════════════════════
+   MESSAGES (scrollable)
+═══════════════════════════════════════════════════════════════ */
+/* J2: wrapper que contiene scroll area + pill flotante de "N nuevos" */
+.orch-messages-wrap {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.orch-messages {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 14px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;        /* gap base entre cualquier elemento */
+  scroll-behavior: smooth;
+}
+
+/* Pill flotante: "↓ N nuevos". Aparece cuando user scrolleó arriba y llegan
+   nuevos mensajes. Click → scroll al fondo. */
+.orch-scroll-down {
+  position: absolute;
+  left: 50%;
+  bottom: 12px;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px 5px 9px;
+  background: var(--ob-accent);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-pill);
+  font: 600 11.5px var(--font-ui);
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  box-shadow:
+    0 0 0 1px color-mix(in oklch, var(--ob-accent) 45%, transparent),
+    0 6px 18px color-mix(in oklch, var(--ob-accent) 45%, transparent);
+  z-index: 5;
+  animation: orch-scroll-down-in 240ms cubic-bezier(0.2, 0.8, 0.3, 1);
+  transition: transform 150ms ease, box-shadow 150ms ease;
+}
+.orch-scroll-down[hidden] { display: none; }
+.orch-scroll-down:hover {
+  transform: translateX(-50%) translateY(-2px);
+  box-shadow:
+    0 0 0 1px color-mix(in oklch, color-mix(in oklch, var(--ob-accent) 70%, white) 55%, transparent),
+    0 10px 24px color-mix(in oklch, var(--ob-accent) 55%, transparent);
+}
+@keyframes orch-scroll-down-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(8px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+/* Ritmo conversacional: cuando un msg jarvis va seguido de un msg user (o vice
+   versa), aumentamos el gap para crear pulso visual entre PARES de turnos.
+   Mensajes consecutivos del mismo rol quedan más juntos (gap reducido). */
+.orch-msg + .orch-msg[data-role="user"],
+.orch-msg + .orch-msg[data-role="jarvis"] { margin-top: 14px; }
+.orch-msg[data-role="user"] + .orch-msg[data-role="user"],
+.orch-msg[data-role="jarvis"] + .orch-msg[data-role="jarvis"] { margin-top: -2px; }
+
+/* Scrollbar OCULTA (parity con terminales/preview): el scroll va con
+   la ruedita; la barra visible quedaba "de balde" en el workspace (pedido del
+   usuario 2026-06-22). overflow-y:auto se mantiene → la rueda sigue scrolleando. */
+.orch-messages { scrollbar-width: none; }                 /* Firefox */
+.orch-messages::-webkit-scrollbar { width: 0; height: 0; display: none; }  /* WebKit/Chromium */
+
+/* ═══════════════════════════════════════════════════════════════
+   HERO de la constelación — el saludo gigante PISA la red (el nodo
+   central = Jarvis late detrás). Es el empty state.
+═══════════════════════════════════════════════════════════════ */
+.orch-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 24px 18px;
+  gap: 16px;
+  position: relative;
+  animation: orch-msg-in 500ms var(--ease-out, ease);
+}
+/* backdrop suave SOLO detrás del texto → contraste AA sobre la red */
+.orch-empty::before {
+  content: ""; position: absolute; inset: 6% -6%; z-index: -1;
+  background: radial-gradient(58% 56% at 50% 46%, var(--ob-bg-void) 26%, transparent 78%);
+  opacity: .72;
+}
+.orch-eyebrow {
+  display: inline-flex; align-items: center; gap: 9px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ob-fg-4);
+}
+.orch-eyebrow::before, .orch-eyebrow::after {
+  content: ""; width: 24px; height: 1px; background: var(--ob-line-2);
+}
+.orch-greet {
+  margin: 0;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 400;
+  /* Escala FLUIDA con el ancho del panel (cqw): ~2.1rem angosto (dock) →
+     hasta 5.4rem a pantalla completa. Antes topaba en 3.4rem y el saludo
+     quedaba chico/perdido al maximizar ("no se usa de manera total"). */
+  font-size: clamp(2.05rem, calc(1.35rem + 4cqw), 5.4rem);
+  line-height: 1.02;
+  letter-spacing: 0.005em;
+  color: var(--ob-fg-0);
+  /* Ancho relativo al CONTENEDOR (no al padre, que se encoje al hijo más ancho
+     y creaba una dependencia circular que partía el saludo). Con esto: entra en
+     UNA línea cuando cabe (ancho) y parte natural solo si no cabe (dock). */
+  max-width: min(90cqw, 920px);
+  text-shadow: 0 2px 40px var(--ob-bg-void), 0 0 80px oklch(11% 0.016 300 / .9);
+}
+.orch-greet .k { color: var(--ob-accent-fg); font-style: italic; }
+.orch-greet-sub {
+  font: 400 12.5px/1.55 var(--font-ui);
+  color: var(--ob-fg-3);
+  margin: 0;
+  max-width: 34ch;
+}
+.orch-hero-qa {
+  display: flex; flex-wrap: wrap; gap: 8px; justify-content: center;
+  margin-top: 4px;
+}
+/* Chips del hero — LIQUID GLASS translúcido: doble capa (fondo translúcido +
+   canto refractivo border-box), gloss especular (::before) y bisel. En hover el
+   canto se tiñe de acento y el chip se eleva con un halo. */
+.orch-hero-chip {
+  position: relative;
+  overflow: hidden;
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 8px 14px;
+  border-radius: var(--radius-pill);
+  border: 1px solid transparent;
+  background:
+    linear-gradient(180deg, oklch(33% 0.026 300 / 0.5), oklch(20% 0.02 300 / 0.55)) padding-box,
+    linear-gradient(180deg, oklch(100% 0 0 / 0.5), oklch(100% 0 0 / 0.05) 46%, oklch(0% 0 0 / 0.16)) border-box;
+  backdrop-filter: blur(16px) saturate(155%);
+  -webkit-backdrop-filter: blur(16px) saturate(155%);
+  box-shadow:
+    inset 0 1px 0.5px oklch(100% 0 0 / 0.3),
+    inset 0 -7px 12px -10px oklch(0% 0 0 / 0.4),
+    0 5px 16px -9px oklch(0% 0 0 / 0.55);
+  color: var(--ob-fg-1);
+  font: 500 12px var(--font-ui);
+  cursor: pointer;
+  transition: transform var(--dur-1) var(--ease-snap),
+              box-shadow var(--dur-2) var(--ease-out), color var(--dur-1) ease;
+}
+.orch-hero-chip::before {
+  content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: 0;
+  background: radial-gradient(130% 90% at 22% -34%, oklch(100% 0 0 / 0.12), transparent 55%);
+}
+.orch-hero-chip > * { position: relative; z-index: 1; }
+.orch-hero-chip:hover {
+  transform: translateY(-2px);
+  background:
+    linear-gradient(180deg, oklch(40% 0.04 296 / 0.55), oklch(24% 0.026 300 / 0.6)) padding-box,
+    linear-gradient(180deg, var(--ob-bevel-accent), oklch(100% 0 0 / 0.04) 46%, oklch(0% 0 0 / 0.16)) border-box;
+  box-shadow:
+    inset 0 1px 0.5px oklch(100% 0 0 / 0.42),
+    0 10px 24px -10px oklch(0% 0 0 / 0.6),
+    0 0 18px -6px var(--ob-accent-glow);
+  color: var(--ob-fg-0);
+}
+.orch-hero-chip:active { transform: translateY(0) scale(.98); }
+.orch-hero-chip:focus-visible { outline: 2px solid var(--ob-accent); outline-offset: 1px; }
+.orch-hero-chip .orch-chip-icon { display: inline-flex; color: var(--ob-accent-fg); }
+.orch-hero-chip .orch-chip-icon svg { width: 13px; height: 13px; }
+
+/* ── Estado de voz del hero (concepto d4) ──────────────────────────
+   Mientras Jarvis ESCUCHA, el saludo se reemplaza por "Te estoy
+   escuchando…" + el transcript en vivo sobre la constelación; al PENSAR,
+   por "Pensando" con puntos. Se togglea con .orch-empty[data-voice]. */
+.orch-voice { display: none; flex-direction: column; align-items: center; gap: 14px; }
+.orch-empty[data-voice] .orch-eyebrow,
+.orch-empty[data-voice] .orch-greet,
+.orch-empty[data-voice] .orch-greet-sub,
+.orch-empty[data-voice] .orch-hero-qa { display: none; }
+.orch-empty[data-voice] .orch-voice { display: flex; animation: orch-msg-in 320ms var(--ease-out, ease); }
+
+.orch-voice-label {
+  margin: 0;
+  font-family: var(--font-display); font-style: italic; font-weight: 400;
+  font-size: clamp(1.9rem, calc(1.2rem + 3.2cqw), 4rem);
+  line-height: 1.05; letter-spacing: 0.005em;
+  color: var(--ob-fg-0);
+  text-shadow: 0 2px 40px var(--ob-bg-void), 0 0 70px oklch(11% 0.016 300 / .9);
+}
+.orch-empty[data-voice="listening"] .orch-voice-label {
+  color: color-mix(in oklch, var(--ob-info) 32%, var(--ob-fg-0));
+}
+.orch-voice-transcript {
+  margin: 0; max-width: 30ch; min-height: 1.4em;
+  font: 400 clamp(1rem, 1.6cqw, 1.35rem)/1.45 var(--font-ui);
+  color: var(--ob-fg-0);
+  text-shadow: 0 2px 26px var(--ob-bg-void);
+}
+/* cursor que titila detrás del transcript en vivo */
+.orch-empty[data-voice="listening"] .orch-voice-transcript::after {
+  content: ""; display: inline-block; width: 2px; height: 1.05em; vertical-align: -2px;
+  margin-left: 3px; background: var(--ob-info); box-shadow: 0 0 8px var(--ob-info);
+  animation: orch-cursor 0.85s steps(2) infinite;
+}
+@keyframes orch-cursor { 50% { opacity: 0; } }
+
+/* orbe de 3 puntos que laten = señal viva de captura/proceso */
+.orch-voice-orbit { display: inline-flex; align-items: center; gap: 7px; height: 8px; }
+.orch-voice-orbit i {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--ob-info); box-shadow: 0 0 10px var(--ob-info);
+  animation: orch-voice-bounce 1.15s var(--ease-in-out, ease-in-out) infinite;
+}
+.orch-voice-orbit i:nth-child(2) { animation-delay: 0.15s; }
+.orch-voice-orbit i:nth-child(3) { animation-delay: 0.30s; }
+.orch-empty[data-voice="thinking"] .orch-voice-orbit i {
+  background: var(--ob-accent-fg); box-shadow: 0 0 10px var(--ob-accent-40);
+}
+@keyframes orch-voice-bounce {
+  0%, 100% { transform: translateY(0);    opacity: 0.4; }
+  45%      { transform: translateY(-5px); opacity: 1; }
+}
+
+/* E2: typing indicator — burbuja con 3 dots animados antes del mensaje real */
+.orch-typing-bubble {
+  margin-left: var(--orch-gutter);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 14px;
+  background: var(--ob-bg-2);
+  border: 1px solid var(--ob-line-2);
+  border-radius: 14px;
+  border-bottom-left-radius: 4px;
+  width: fit-content;
+  margin-top: 2px;
+}
+.orch-typing-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--ob-fg-3);
+  animation: orch-typing-bounce 1.2s ease-in-out infinite;
+}
+.orch-typing-dot:nth-child(2) { animation-delay: 0.15s; }
+.orch-typing-dot:nth-child(3) { animation-delay: 0.30s; }
+@keyframes orch-typing-bounce {
+  0%, 60%, 100% { transform: translateY(0);    opacity: 0.4; }
+  30%           { transform: translateY(-3px); opacity: 1; }
+}
+
+/* Day divider */
+.orch-day-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--ob-fg-4);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  user-select: none;
+  flex-shrink: 0;
+}
+.orch-day-divider::before,
+.orch-day-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--ob-line-1);
+}
+
+/* Message */
+.orch-msg {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  /* Stagger: --i lo setea el JS solo en el render inicial del thread
+     (mensajes nuevos de a uno → --i:0, sin delay). */
+  animation: orch-msg-in 150ms ease-out;
+  animation-delay: calc(var(--i, 0) * 40ms);
+  animation-fill-mode: both;
+}
+
+.orch-msg-head {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+/* Avatars — brand-coherent
+   Jarvis → mark "J" Instrument Serif italic (mismo lenguaje del sidebar/home)
+   User   → iniciales en círculo con gradient cálido */
+.orch-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  user-select: none;
+  line-height: 1;
+}
+.orch-avatar-user {
+  background: linear-gradient(135deg,
+    var(--ob-work),
+    var(--ob-err)
+  );
+  font: 600 10px var(--font-ui);
+  letter-spacing: 0.01em;
+  box-shadow: 0 0 0 1.5px color-mix(in oklch, white 6%, transparent);
+}
+.orch-avatar-jarvis {
+  /* orbe glowing = el nodo central de la constelación (concepto d4) */
+  background: radial-gradient(circle at 38% 32%,
+    var(--ob-fg-0),
+    var(--ob-accent-fg) 42%,
+    var(--ob-accent) 78%);
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 19px;
+  font-weight: 400;
+  color: var(--ob-fg-0);
+  padding-bottom: 2px;
+  box-shadow:
+    0 0 0 1px var(--ob-accent-24),
+    0 0 22px var(--ob-accent-glow);
+}
+
+.orch-msg-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+.orch-msg-author {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ob-fg-0);
+  white-space: nowrap;
+}
+.orch-msg-badge {
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ob-accent-fg);
+  background: var(--ob-accent-14);
+  border: 1px solid var(--ob-accent-24);
+  border-radius: var(--radius-pill);
+  padding: 1px 6px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.orch-msg-time {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  color: var(--ob-fg-4);
+  margin-left: auto;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ── Burbujas de chat ─────────────────────────────────────────── */
+/* Usuario: burbuja a la derecha, violeta */
+.orch-msg[data-role="user"] { align-items: flex-end; }
+.orch-msg[data-role="user"] .orch-msg-head { flex-direction: row-reverse; }
+.orch-msg[data-role="user"] .orch-avatar { display: none; }
+.orch-msg[data-role="user"] .orch-msg-meta .orch-msg-author { display: none; }
+.orch-msg[data-role="user"] .orch-msg-body {
+  /* píldora de vidrio violeta SIN borde duro (bisel superior sutil, no marco) */
+  background: color-mix(in oklch, var(--ob-accent) 15%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in oklch, white 12%, transparent);
+  backdrop-filter: blur(12px) saturate(140%);
+  -webkit-backdrop-filter: blur(12px) saturate(140%);
+  color: var(--ob-fg-0);
+  border-radius: 15px;
+  border-top-right-radius: 5px;
+  padding: 9px 13px;
+  width: fit-content;
+  max-width: 88%;
+}
+
+/* Jarvis: habla EDITORIAL, SIN caja — anclado por su orbe-avatar (elite: menos
+   cajas, la misma raíz que molestaba al usuario). La legibilidad sobre la red la
+   sostiene el text-shadow + la red atenuada en conversación (data-conv). */
+.orch-msg[data-role="jarvis"] .orch-msg-body {
+  background: none;
+  border: none;
+  border-radius: 0;
+  padding: 1px 0 0;
+  width: auto;
+  max-width: 94%;
+  margin-left: var(--orch-gutter);
+  color: var(--ob-fg-1);
+  text-shadow: 0 1px 10px var(--ob-bg-void), 0 0 22px var(--ob-bg-void);
+}
+
+/* Body */
+.orch-msg-body {
+  font-size: 13px;
+  line-height: 1.62;
+  color: var(--ob-fg-1);
+  word-break: break-word;
+}
+.orch-msg-body code {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--ob-info);
+  background: var(--ob-bg-2);
+  border: 1px solid var(--ob-line-2);
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+.orch-msg-body em {
+  font-style: normal;
+  color: var(--ob-fg-3);
+}
+
+/* Action card */
+.orch-action-card {
+  margin-left: var(--orch-gutter);
+  border: 1px solid transparent;
+  border-radius: 12px;
+  overflow: hidden;
+  /* borde en gradiente acento→línea (concepto d4 .wf) */
+  background:
+    linear-gradient(var(--ob-bg-2), var(--ob-bg-2)) padding-box,
+    linear-gradient(160deg, var(--ob-accent-24), var(--ob-line-1)) border-box;
+  position: relative;
+}
+
+/* F1: progress bar slim (2px) en la parte superior del card.
+   Se llena conforme se completan los steps. */
+.orch-action-progress {
+  height: 2px;
+  background: var(--ob-line-1);
+  position: relative;
+  overflow: hidden;
+}
+.orch-action-progress-fill {
+  height: 100%;
+  background: linear-gradient(to right, var(--ob-accent) 0%, var(--ob-info) 100%);
+  transition: width 600ms cubic-bezier(0.2, 0.8, 0.3, 1);
+  box-shadow: 0 0 8px color-mix(in oklch, var(--ob-accent) 45%, transparent);
+}
+/* Cuando el card está al 100%, el gradient se vuelve verde para señalar success */
+.orch-action-card[data-progress="100"] .orch-action-progress-fill {
+  background: linear-gradient(to right, var(--ob-run) 0%, color-mix(in oklch, var(--ob-run) 75%, white) 100%);
+  box-shadow: 0 0 10px color-mix(in oklch, var(--ob-run) 55%, transparent);
+}
+
+/* F3: icono contextual al inicio del header del action card */
+.orch-action-icon {
+  font-size: 11px;
+  color: var(--ob-accent);
+  background: var(--ob-accent-14);
+  width: 18px; height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 5px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+.orch-action-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 13px;
+  border-bottom: 1px solid var(--ob-line-1);
+}
+.orch-action-title {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--ob-fg-2);
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.orch-action-pill {
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  letter-spacing: 0.06em;
+  color: var(--ob-accent);
+  background: var(--ob-accent-14);
+  border-radius: var(--radius-pill);
+  padding: 1px 8px;
+  white-space: nowrap;
+}
+
+.orch-action-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 13px;
+  border-bottom: 1px solid var(--ob-line-1);
+}
+.orch-action-row:last-child { border-bottom: none; }
+
+.orch-step-icon {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.orch-step-done    { background: color-mix(in oklch, var(--ob-run) 14%, transparent); border: 1px solid color-mix(in oklch, var(--ob-run) 40%, transparent); }
+.orch-step-pending { border: 1.5px solid var(--ob-info); animation: orch-spinner 0.9s linear infinite; }
+/* running: anillo spinner cian con un arco violeta (workflow en curso) */
+.orch-step-running {
+  border: 1.5px solid var(--ob-accent-24);
+  border-top-color: var(--ob-info);
+  animation: orch-spinner 0.9s linear infinite;
+}
+.orch-step-blocked {
+  background: color-mix(in oklch, var(--ob-work) 12%, transparent);
+  border: 1px solid color-mix(in oklch, var(--ob-work) 40%, transparent);
+}
+.orch-step-error {
+  background: color-mix(in oklch, var(--ob-err) 12%, transparent);
+  border: 1px solid color-mix(in oklch, var(--ob-err) 40%, transparent);
+}
+.orch-step-idle    { border: 1px solid var(--ob-line-3); }
+
+/* Las filas atenúan/realzan según estado (color comunica, no solo motion) */
+.orch-action-row[data-status="idle"] .orch-step-label    { color: var(--ob-fg-3); }
+.orch-action-row[data-status="done"] .orch-step-label    { color: var(--ob-fg-2); }
+.orch-action-row[data-status="blocked"] .orch-step-label { color: var(--ob-work); }
+.orch-action-row[data-status="error"] .orch-step-label   { color: var(--ob-err); }
+
+/* Barra final de completado del workflow */
+.orch-action-done {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 8px 13px;
+  border-top: 1px solid color-mix(in oklch, var(--ob-run) 18%, transparent);
+  background: color-mix(in oklch, var(--ob-run) 7%, transparent);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--ob-run);
+}
+
+/* F2: el SVG check del step done usa stroke-draw para "dibujarse" cuando
+   aparece — recompensa visual de completitud. Se anima en el primer render
+   y al hacer el cambio de class. dasharray=14 (path length aprox), offset
+   empieza en 14 (invisible) y va a 0 (visible). */
+.orch-step-check { display: block; }
+.orch-step-check polyline {
+  stroke-dasharray: 14;
+  stroke-dashoffset: 14;
+  animation: orch-check-draw 380ms cubic-bezier(0.4, 0, 0.2, 1) 60ms forwards;
+}
+@keyframes orch-check-draw {
+  from { stroke-dashoffset: 14; }
+  to   { stroke-dashoffset: 0; }
+}
+
+.orch-step-label {
+  font-size: 12px;
+  color: var(--ob-fg-1);
+  flex: 1;
+  min-width: 0;
+}
+.orch-step-target {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--ob-fg-3);
+  white-space: nowrap;
+}
+.orch-step-target mark {
+  background: none;
+  color: var(--ob-info);
+}
+
+/* Quick replies — chips con micro-icono SVG contextual */
+.orch-quick-replies {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-left: var(--orch-gutter);
+}
+.orch-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ob-fg-2);
+  background: var(--ob-bg-3);
+  border: 1px solid var(--ob-line-2);
+  border-radius: var(--radius-pill);
+  padding: 4px 12px 4px 10px;
+  cursor: pointer;
+  transition: background 140ms ease, border-color 140ms ease, color 140ms ease, transform 140ms cubic-bezier(0.2, 0.8, 0.3, 1);
+  outline: none;
+  line-height: 1.4;
+}
+.orch-chip-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ob-fg-3);
+  flex-shrink: 0;
+  transition: color 140ms ease;
+}
+.orch-chip:hover {
+  background: var(--ob-bg-4);
+  border-color: var(--ob-line-3);
+  color: var(--ob-fg-0);
+  transform: translateY(-1px);   /* G2: hover lift */
+}
+.orch-chip:hover .orch-chip-icon { color: var(--ob-accent); }
+.orch-chip:focus-visible { outline: 2px solid var(--ob-accent); outline-offset: 1px; }
+.orch-chip:active { transform: translateY(0); }
+
+/* ═══════════════════════════════════════════════════════════════
+   COMPOSER
+═══════════════════════════════════════════════════════════════ */
+.orch-composer {
+  flex-shrink: 0;
+  /* Se funde con el panel como base de instrumentos: SIN border-top duro,
+     SIN backdrop (el gradiente al void ya integra el composer con los mensajes). */
+  padding: 8px 14px 8px;
+  background: linear-gradient(to top, var(--ob-bg-void) 58%, transparent);
+  position: relative;
+}
+/* Hairline superior con fade en los extremos (reemplaza el border-top duro:
+   separa con LUZ, no con un borde de punta a punta). */
+.orch-composer::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 16px;
+  right: 16px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--ob-line-1) 16%, var(--ob-line-1) 84%, transparent);
+  pointer-events: none;
+}
+
+/* Fade sobre los mensajes — más natural, integra composer↔conversación. */
+.orch-composer::before {
+  content: '';
+  position: absolute;
+  top: -30px;
+  left: 0;
+  right: 0;
+  height: 30px;
+  background: linear-gradient(to bottom, transparent 0%, oklch(from var(--ob-bg-void) l c h / 0.5) 55%, var(--ob-bg-void) 100%);
+  pointer-events: none;
+}
+
+/* quick chips row */
+.orch-composer-chips {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+.orch-composer-chip {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ob-fg-3);
+  background: var(--ob-bg-3);
+  border: 1px solid var(--ob-line-2);
+  border-radius: var(--radius-pill);
+  padding: 2.5px 9px;
+  cursor: pointer;
+  transition: background 140ms ease, color 140ms ease, border-color 140ms ease;
+  outline: none;
+  line-height: 1.4;
+}
+.orch-composer-chip:hover       { background: var(--ob-bg-4); color: var(--ob-fg-1); border-color: var(--ob-line-3); }
+.orch-composer-chip:focus-visible { outline: 2px solid var(--ob-accent); outline-offset: 1px; }
+
+/* Composer integrado a la superficie (elite): el campo NO es una caja con borde
+   ni recibe un ring rectangular al enfocar. Es la base del panel; el foco se
+   marca con una HAIRLINE de acento que se enciende de centro→afuera (la firma
+   de movimiento) + el caret. (Antídoto al AI-slop del input encajonado.) */
+.orch-input-box {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  padding: 5px 5px 5px 9px;
+  border-radius: 18px;
+  /* superficie apenas perceptible: invita a escribir sin encajonar */
+  background: color-mix(in oklch, var(--ob-bg-1) 40%, transparent);
+  position: relative;
+  transition: background 220ms var(--ease-out);
+}
+/* HAIRLINE de acento = firma de foco (scaleX centro→afuera). NO es un borde. */
+.orch-input-box::after {
+  content: '';
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  bottom: -1px;
+  height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, transparent, var(--ob-accent) 22%, var(--ob-accent-fg) 50%, var(--ob-accent) 78%, transparent);
+  box-shadow: 0 0 14px var(--ob-accent-glow);
+  transform: scaleX(0);
+  transform-origin: center;
+  opacity: 0;
+  transition: transform 380ms var(--ease-out), opacity 300ms ease;
+  pointer-events: none;
+}
+.orch-input-box:focus-within {
+  background: color-mix(in oklch, var(--ob-bg-1) 66%, transparent);
+}
+.orch-input-box:focus-within::after {
+  transform: scaleX(1);
+  opacity: 1;
+}
+
+/* Grabando voz (data-recording="true"): SIN caja/tinte que rodee el campo — solo
+   la hairline de la base se enciende y respira en cian (señal viva de captura). */
+.orch-composer[data-recording="true"] .orch-input-box::after {
+  transform: scaleX(1);
+  opacity: 1;
+  background: linear-gradient(90deg, transparent, var(--ob-info), transparent);
+  box-shadow: 0 0 16px color-mix(in oklch, var(--ob-info) 55%, transparent);
+  animation: orch-hairline-breath 1.9s var(--ease-in-out) infinite;
+}
+@keyframes orch-hairline-breath {
+  0%, 100% { opacity: .55; }
+  50%      { opacity: 1; }
+}
+
+.orch-textarea {
+  flex: 1;
+  min-width: 0;
+  width: auto;
+  background: none;
+  border: none;
+  outline: none;
+  resize: none;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ob-fg-0);
+  padding: 7px 2px;
+  min-height: 22px;
+  max-height: 128px;
+  overflow-y: auto;
+  caret-color: var(--ob-accent);
+  display: block;
+}
+.orch-textarea::placeholder { color: var(--ob-fg-4); }
+/* SIN scrollbar en el campo: cuando el texto crece hasta el max-height, el
+   scroll sigue al cursor (overflow-y:auto) pero la barra NUNCA se ve — el chat
+   "sigue las letras" sin barra (pedido del usuario). Parity con .orch-messages. */
+.orch-textarea { scrollbar-width: none; }                        /* Firefox */
+.orch-textarea::-webkit-scrollbar { width: 0; height: 0; display: none; }  /* WebKit */
+/* CLAVE: el campo del composer NO lleva el focus-ring GLOBAL de teclado
+   (tokens.css:202 le dibuja un box-shadow rectangular de 4px al enfocar — ESE
+   es el "rectángulo" que el usuario rechaza). El foco se comunica solo con la
+   hairline de la base + el caret; nunca con un rectángulo alrededor del campo. */
+.orch-textarea:focus,
+.orch-textarea:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+/* grupo de iconos a la IZQUIERDA del pill */
+.orch-input-left { display: flex; align-items: center; gap: 2px; flex: none; padding-bottom: 1px; }
+
+/* Iconos del composer — más vida: cada uno con un tinte de color propio
+   que aparece en hover. Sutil pero hace que la barra se sienta colorida
+   sin sobrecargar el descanso. */
+.orch-input-icon-btn {
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--radius-btn);
+  color: var(--ob-fg-3);
+  cursor: pointer;
+  transition: background 160ms ease, color 160ms ease, border-color 160ms ease, transform 160ms cubic-bezier(0.2, 0.8, 0.3, 1);
+  outline: none;
+}
+.orch-input-icon-btn:hover {
+  background: var(--ob-bg-3);
+  border-color: var(--ob-line-2);
+  transform: translateY(-1px);
+}
+.orch-input-icon-btn:focus-visible { outline: 2px solid var(--ob-accent); outline-offset: 1px; }
+.orch-input-icon-btn:active { transform: translateY(0); }
+.orch-input-icon-btn svg { width: 16px; height: 16px; transition: color 160ms ease; }
+
+/* Tintes contextuales por hover: cada icono tiene su acento */
+.orch-input-icon-btn#orch-icon-attach:hover  { color: var(--ob-info); }       /* cyan — attach */
+.orch-input-icon-btn#orch-icon-mention:hover { color: var(--ob-accent); }     /* violet — mention/files */
+.orch-input-icon-btn#orch-icon-slash:hover   { color: var(--ob-work); }      /* amber — commands */
+
+.orch-send-btn {
+  width: 38px;
+  height: 38px;
+  margin-bottom: 1px;
+  border-radius: 50%;
+  /* bisel premium: highlight superior derivado del acento (sigue al tema) */
+  background:
+    radial-gradient(120% 120% at 30% 22%, var(--ob-bevel-accent), transparent 46%),
+    linear-gradient(150deg, color-mix(in oklch, var(--ob-accent) 92%, white), color-mix(in oklch, var(--ob-accent) 72%, black));
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  cursor: pointer;
+  box-shadow: inset 0 1px 0 color-mix(in oklch, white 30%, transparent), 0 4px 16px color-mix(in oklch, var(--ob-accent) 42%, transparent);
+  transition: opacity 140ms ease, box-shadow 140ms ease, transform 140ms var(--ease-snap, ease);
+  outline: none;
+  flex: none;
+}
+.orch-send-btn:not(:disabled):hover { transform: translateY(-1px); }
+.orch-send-btn:not(:disabled):active { transform: scale(0.94); }
+.orch-send-btn:hover:not(:disabled) { box-shadow: 0 4px 20px color-mix(in oklch, var(--ob-accent) 60%, transparent); }
+.orch-send-btn:focus-visible         { outline: 2px solid var(--ob-accent); outline-offset: 2px; }
+.orch-send-btn:disabled              { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
+.orch-send-btn svg { width: 16px; height: 16px; }
+
+/* H2: cuando hay imagen pendiente Y texto, el send tiene un glow extra
+   (cyan + violet doble halo). El composer activa data-has-image en JS. */
+.orch-composer[data-has-image="true"] .orch-send-btn:not(:disabled) {
+  box-shadow:
+    0 0 0 2px color-mix(in oklch, var(--ob-info) 45%, transparent),
+    0 4px 16px color-mix(in oklch, var(--ob-accent) 55%, transparent),
+    0 0 24px color-mix(in oklch, var(--ob-info) 30%, transparent);
+  animation: orch-send-glow 2.5s ease-in-out infinite;
+}
+@keyframes orch-send-glow {
+  0%, 100% { filter: brightness(1); }
+  50%      { filter: brightness(1.12); }
+}
+
+.orch-hints {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--ob-fg-4);
+  margin-top: 8px;
+  letter-spacing: 0.04em;
+  text-align: center;
+  user-select: none;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   FLOAT MENUS (mention / slash)
+═══════════════════════════════════════════════════════════════ */
+.orch-float-menu {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 16px;
+  right: 16px;
+  backdrop-filter: blur(16px) saturate(150%);
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
+  background: color-mix(in oklch, var(--ob-bg-1) 72%, transparent);
+  border: 1px solid var(--ob-line-2);
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow:
+    0 1px 0 var(--ob-glass-hi) inset,
+    var(--shadow-2);
+  z-index: 200;
+  display: none;
+}
+.orch-float-menu.open {
+  display: block;
+  animation: ob-pop-in var(--dur-2) var(--ease-snap);
+}
+
+.orch-float-menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 14px;
+  font-size: 13px;
+  color: var(--ob-fg-1);
+  cursor: pointer;
+  transition: background 120ms ease;
+  border-bottom: 1px solid var(--ob-line-1);
+  outline: none;
+}
+.orch-float-menu-item:last-child { border-bottom: none; }
+.orch-float-menu-item:hover,
+.orch-float-menu-item:focus { background: var(--ob-bg-4); color: var(--ob-fg-0); }
+.orch-float-menu-item span { flex: 1; }
+.orch-float-menu-item strong {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ob-fg-3);
+  font-weight: 500;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   KEYFRAMES
+═══════════════════════════════════════════════════════════════ */
+@keyframes orch-dot-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.35; }
+}
+@keyframes orch-wave {
+  from { transform: scaleY(0.5); }
+  to   { transform: scaleY(1.5); }
+}
+@keyframes orch-spinner {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+@keyframes orch-msg-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+/* ═══════════════════════════════════════════════════════════════
+   MOBILE (<640px)
+═══════════════════════════════════════════════════════════════ */
+@media (max-width: 640px) {
+  .orch-panel { width: 100%; }
+  .orch-quick-replies { flex-wrap: wrap; }
+}
+
+/* ─── Image preview in composer ─────────────────────────────────── */
+.orch-image-preview {
+  display: none;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  backdrop-filter: blur(16px) saturate(150%);
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
+  background: color-mix(in oklch, var(--ob-bg-1) 72%, transparent);
+  border: 1px solid var(--ob-line-2);
+  border-radius: 10px;
+  box-shadow:
+    0 1px 0 var(--ob-glass-hi) inset,
+    var(--shadow-2);
+  flex-shrink: 0;
+  animation: ob-pop-in var(--dur-2) var(--ease-snap);
+}
+.orch-image-preview img {
+  height: 52px;
+  width: auto;
+  max-width: 80px;
+  border-radius: 5px;
+  object-fit: cover;
+  border: 1px solid var(--ob-line-3);
+}
+.orch-preview-remove {
+  background: transparent;
+  border: none;
+  color: var(--ob-fg-3);
+  cursor: pointer;
+  font-size: 13px;
+  padding: 3px 6px;
+  border-radius: 4px;
+  line-height: 1;
+  transition: color 0.15s, background 0.15s;
+  margin-left: auto;
+}
+.orch-preview-remove:hover { color: var(--ob-err); background: color-mix(in oklch, var(--ob-err) 12%, transparent); }
+
+/* Pill de rol de swarm en las filas del action card */
+.orch-step-rol {
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 1px 7px;
+  border-radius: var(--radius-pill);
+  flex-shrink: 0;
+}
+.orch-step-rol.scout {
+  color: var(--ob-info);
+  border: 1px solid color-mix(in oklch, var(--ob-info) 35%, transparent);
+  background: color-mix(in oklch, var(--ob-info) 8%, transparent);
+}
+.orch-step-rol.reviewer {
+  color: var(--ob-accent);
+  border: 1px solid var(--ob-accent-24);
+  background: var(--ob-accent-14);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   prefers-reduced-motion: corta las animaciones del orbe y su aro.
+   La constelación ya respeta reduced-motion internamente (JS) — queda
+   estática pero visible. El estado se lee por color/forma.
+═══════════════════════════════════════════════════════════════ */
+@media (prefers-reduced-motion: reduce) {
+  .orch-orb,
+  .orch-orb[data-state="processing"] { animation: none !important; }
+  .orch-orb::after { animation: none !important; opacity: 0; }
+  .orch-voice-orbit i,
+  .orch-empty[data-voice="listening"] .orch-voice-transcript::after { animation: none !important; }
+  /* la hairline de foco aparece sin "dibujarse"; la de grabación y el punto de
+     RED no laten. El estado se sigue leyendo por color/opacidad. */
+  .orch-input-box::after { transition: opacity 120ms ease; }
+  .orch-composer[data-recording="true"] .orch-input-box::after,
+  .orch-tl-net-dot { animation: none !important; }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   RESPONSIVE — .orch-panel es un CONTENEDOR de consulta
+   (container-type:inline-size). El orquestador vive ANGOSTO en el
+   dock (~300px) Y a PANTALLA COMPLETA (maximizable). El layout
+   florece con el ancho del PANEL (no del viewport), así se adapta
+   igual sea panel lateral o fullscreen:
+     · angosto            → chat compacto (estilos base, intactos)
+     · ≥600cqw (espacioso)→ columna de lectura centrada + composer
+                            centrado (basta de burbujas estiradas de
+                            punta a punta / placeholder-izq·botón-der)
+     · ≥960cqw (fullscreen)→ editorial pleno d4: saludo gigante,
+                            más aire, composer tipo barra flotante.
+═══════════════════════════════════════════════════════════════ */
+
+/* ── Panel espacioso: la conversación se vuelve una columna legible ── */
+@container (min-width: 600px) {
+  .orch-messages { padding: 20px clamp(24px, 6cqw, 80px); }
+  /* Cada turno / workflow card / divisor se centra en una columna de lectura
+     en lugar de estirarse a todo el ancho (bug "el chat no está tal cual"). */
+  .orch-messages > .orch-msg,
+  .orch-messages > .orch-day-divider,
+  .orch-messages > .orch-action-card {
+    width: 100%;
+    max-width: 660px;
+    margin-inline: auto;
+  }
+  /* El hero editorial respira un poco más ancho que el chat. */
+  .orch-messages > .orch-empty { max-width: 780px; margin-inline: auto; }
+
+  /* Composer: barra CENTRADA (no más placeholder a la izquierda y botón
+     de envío perdido en el borde derecho a pantalla completa). */
+  .orch-composer { padding: 12px clamp(24px, 6cqw, 80px) 12px; }
+  .orch-composer > .orch-composer-chips,
+  .orch-composer > .orch-image-preview,
+  .orch-composer > .orch-input-box,
+  .orch-composer > .orch-hints {
+    max-width: 720px;
+    margin-inline: auto;
+  }
+  .orch-input-box { border-radius: 24px; }
+
+  /* Marca + telemetría acompañan el aire disponible. */
+  .orch-brand-name { font-size: clamp(25px, 2.6cqw, 30px); }
+  .orch-header    { height: 60px; }
+  .orch-telemetry { height: 34px; font-size: 10.5px; gap: 16px; }
+}
+
+/* ── Pantalla completa / muy ancho: editorial d4 pleno ────────────── */
+@container (min-width: 960px) {
+  .orch-messages > .orch-msg,
+  .orch-messages > .orch-day-divider,
+  .orch-messages > .orch-action-card { max-width: 700px; }
+  .orch-messages > .orch-empty { max-width: 980px; }
+
+  .orch-empty     { gap: 22px; padding: 32px 18px; }
+  .orch-greet-sub { font-size: 15px; max-width: 46ch; }
+  .orch-hero-chip { font-size: 13px; padding: 10px 16px; }
+
+  .orch-composer  { padding-bottom: 16px; }
+  .orch-composer > .orch-composer-chips,
+  .orch-composer > .orch-image-preview,
+  .orch-composer > .orch-input-box,
+  .orch-composer > .orch-hints { max-width: 760px; }
+  /* Input más redondeado → lee como la barra flotante del concepto d4. */
+  .orch-input-box { border-radius: 26px; }
+  .orch-hints     { font-size: 11px; }
+}

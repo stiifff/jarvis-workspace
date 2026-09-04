@@ -1,0 +1,405 @@
+/* ═══════════════════════════════════════════════════════════════
+   JARVIS · Radio GLOBAL — mini-player en el header + popover (Órbita)
+   Obsidian Glass. Usa los tokens var(--ob-*) de shared/tokens.css.
+   Vive workspace-wide: la música suena en un iframe colgado de <body>.
+═══════════════════════════════════════════════════════════════ */
+
+/* Audio persistente (1px fuera de vista; display:none NO reproduce) */
+.jr-audio{position:absolute;width:1px;height:1px;left:-9999px;top:0;border:0;opacity:0;pointer-events:none}
+
+/* ── Radio EN LA BARRA: solo un ícono (como el mockup), hermano de la tuerquita
+   /globo/dock. Click → abre el popover con todo. Sin cuadro ni título inline. ── */
+.jr-mini{display:grid;place-items:center;width:30px;height:26px;padding:0;flex:0 0 auto;
+  border:0;border-radius:8px;background:transparent;color:var(--ob-fg-3);
+  cursor:pointer;user-select:none;
+  transition:background .14s cubic-bezier(.4,0,.2,1),color .14s cubic-bezier(.4,0,.2,1)}
+.jr-mini:hover{background:var(--ob-accent-08);color:var(--ob-fg-1)}
+.jr-mini.abierto{background:var(--ob-accent-14);color:var(--ob-accent-fg)}
+/* Arte: tile de vidrio con bisel + sheen; adentro un visualizer SIMÉTRICO */
+.jr-art{position:relative;width:26px;height:26px;border-radius:7px;flex:0 0 auto;overflow:hidden;
+  display:grid;place-items:center;background:var(--ob-bg-3);
+  box-shadow:inset 0 0 0 1px oklch(100% 0 0 / .12), 0 1px 3px oklch(0% 0 0 / .45)}
+.jr-art img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+.jr-art::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+  background:linear-gradient(158deg, oklch(100% 0 0 / .22), transparent 46%)}
+.jr-viz{position:relative;z-index:2;display:flex;align-items:center;gap:2px;height:12px;color:#fff}
+.jr-viz i{width:2.5px;height:100%;background:currentColor;border-radius:2px;transform:scaleY(.4)}
+.jr-viz.on i{animation:jr-viz .9s cubic-bezier(.65,.05,.36,1) infinite alternate}
+.jr-viz.on i:nth-child(1),.jr-viz.on i:nth-child(4){animation-delay:-.15s}
+.jr-viz.on i:nth-child(2),.jr-viz.on i:nth-child(3){animation-delay:-.55s}
+@keyframes jr-viz{from{transform:scaleY(.3)}to{transform:scaleY(1)}}
+/* Ícono de radio (ondas) en la barra. Al sonar, las ondas hacen fade escalonado
+   + el core "respira" (animación del mockup). */
+.jr-mini .jr-rd{width:17px;height:17px}
+.jr-mini .jr-rd-wv{opacity:.5;transform-origin:12px 12px}
+.jr-mini.playing{color:var(--ob-accent-fg)}
+.jr-mini.playing .jr-rd-wv{animation:jr-rd-wave 2.2s cubic-bezier(.4,0,.2,1) infinite}
+.jr-mini.playing .jr-rd-w2{animation-delay:.55s}
+.jr-mini.playing .jr-rd-core{animation:jr-rd-breath 2.2s cubic-bezier(.4,0,.2,1) infinite}
+@keyframes jr-rd-wave{0%,100%{opacity:.25}35%{opacity:1}}
+@keyframes jr-rd-breath{0%,100%{opacity:.9}50%{opacity:.3}}
+@media (prefers-reduced-motion: reduce){.jr-mini.playing .jr-rd-wv,.jr-mini.playing .jr-rd-core{animation:none}}
+.jr-mini-meta{min-width:0;display:flex;flex-direction:column;justify-content:center;gap:1px;line-height:1.14;max-width:118px}
+.jr-mini-meta b{font:600 var(--text-xs,11px) var(--font-ui);color:var(--ob-fg-0);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.jr-mini-meta span{font:400 9px var(--font-ui);color:var(--ob-fg-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* Play chico PREMIUM (orbe de vidrio) — igual que el del popover */
+.jr-mini-play{position:relative;width:26px;height:26px;border-radius:50%;border:0;flex:0 0 auto;cursor:pointer;
+  background:radial-gradient(120% 120% at 32% 24%, var(--ob-accent-fg), var(--ob-accent) 46%, var(--ob-accent-dim) 100%);
+  color:#fff;display:grid;place-items:center;
+  box-shadow:0 3px 10px -3px var(--ob-accent-glow), 0 1px 0 oklch(100% 0 0 / .42) inset,
+    0 -2px 6px -3px oklch(0% 0 0 / .5) inset, 0 0 0 1px var(--ob-accent-24);
+  transition:transform .18s cubic-bezier(.34,1.56,.64,1),box-shadow .18s}
+.jr-mini-play::before{content:"";position:absolute;inset:1.5px;border-radius:50%;pointer-events:none;
+  background:linear-gradient(180deg, oklch(100% 0 0 / .34), transparent 48%)}
+.jr-mini-play:hover{transform:scale(1.08)}
+.jr-mini-play:active{transform:scale(.9)}
+.jr-mini-play svg{position:relative;z-index:1;width:12px;height:12px;filter:drop-shadow(0 1px 1px oklch(0% 0 0 / .4))}
+.jr-mini-chev{flex:0 0 auto;width:14px;height:14px;display:grid;place-items:center;color:var(--ob-fg-3);transition:color .18s}
+.jr-mini:hover .jr-mini-chev{color:var(--ob-fg-1)}
+.jr-mini-chev svg{width:14px;height:14px}
+/* estado "parada por Twitch": pip de aviso */
+.jr-mini.twitch{opacity:.85}
+.jr-mini.twitch .jr-viz{color:var(--ob-work)}
+
+/* ── Catcher para cerrar al clickear afuera ── */
+.jr-catch{position:fixed;inset:0;z-index:1998;display:none}
+.jr-catch.on{display:block}
+
+/* ── Popover: baja desde el mini-player del header ── */
+.jr-pop{position:fixed;top:52px;right:12px;z-index:1999;width:384px;max-width:calc(var(--jw-vw, 100vw) - 20px);display:none}
+.jr-pop.on{display:block}
+.jr-card{display:flex;flex-direction:column;overflow:visible;
+  background:linear-gradient(var(--ob-glass),var(--ob-glass)),
+    radial-gradient(130% 85% at 88% -14%, var(--ob-accent-08), transparent 56%),
+    var(--ob-bg-1);
+  backdrop-filter:blur(28px) saturate(150%);-webkit-backdrop-filter:blur(28px) saturate(150%);
+  border:1px solid var(--ob-line-2);border-radius:var(--radius-2xl,22px);
+  box-shadow:var(--shadow-4,0 24px 60px -12px oklch(0% 0 0/.7)), 0 0 0 1px var(--ob-glass-hi) inset;
+  max-height:min(640px, calc(var(--jw-vh, 100vh) - 72px));
+  transform-origin:top right;animation:jr-in .3s cubic-bezier(.22,1,.36,1)}
+@keyframes jr-in{from{opacity:0;transform:translateY(-10px) scale(.97)}to{opacity:1;transform:none}}
+.jr-card::before{content:"";position:absolute;top:-6px;right:var(--jr-caret,34px);width:13px;height:13px;
+  background:var(--ob-bg-1);border-top:1px solid var(--ob-line-2);border-left:1px solid var(--ob-line-2);
+  transform:rotate(45deg);border-radius:3px 0 0 0}
+.jr-inner{position:relative;display:flex;flex-direction:column;overflow:hidden;border-radius:inherit;min-height:0}
+/* Brillo diagonal "liquid glass": luz especular arriba que muere rápido */
+.jr-inner::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:1;
+  background:linear-gradient(166deg, var(--ob-glass-hi), transparent 20%)}
+
+.jr-head{display:flex;align-items:center;gap:10px;padding:14px 14px 10px}
+.jr-mark{width:28px;height:28px;border-radius:9px;display:grid;place-items:center;color:#fff;flex:0 0 auto;
+  background:linear-gradient(135deg,var(--ob-accent),var(--ob-info));box-shadow:0 2px 10px var(--ob-accent-glow)}
+.jr-mark svg{width:16px;height:16px}
+.jr-title{flex:1;display:flex;align-items:center;gap:9px;font:italic 400 var(--text-xl,22px) var(--font-display);color:var(--ob-fg-0);line-height:1}
+.jr-livewrap{display:flex;align-items:center;gap:6px;font:600 var(--text-2xs,10px) var(--font-mono);letter-spacing:.05em;color:var(--ob-accent-fg);font-style:normal}
+.jr-livewrap .jr-eq{display:inline-flex;align-items:flex-end;gap:2px;height:11px;color:var(--ob-accent-fg)}
+.jr-livewrap .jr-eq i{width:2px;background:currentColor;border-radius:1px;height:40%}
+.jr-livewrap .jr-eq.on i{animation:jr-eqbar .82s cubic-bezier(.65,.05,.36,1) infinite alternate}
+.jr-livewrap .jr-eq.on i:nth-child(2){animation-delay:-.42s}
+.jr-livewrap .jr-eq.on i:nth-child(3){animation-delay:-.22s}
+@keyframes jr-eqbar{from{height:25%}to{height:100%}}
+.jr-ibtn{width:30px;height:30px;border-radius:var(--radius-btn,7px);border:0;background:transparent;color:var(--ob-fg-3);
+  display:grid;place-items:center;cursor:pointer;transition:all .18s cubic-bezier(.4,0,.2,1)}
+.jr-ibtn:hover{background:var(--ob-bg-3);color:var(--ob-fg-0)}
+.jr-ibtn svg{width:16px;height:16px}
+
+.jr-search{display:flex;align-items:center;gap:9px;height:40px;padding:0 14px;margin:0 14px 12px;
+  border:1px solid var(--ob-line-2);border-radius:var(--radius-pill,999px);background:var(--ob-bg-void);
+  box-shadow:inset 0 1.5px 4px var(--ob-glass-lo);
+  transition:border-color var(--dur-2) var(--ease-out),box-shadow var(--dur-2) var(--ease-out)}
+.jr-search:focus-within{border-color:var(--ob-accent-24);   /* sutil: tinta el borde + halo suave, sin rectángulo */
+  box-shadow:inset 0 1.5px 4px var(--ob-glass-lo), 0 0 0 3px var(--ob-accent-08)}
+.jr-search svg{width:16px;height:16px;color:var(--ob-fg-3);flex:0 0 auto}
+.jr-search input{flex:1;min-width:0;border:0;background:transparent;color:var(--ob-fg-0);outline:none;font:400 var(--text-sm,12px) var(--font-ui)}
+.jr-search input::placeholder{color:var(--ob-fg-3)}
+/* Mata el focus-ring global de tokens.css (:where(...input...):focus-visible) → sin rectángulo */
+.jr-search input:focus,.jr-search input:focus-visible{outline:none;box-shadow:none}
+
+.jr-now{display:flex;gap:14px;padding:0 16px 14px}
+.jr-now .jr-art{width:118px;height:118px;border-radius:var(--radius-xl,16px);
+  box-shadow:var(--shadow-2), 0 0 34px -8px var(--ob-accent-glow), inset 0 0 0 1px oklch(100% 0 0 / .08)}
+.jr-now .jr-art .jr-viz{height:22px}
+.jr-now .jr-art .jr-viz i{width:4px}
+.jr-ninfo{min-width:0;flex:1;display:flex;flex-direction:column;gap:7px}
+.jr-eyebrow{font:600 var(--text-2xs,10px) var(--font-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--ob-accent-fg)}
+.jr-ntitle{font:600 var(--text-md,15px)/1.25 var(--font-ui);color:var(--ob-fg-0);
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.jr-chanlink{display:flex;align-items:center;gap:7px;border:0;background:transparent;cursor:pointer;padding:2px 4px 2px 0;
+  border-radius:var(--radius-sm,6px);font:400 var(--text-xs,11px) var(--font-ui);color:var(--ob-fg-2);transition:color .18s}
+.jr-chanlink:hover{color:var(--ob-fg-0)}
+.jr-av{width:18px;height:18px;border-radius:50%;flex:0 0 auto;overflow:hidden;
+  background:linear-gradient(135deg,var(--ob-accent),var(--ob-info));box-shadow:0 0 0 1px var(--ob-line-2)}
+.jr-av img{width:100%;height:100%;object-fit:cover;display:block}
+.jr-vercanal{font:600 var(--text-2xs,10px) var(--font-mono);letter-spacing:.04em;color:var(--ob-accent-fg);
+  padding:2px 7px;border:1px solid var(--ob-accent-24);border-radius:var(--radius-pill,999px);opacity:.55;transition:opacity .18s,background .18s}
+.jr-chanlink:hover .jr-vercanal{opacity:1;background:var(--ob-accent-14)}
+.jr-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:auto}
+.jr-chip{display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border-radius:var(--radius-pill,999px);
+  background:var(--ob-bg-2);border:1px solid var(--ob-line-1);color:var(--ob-fg-2);font:500 var(--text-2xs,10px) var(--font-ui);white-space:nowrap}
+.jr-chip svg{width:11px;height:11px;color:var(--ob-fg-3)}
+.jr-chip b{color:var(--ob-fg-0);font-weight:600}
+
+.jr-transport{padding:0 16px 12px;display:flex;flex-direction:column;gap:12px}
+
+/* ── Waveform de música: barras espejadas que bailan desde el centro ── */
+.jr-wave{display:flex;align-items:center;justify-content:center;gap:2px;height:26px;width:100%;overflow:hidden;
+  -webkit-mask-image:linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent);
+  mask-image:linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent)}
+.jr-wave i{flex:1 1 0;max-width:4px;min-width:2px;height:100%;border-radius:2px;transform:scaleY(.16);transform-origin:center;
+  background:linear-gradient(180deg,var(--ob-accent-fg),var(--ob-accent) 50%,var(--ob-accent-dim));
+  opacity:.45;transition:transform .35s cubic-bezier(.22,1,.36,1),opacity .35s ease}
+.jr-wave.on i{opacity:.92;animation-name:jr-wave;animation-timing-function:ease-in-out;animation-iteration-count:infinite;
+  box-shadow:0 0 6px -1px var(--ob-accent-glow)}
+@keyframes jr-wave{0%,100%{transform:scaleY(.16)}50%{transform:scaleY(1)}}
+
+/* Pulso sutil del glow de la carátula mientras suena */
+.jr-now.playing .jr-art{animation:jr-artpulse 3s cubic-bezier(.65,.05,.36,1) infinite}
+@keyframes jr-artpulse{
+  0%,100%{box-shadow:var(--shadow-2), 0 0 28px -10px var(--ob-accent-glow), inset 0 0 0 1px oklch(100% 0 0 / .08)}
+  50%{box-shadow:var(--shadow-2), 0 0 46px -4px var(--ob-accent-glow), inset 0 0 0 1px oklch(100% 0 0 / .14)}
+}
+.jr-tp{display:flex;align-items:center;justify-content:center;gap:14px}
+
+/* ── Barra de progreso (seek): tiempo transcurrido ─●─ total ──
+   Suave y tranquila: el fill se desliza linealmente entre updates del player
+   (sin saltos de a segundo), la pista respira en hover (5→8px) y una burbuja
+   de vidrio muestra el minuto exacto al que apunta el cursor. Sin elásticos. */
+.jr-seek{display:flex;align-items:center;gap:11px;padding:4px 16px 6px}
+.jr-seek-t{flex:0 0 54px;text-align:center;font:500 var(--text-2xs,10px) var(--font-mono);color:var(--ob-fg-3);letter-spacing:.02em;font-variant-numeric:tabular-nums}
+.jr-seek-bar{flex:1 1 auto;position:relative;height:18px;display:flex;align-items:center;cursor:pointer;touch-action:none;--h:5px}
+.jr-seek-bar::before{content:"";position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);height:var(--h);
+  border-radius:var(--radius-pill,999px);background:var(--ob-bg-4);
+  box-shadow:inset 0 1px 2px var(--ob-glass-lo);transition:height .25s var(--ease-out)}
+.jr-seek-fill{position:absolute;left:0;top:50%;transform:translateY(-50%);height:var(--h);border-radius:var(--radius-pill,999px);width:0;
+  background:linear-gradient(90deg,var(--ob-accent-dim),var(--ob-accent-fg));
+  box-shadow:0 0 10px -2px var(--ob-accent-glow);
+  transition:width .5s linear,height .25s var(--ease-out)}
+.jr-seek-bar:hover,.jr-seek-bar.seeking{--h:8px}
+.jr-seek-knob{position:absolute;top:50%;left:0;width:12px;height:12px;border-radius:50%;background:#fff;
+  transform:translate(-50%,-50%) scale(.6);
+  box-shadow:0 1px 4px oklch(0% 0 0/.5), 0 0 0 3px var(--ob-accent-24);opacity:0;
+  transition:opacity .25s var(--ease-out),transform .25s var(--ease-out),left .5s linear;pointer-events:none}
+.jr-seek-bar:hover .jr-seek-knob,.jr-seek-bar.seeking .jr-seek-knob{opacity:1;transform:translate(-50%,-50%) scale(1)}
+.jr-seek-bar.seeking .jr-seek-knob{transform:translate(-50%,-50%) scale(1.12)}
+/* Arrastrando (o snap de un salto atrás): el fill sigue al dedo sin lag */
+.jr-seek-bar.seeking .jr-seek-fill,.jr-seek-bar.snap .jr-seek-fill,
+.jr-seek-bar.seeking .jr-seek-knob,.jr-seek-bar.snap .jr-seek-knob{transition:opacity .25s var(--ease-out),transform .25s var(--ease-out),height .25s var(--ease-out)}
+/* Burbuja de tiempo (vidrio): aparece al pasar el cursor por la pista */
+.jr-seek-bub{position:absolute;bottom:calc(100% + 2px);transform:translate(-50%,2px);pointer-events:none;z-index:3;
+  font:600 var(--text-2xs,10px) var(--font-mono);color:var(--ob-fg-0);font-variant-numeric:tabular-nums;white-space:nowrap;
+  padding:3px 8px;border-radius:var(--radius-pill,999px);
+  background:linear-gradient(180deg, var(--ob-glass-hi), transparent 55%), var(--ob-bg-2);
+  border:1px solid var(--ob-line-2);box-shadow:var(--shadow-1), inset 0 1px 0 var(--ob-glass-hi);
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  opacity:0;transition:opacity .2s var(--ease-out),transform .2s var(--ease-out)}
+.jr-seek-bub.on{opacity:1;transform:translate(-50%,0)}
+.jr-seek-bar.live{cursor:default}
+.jr-seek-bar.live .jr-seek-knob,.jr-seek-bar.live .jr-seek-bub{display:none}
+.jr-seek-bar:focus-visible{outline:none}
+.jr-seek-bar:focus-visible::before{box-shadow:inset 0 1px 2px var(--ob-glass-lo), 0 0 0 2px var(--ob-accent-24)}
+
+/* ── Control de volumen (fila SEPARADA del seek): ícono ─slider─ % ──
+   Slots laterales de 54px = MISMO ancho que los tiempos del seek → las dos barras
+   quedan alineadas y todo simétrico.
+   Slider ELÁSTICO (port vanilla de ElasticSlider/React Bits): la pista crece al
+   entrar (5→9px), y si arrastrás más allá de un borde se ESTIRA como goma
+   (sigmoide) empujando el ícono/porcentaje de ese lado; al soltar vuelve con un
+   resorte. Los transforms los maneja radio.js sobre .jr-vol-stretch. */
+.jr-vol{display:flex;align-items:center;gap:11px;padding:0 16px 14px}
+.jr-vol-l{flex:0 0 54px;display:flex;align-items:center;justify-content:center}
+.jr-vol-pct{flex:0 0 54px;text-align:center;font:500 var(--text-2xs,10px) var(--font-mono);color:var(--ob-fg-3);
+  font-variant-numeric:tabular-nums;will-change:transform;transition:color .2s var(--ease-out)}
+.jr-vol-btn{flex:0 0 auto;width:30px;height:30px;border:0;background:transparent;color:var(--ob-fg-2);
+  display:grid;place-items:center;cursor:pointer;border-radius:var(--radius-btn,7px);will-change:transform;
+  transition:color var(--dur-2) var(--ease-out),background var(--dur-2) var(--ease-out)}
+.jr-vol-btn:hover{color:var(--ob-fg-0);background:var(--ob-bg-3)}
+.jr-vol-btn svg{width:18px;height:18px}
+.jr-vol-el{flex:1 1 auto;position:relative;height:22px;display:flex;align-items:center;
+  cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;--h:5px}
+.jr-vol-el.drag{cursor:grabbing}
+.jr-vol-el:hover,.jr-vol-el.drag,.jr-vol-el:focus-visible{--h:9px}
+.jr-vol-el:focus-visible{outline:none}
+.jr-vol-el:focus-visible .jr-vol-track{box-shadow:inset 0 1px 2px var(--ob-glass-lo), 0 0 0 2px var(--ob-accent-24)}
+.jr-vol-stretch{width:100%;will-change:transform}
+.jr-vol-track{height:var(--h);border-radius:var(--radius-pill,999px);background:var(--ob-bg-4);overflow:hidden;
+  box-shadow:inset 0 1px 2px var(--ob-glass-lo);transition:height .25s var(--ease-out)}
+.jr-vol-fill{height:100%;width:80%;border-radius:inherit;
+  background:linear-gradient(90deg,var(--ob-accent-dim),var(--ob-accent-fg));
+  box-shadow:0 0 10px -2px var(--ob-accent-glow);transition:width .2s var(--ease-out)}
+.jr-vol-el.drag .jr-vol-fill{transition:none}
+/* Cuando la goma empuja el ícono/% el color se enciende (feedback del tirón) */
+.jr-vol-el.drag~.jr-vol-pct{color:var(--ob-fg-1)}
+.jr-tp-btn{width:38px;height:38px;border-radius:50%;border:1px solid transparent;background:transparent;color:var(--ob-fg-2);
+  display:grid;place-items:center;cursor:pointer;
+  transition:color var(--dur-2) var(--ease-out),background var(--dur-2) var(--ease-out),
+    border-color var(--dur-2) var(--ease-out),box-shadow var(--dur-2) var(--ease-out),transform var(--dur-2) var(--ease-out)}
+.jr-tp-btn:hover{color:var(--ob-fg-0);background:linear-gradient(180deg, var(--ob-glass-hi), transparent 55%), var(--ob-bg-3);
+  border-color:var(--ob-line-1);box-shadow:inset 0 1px 0 var(--ob-glass-hi), 0 2px 8px -3px oklch(0% 0 0/.5)}
+.jr-tp-btn:active{transform:scale(.92)}
+.jr-tp-btn svg{width:20px;height:20px}
+.jr-tp-btn.sm{width:32px;height:32px}.jr-tp-btn.sm svg{width:17px;height:17px}
+/* Toggle activo (Repetir): chip de vidrio acentuado, no solo un cambio de color */
+.jr-tp-btn.on{color:var(--ob-accent-fg);border-color:var(--ob-accent-24);
+  background:linear-gradient(180deg, var(--ob-glass-hi), transparent 55%), var(--ob-accent-14);
+  box-shadow:inset 0 1px 0 var(--ob-glass-hi), 0 0 12px -4px var(--ob-accent-glow)}
+/* Pop al mezclar la cola (acción one-shot: el feedback es el gesto) */
+.jr-tp-btn.pop svg{animation:jr-btnpop .4s var(--ease-out)}
+@keyframes jr-btnpop{0%{transform:scale(1)}35%{transform:scale(1.25) rotate(-8deg)}100%{transform:scale(1)}}
+/* Play grande PREMIUM (orbe de vidrio) */
+.jr-tp-play{position:relative;width:52px;height:52px;border-radius:50%;border:0;cursor:pointer;flex:0 0 auto;
+  background:radial-gradient(120% 120% at 32% 24%, var(--ob-accent-fg), var(--ob-accent) 44%, var(--ob-accent-dim) 100%);
+  color:#fff;display:grid;place-items:center;
+  box-shadow:0 8px 22px -6px var(--ob-accent-glow), 0 1px 0 oklch(100% 0 0 / .42) inset,
+    0 -4px 10px -4px oklch(0% 0 0 / .5) inset, 0 0 0 1px var(--ob-accent-24);
+  transition:transform .18s cubic-bezier(.34,1.56,.64,1),box-shadow .32s cubic-bezier(.22,1,.36,1)}
+.jr-tp-play::before{content:"";position:absolute;inset:2px;border-radius:50%;pointer-events:none;
+  background:linear-gradient(180deg, oklch(100% 0 0 / .3), transparent 46%)}
+.jr-tp-play svg{position:relative;z-index:1;width:24px;height:24px;filter:drop-shadow(0 1px 1.5px oklch(0% 0 0 / .4))}
+.jr-tp-play:hover{transform:scale(1.06);
+  box-shadow:0 12px 30px -6px var(--ob-accent-glow), 0 1px 0 oklch(100% 0 0 / .48) inset, 0 -4px 10px -4px oklch(0% 0 0 / .5) inset, 0 0 0 1px var(--ob-accent-40)}
+.jr-tp-play:active{transform:scale(.94)}
+
+/* Segmented con THUMB deslizante: una pastilla de vidrio viaja hasta la pestaña
+   activa (radio.js setea --segx/--segw al cambiar de pane y al abrir). */
+.jr-seg{position:relative;display:flex;gap:3px;padding:2px;margin:0 14px 8px;border:1px solid var(--ob-line-1);
+  border-radius:var(--radius-lg,12px);background:var(--ob-bg-void);
+  box-shadow:inset 0 1.5px 4px var(--ob-glass-lo)}
+.jr-seg::before{content:"";position:absolute;top:2px;bottom:2px;left:0;width:var(--segw,0px);
+  transform:translateX(var(--segx,0px));border-radius:var(--radius,8px);opacity:0;
+  background:linear-gradient(180deg, var(--ob-glass-hi), transparent 55%), var(--ob-bg-3);
+  box-shadow:inset 0 1px 0 var(--ob-glass-hi), 0 1px 5px -1px oklch(0% 0 0/.45);
+  transition:transform .28s var(--ease-snap),width .28s var(--ease-snap),opacity .2s var(--ease-out)}
+.jr-seg.thumbed::before{opacity:1}
+.jr-seg button{position:relative;z-index:1;flex:1;padding:7px 4px;border:0;border-radius:var(--radius,8px);background:transparent;color:var(--ob-fg-3);
+  font:600 var(--text-xs,11px) var(--font-ui);cursor:pointer;transition:color .2s var(--ease-out)}
+.jr-seg button:hover{color:var(--ob-fg-1)}
+.jr-seg button.on{color:var(--ob-fg-0)}
+/* Fallback sin thumb medido todavía (primer render, popover cerrado) */
+.jr-seg:not(.thumbed) button.on{background:var(--ob-bg-3)}
+.jr-scroll{flex:1 1 auto;overflow-y:auto;padding:2px 10px 12px;min-height:120px}
+#jr-browse{display:flex;flex-direction:column;min-height:0;flex:1 1 auto}
+#jr-browse[hidden]{display:none}
+.jr-pane[hidden]{display:none}
+.jr-stations{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:4px}
+.jr-hint{padding:24px 12px;text-align:center;color:var(--ob-fg-3);font:400 var(--text-sm,12px) var(--font-ui)}
+
+/* Filas (resultados / relacionados / canal) */
+.jr-row{display:flex;align-items:center;gap:11px;width:100%;padding:8px;border:1px solid transparent;background:transparent;
+  border-radius:var(--radius-lg,12px);text-align:left;cursor:pointer;transition:background .18s,border-color .18s}
+.jr-row:hover{background:var(--ob-bg-2);border-color:var(--ob-line-1)}
+.jr-row:hover .jr-add{opacity:1}
+.jr-row.activa{background:var(--ob-accent-14);border-color:var(--ob-accent-24)}
+.jr-thumb{position:relative;width:74px;height:42px;border-radius:var(--radius,8px);flex:0 0 auto;overflow:hidden;background:var(--ob-bg-3)}
+.jr-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.jr-thumb .jr-viz{position:absolute;left:6px;bottom:5px;height:10px}
+.jr-dur{position:absolute;right:4px;bottom:4px;z-index:2;font:600 9px var(--font-mono);color:#fff;
+  background:oklch(0% 0 0 / .78);padding:1px 5px;border-radius:3px;letter-spacing:.02em}
+.jr-dur.live{background:var(--ob-err);color:#fff}
+.jr-rmeta{min-width:0;flex:1 1 auto;display:flex;flex-direction:column;gap:3px}
+.jr-rmeta b{font:600 var(--text-sm,12px) var(--font-ui);color:var(--ob-fg-0);line-height:1.3;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.jr-rmeta .s{font:400 var(--text-xs,11px) var(--font-ui);color:var(--ob-fg-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.jr-add{flex:0 0 auto;width:30px;height:30px;border:0;background:transparent;border-radius:var(--radius-btn,7px);display:grid;place-items:center;
+  color:var(--ob-fg-3);opacity:0;cursor:pointer;transition:opacity .18s,background .18s,color .18s}
+.jr-add:hover{background:var(--ob-bg-3);color:var(--ob-fg-0)}
+.jr-add svg{width:17px;height:17px}
+
+/* Dots de continuación — el pie de toda lista: "hay más de esto".
+   Tres puntos que respiran en ola al pasar el mouse y corren mientras cargan.
+   Las filas nuevas entran por abajo sin mover nada de lo que ya se ve. */
+.jr-more{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;margin-top:4px;padding:11px 8px;
+  border:1px dashed var(--ob-line-1);background:transparent;border-radius:var(--radius-lg,12px);cursor:pointer;
+  color:var(--ob-fg-3);transition:background .18s,border-color .18s,color .18s}
+.jr-more:hover{background:var(--ob-bg-2);border-color:var(--ob-accent-24);color:var(--ob-fg-1)}
+.jr-more-txt{font:500 var(--text-xs,11px) var(--font-ui);letter-spacing:.01em}
+.jr-more-q{font:500 var(--text-xs,11px) var(--font-ui);color:var(--ob-fg-2);max-width:150px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.jr-dots{display:inline-flex;align-items:center;gap:5px}
+.jr-dots i{width:5px;height:5px;border-radius:50%;background:currentColor;opacity:.45;
+  transition:opacity .18s,transform .18s}
+.jr-more:hover .jr-dots i,.jr-more.cargando .jr-dots i{animation:jr-dot-ola 1.05s ease-in-out infinite;color:var(--ob-accent)}
+.jr-more:hover .jr-dots i{background:var(--ob-accent)}
+.jr-more.cargando{border-style:solid;border-color:var(--ob-accent-24);color:var(--ob-fg-2);cursor:progress}
+.jr-more.cargando .jr-dots i{background:var(--ob-accent);animation-duration:.72s}
+.jr-dots i:nth-child(2){animation-delay:.13s}
+.jr-dots i:nth-child(3){animation-delay:.26s}
+.jr-more.fin{border-style:solid;opacity:.5;cursor:default;pointer-events:none}
+.jr-more.fin .jr-dots i{animation:none;opacity:.3}
+@keyframes jr-dot-ola{0%,100%{opacity:.35;transform:translateY(0) scale(1)}
+  45%{opacity:1;transform:translateY(-3px) scale(1.25)}}
+.jr-row.jr-nueva{animation:jr-fila-in .34s cubic-bezier(.2,.72,.3,1) both}
+@keyframes jr-fila-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){
+  .jr-more:hover .jr-dots i,.jr-more.cargando .jr-dots i{animation:none;opacity:1}
+  .jr-row.jr-nueva{animation:none}
+}
+
+/* Cola */
+.jr-qrow{display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:var(--radius,8px);cursor:pointer;transition:background .18s}
+.jr-qrow:hover{background:var(--ob-bg-2)}
+.jr-qart{width:40px;height:40px;border-radius:var(--radius-sm,6px);flex:0 0 auto}
+.jr-qart .jr-viz{height:14px}
+.jr-qrow .jr-rmeta b{-webkit-line-clamp:1}
+.jr-qdur{font:500 var(--text-2xs,10px) var(--font-mono);color:var(--ob-fg-4);flex:0 0 auto}
+
+/* Estaciones — foto de fondo (generadas con IA) + overlay para legibilidad */
+.jr-station{position:relative;aspect-ratio:1.5/1;border-radius:var(--radius-lg,12px);border:1px solid transparent;overflow:hidden;
+  display:flex;flex-direction:column;justify-content:flex-end;align-items:flex-start;gap:2px;padding:10px 12px;cursor:pointer;color:#fff;
+  background-color:var(--ob-bg-3);background-size:cover;background-position:center;
+  transition:transform .18s cubic-bezier(.34,1.56,.64,1),border-color .18s,box-shadow .18s}
+.jr-station::after{content:"";position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(to top, oklch(0% 0 0 / .78) 3%, oklch(0% 0 0 / .22) 46%, oklch(0% 0 0 / .05));
+  transition:background .18s ease}
+.jr-station:hover{transform:translateY(-3px);border-color:oklch(100% 0 0 / .35);box-shadow:var(--shadow-2)}
+.jr-station:hover::after{background:linear-gradient(to top, oklch(0% 0 0 / .68) 3%, oklch(0% 0 0 / .12) 50%, transparent)}
+.jr-station>span{position:relative;z-index:2}
+.jr-st-name{font:600 var(--text-sm,12px) var(--font-ui);text-shadow:0 1px 5px oklch(0% 0 0 / .85)}
+.jr-st-tag{font:500 var(--text-2xs,10px) var(--font-mono);letter-spacing:.06em;text-transform:uppercase;color:oklch(100% 0 0 / .82);text-shadow:0 1px 4px oklch(0% 0 0 / .85)}
+.jr-st-lofi{background-image:url(stations/lofi.webp)}
+.jr-st-synth{background-image:url(stations/synth.webp)}
+.jr-st-focus{background-image:url(stations/focus.webp)}
+.jr-st-jazz{background-image:url(stations/jazz.webp)}
+.jr-st-chill{background-image:url(stations/chill.webp)}
+.jr-st-piano{background-image:url(stations/piano.webp)}
+
+/* ── Vista de canal ── */
+.jr-channel{display:flex;flex-direction:column;min-height:0;flex:1 1 auto;animation:jr-chan .26s cubic-bezier(.22,1,.36,1)}
+.jr-channel[hidden]{display:none}
+@keyframes jr-chan{from{opacity:0;transform:translateX(12px)}to{opacity:1;transform:none}}
+.jr-cv-head{display:flex;align-items:center;gap:11px;padding:2px 14px 12px}
+.jr-cv-back{width:30px;height:30px;border-radius:var(--radius-btn,7px);border:0;background:var(--ob-bg-2);color:var(--ob-fg-2);
+  display:grid;place-items:center;cursor:pointer;flex:0 0 auto;transition:all .18s cubic-bezier(.4,0,.2,1)}
+.jr-cv-back:hover{background:var(--ob-bg-3);color:var(--ob-fg-0)}
+.jr-cv-back svg{width:16px;height:16px}
+.jr-cv-av{width:44px;height:44px;border-radius:50%;flex:0 0 auto;overflow:hidden;box-shadow:0 0 0 1px var(--ob-line-2);
+  background:linear-gradient(135deg,var(--ob-accent),var(--ob-info))}
+.jr-cv-av img{width:100%;height:100%;object-fit:cover;display:block}
+.jr-cv-meta{min-width:0;flex:1;display:flex;flex-direction:column;gap:3px}
+.jr-cv-meta b{font:600 var(--text-md,15px) var(--font-ui);color:var(--ob-fg-0);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.jr-cv-meta span{font:400 var(--text-2xs,10px) var(--font-ui);color:var(--ob-fg-3);display:flex;align-items:center;gap:6px}
+.jr-cv-meta span svg{width:12px;height:12px}
+.jr-cv-play{position:relative;flex:0 0 auto;display:inline-flex;align-items:center;gap:6px;padding:7px 13px;border-radius:var(--radius-pill,999px);
+  border:0;color:#fff;font:600 var(--text-xs,11px) var(--font-ui);cursor:pointer;
+  background:linear-gradient(180deg, var(--ob-accent-fg), var(--ob-accent) 52%, var(--ob-accent-dim));
+  box-shadow:0 4px 12px -4px var(--ob-accent-glow), 0 1px 0 oklch(100% 0 0 / .38) inset, 0 0 0 1px var(--ob-accent-24);
+  transition:transform .18s cubic-bezier(.4,0,.2,1),box-shadow .18s}
+.jr-cv-play:hover{transform:translateY(-1px)}
+.jr-cv-play svg{width:13px;height:13px;filter:drop-shadow(0 1px 1px oklch(0% 0 0 / .35))}
+
+/* Cuando el arte tiene miniatura, el visualizer pasa a badge (esquina); si no,
+   queda centrado (pulsa desde el centro, simétrico). */
+.jr-art:has(img) .jr-viz{position:absolute;left:4px;bottom:4px;height:9px;gap:1.5px;padding:2px 3px;
+  border-radius:var(--radius-pill,999px);background:oklch(0% 0 0 / .42);backdrop-filter:blur(4px)}
+.jr-art:has(img) .jr-viz i{width:2px}
+.jr-mini .jr-art:has(img) .jr-viz{display:none}
+.jr-now .jr-art:has(img) .jr-viz{left:7px;bottom:7px;height:12px}
+.jr-now .jr-art:has(img) .jr-viz i{width:2.5px}
+
+@media (prefers-reduced-motion: reduce){
+  .jr-viz.on i,.jr-livewrap .jr-eq.on i,.jr-wave.on i,.jr-now.playing .jr-art,.jr-tp-btn.pop svg{animation:none}
+  .jr-viz.on i{transform:scaleY(.7)}
+  .jr-wave.on i{transform:scaleY(.5)}
+  /* Sin goma ni deslizamientos: los cambios son instantáneos (radio.js también
+     apaga el overflow elástico leyendo esta media query) */
+  .jr-seek-fill,.jr-seek-knob,.jr-vol-fill,.jr-vol-track,.jr-seek-bar::before,.jr-seg::before,.jr-seek-bub{transition:none}
+}

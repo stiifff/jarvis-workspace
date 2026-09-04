@@ -1,0 +1,55 @@
+# Jarvis Workspace — orquestación local con Docker Compose.
+#
+# Uso:
+#   cp .env.example .env      # editá PROYECTOS_DIR (y opcionalmente la API key)
+#   docker compose up -d --build
+#   docker compose logs -f    # mirá el TOKEN DE ACCESO que imprime al arrancar
+#   # abrí http://localhost:3000 y pegá el token la primera vez
+#
+# (compose v2: sin clave `version:`, está obsoleta)
+
+services:
+  jarvis:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: jarvis-workspace:latest
+    container_name: jarvis-workspace
+    # init=true → PID 1 que reapea zombies. Jarvis spawnea MUCHOS subprocesos
+    # (tmux, git, node, chromium, ffmpeg); sin un init se acumulan defunct.
+    init: true
+    restart: unless-stopped
+    # Chromium crashea con el /dev/shm default de Docker (64 MB). 1 GB es holgado.
+    shm_size: "1gb"
+    ports:
+      # Con Docker Desktop el mapeo de puerto SÍ funciona aun en WSL (resuelve el
+      # dolor de que WSL no reenvía puertos nuevos a Windows). host:contenedor.
+      - "3000:3000"
+    env_file:
+      - .env
+    volumes:
+      # 1) HOME del contenedor (named volume) → AUTH de los CLIs de agente
+      #    (~/.claude, ~/.config, CODEX_HOME, etc.). El usuario vincula sus
+      #    cuentas DESDE la UI (⚙ → Cuentas, login en PTY); persisten reinicios.
+      #    NO se monta el ~/.claude del host: la auth vive solo en este volumen.
+      - jarvis_home:/root
+      # 2) Estado local de la app (SQLite jarvis.db + jarvis_token.txt + perfil
+      #    del browser remoto + secretos de cuentas). Bind a ./data para que lo
+      #    veas/respaldés desde el host. Se auto-crea y auto-bootstrapea vacío.
+      - ./data:/app/data
+      # 3) Directorio de PROYECTOS del usuario (su código). Configurable por la
+      #    env var PROYECTOS_DIR del .env. DENTRO del contenedor queda en
+      #    /proyectos → al crear un proyecto en la UI, usá rutas como
+      #    /proyectos/mi-app. Default ./proyectos si no se setea.
+      - ${PROYECTOS_DIR:-./proyectos}:/proyectos
+    healthcheck:
+      # /api/health es ruta ABIERTA (sin token). start_period holgado por el
+      # arranque (precarga de Whisper, reconciliación de tmux, etc.).
+      test: ["CMD", "curl", "-fsS", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+volumes:
+  jarvis_home:

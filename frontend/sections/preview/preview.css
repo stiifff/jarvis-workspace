@@ -1,0 +1,743 @@
+/* ─── Web Preview (pestaña del Panel Único) ─────────────────────────────── */
+/* Tokens --ob-* siempre. Sin backdrop-filter (convive con terminales vivas). */
+
+/* display/flex/height los aporta la base .jw-pane — NO redeclararlos acá: un
+   selector de ID pisaría a `.jw-pane[hidden] { display:none }` (mayor
+   especificidad) y el pane quedaría renderizado aunque esté oculto, filtrándose
+   detrás de otros panes (p.ej. la toolbar del preview asomando bajo el panel
+   móvil cuando el dock es más ancho que el teléfono). Solo lo propio: */
+#jw-pane-preview {
+  min-height: 0;
+  background: var(--ob-bg-1);
+  position: relative;   /* ancla del panel flotante de la Radio */
+  /* El dock cambia de ancho (lateral ~300-320px ⇄ maximizado a todo el ancho):
+     el chrome se adapta con @container por ANCHO, no por viewport. Mismo idioma
+     que review.css / editor.css / orchestrator.css. */
+  container-type: inline-size;
+}
+
+/* Barra de herramientas (omnibar estilo browser — look Nave, piel Glass Pro:
+   gradiente translúcido + bisel superior; NUNCA backdrop-filter). */
+.wp-bar {
+  flex: 0 0 40px;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  padding: 0 var(--sp-2);
+  background: linear-gradient(180deg,
+    color-mix(in oklch, var(--ob-bg-2) 55%, var(--ob-bg-1)),
+    var(--ob-bg-1));
+  border-bottom: 1px solid var(--ob-line-1);
+  box-shadow: inset 0 1px 0 var(--ob-glass-hi);
+  position: relative;   /* ancla del popover de disposiciones */
+  z-index: 5;           /* el popover cae sobre el body (iframes) */
+}
+
+.wp-nav {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px; height: 30px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--ob-fg-2);
+  cursor: pointer;
+  transition: background .12s ease, color .12s ease, transform .12s ease;
+}
+.wp-nav:hover:not(:disabled) { background: var(--ob-bg-3); color: var(--ob-fg-0); }
+.wp-nav:active:not(:disabled) { transform: translateY(1px); }
+.wp-nav:disabled { color: var(--ob-fg-4); cursor: default; }
+
+/* Overflow ⋯ — DEFAULT (dock ancho / maximizado): sin colapso. El tray fluye
+   inline en la barra (display:contents ⇒ sus botones actúan como hijos directos,
+   gana sobre [hidden]); el kebab y las etiquetas quedan ocultos. El @container
+   del final invierte esto cuando el dock está angosto. */
+.wp-more-tray { display: contents; }
+.wp-more-btn  { display: none; }
+.wp-nav-lbl   { display: none; }
+
+/* Omnibar: pill redondeada con lupa (búsqueda o URL) — firma del chrome Nave.
+   Pozo de vidrio: fondo hundido con sombra interna; el foco enciende un halo
+   de acento suave (glow, nunca rectángulo). */
+.wp-omni {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  height: 30px;
+  padding: 0 var(--sp-3);
+  border-radius: var(--radius-pill);
+  background: linear-gradient(180deg,
+    var(--ob-bg-void),
+    color-mix(in oklch, var(--ob-bg-void) 86%, var(--ob-bg-2)));
+  border: 1px solid var(--ob-line-2);
+  box-shadow: inset 0 1px 2px var(--ob-glass-lo);
+  transition: border-color .12s ease, box-shadow .18s ease;
+}
+.wp-omni:hover { border-color: var(--ob-line-3); }
+.wp-omni:focus-within {
+  border-color: var(--ob-accent-24);
+  box-shadow: inset 0 1px 2px var(--ob-glass-lo),
+              0 0 0 3px var(--ob-accent-08),
+              0 0 18px -6px var(--ob-accent-glow);
+}
+.wp-omni:has(.wp-url.error) { border-color: var(--ob-err); }
+.wp-omni-lupa { display: inline-flex; flex-shrink: 0; color: var(--ob-fg-3); }
+.wp-omni-lupa svg { width: 14px; height: 14px; }
+
+/* Chip LOCAL: la pestaña activa es un servidor local vivo (dev server del
+   agente / demo de Jarvis). Punto que respira + etiqueta mono. */
+.wp-omni-local {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 18px;
+  padding: 0 7px;
+  border-radius: var(--radius-pill);
+  background: var(--ob-run-08);
+  border: 1px solid color-mix(in oklch, var(--ob-run) 30%, transparent);
+  color: var(--ob-run);
+  font: 700 9px/1 var(--font-mono);
+  letter-spacing: .08em;
+  user-select: none;
+}
+.wp-omni-local[hidden] { display: none; }
+.wp-omni-local b { font: inherit; }
+.wp-omni-local i {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--ob-run);
+  box-shadow: 0 0 6px color-mix(in oklch, var(--ob-run) 60%, transparent);
+  animation: wp-vivo 2.2s var(--ease-in-out) infinite;
+}
+@keyframes wp-vivo {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: .45; }
+}
+
+.wp-url {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ob-fg-0);
+  font: 400 var(--text-base) var(--font-ui);
+  outline: none;
+}
+.wp-url::placeholder { color: var(--ob-fg-3); }
+/* Estado de error: shake (solo transform); el borde rojo va en .wp-omni */
+.wp-url.error { animation: wp-shake 240ms ease; }
+@keyframes wp-shake {
+  0%   { transform: translateX(0);   }
+  20%  { transform: translateX(-2px);}
+  40%  { transform: translateX(2px); }
+  60%  { transform: translateX(-2px);}
+  80%  { transform: translateX(2px); }
+  100% { transform: translateX(0);   }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wp-url.error,
+  .wp-omni-local i,
+  .wp-empty-icon,
+  .wp-empty-icon::after,
+  .wp-loading-barra::before,
+  .wp-lg,
+  .wp-more-tray { animation: none; }
+}
+
+/* Cuerpo: GRILLA de paneles (split). Cada pestaña vive en una .wp-cell que se
+   ubica en un área (a/b/c/d). Single = grilla de 1 celda (idéntico a antes). */
+.wp-body {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--ob-bg-0);
+  display: grid;
+  gap: 0;
+}
+.wp-body[data-split="1"] { gap: 6px; padding: 6px; background: var(--ob-bg-1); }
+
+/* Celda = un panel del split. NUNCA se reparenta (el iframe no recarga). */
+.wp-cell {
+  position: relative;
+  min-width: 0; min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: var(--ob-bg-0);
+}
+.wp-cell[hidden] { display: none; }
+.wp-body[data-split="1"] .wp-cell {
+  border: 1px solid var(--ob-line-1);
+  border-radius: var(--radius);
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+.wp-body[data-split="1"] .wp-cell.foco {
+  border-color: var(--ob-accent-24);
+  box-shadow: 0 0 0 1px var(--ob-accent-24), 0 0 22px -8px var(--ob-accent-glow);
+}
+.wp-cell-stage {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--ob-bg-0);
+}
+
+/* Head del panel: solo visible en split (en single manda la barra de arriba).
+   Piel Glass Pro; el foco tiñe el head con el acento. */
+.wp-cell-head { display: none; }
+.wp-body[data-split="1"] .wp-cell-head {
+  flex: 0 0 24px;
+  display: flex; align-items: center; gap: var(--sp-1);
+  padding: 0 2px 0 var(--sp-2);
+  background: linear-gradient(180deg,
+    color-mix(in oklch, var(--ob-bg-3) 70%, var(--ob-bg-2)),
+    var(--ob-bg-2));
+  box-shadow: inset 0 1px 0 var(--ob-glass-hi);
+  border-bottom: 1px solid var(--ob-line-1);
+  cursor: pointer;
+}
+.wp-body[data-split="1"] .wp-cell.foco .wp-cell-head {
+  background: linear-gradient(180deg,
+    color-mix(in oklch, var(--ob-accent) 12%, var(--ob-bg-3)),
+    var(--ob-bg-2));
+}
+.wp-cell-url {
+  flex: 1 1 auto; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font: 400 10px var(--font-mono); color: var(--ob-fg-3);
+}
+.wp-cell.foco .wp-cell-url { color: var(--ob-fg-1); }
+.wp-cell-max, .wp-cell-cerrar {
+  flex: 0 0 auto;
+  width: 18px; height: 18px;
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 0; border: 0; border-radius: var(--radius-sm);
+  background: transparent; color: var(--ob-fg-4);
+  font: 400 13px/1 var(--font-ui); cursor: pointer;
+  transition: background .12s ease, color .12s ease;
+}
+.wp-cell-max:hover, .wp-cell-cerrar:hover { background: var(--ob-bg-4); color: var(--ob-fg-0); }
+
+/* Galería de disposiciones (popover del botón de layout) — panel glass con
+   entrada snap (fade + caída corta). */
+.wp-lg {
+  position: absolute;
+  top: calc(100% + 4px); right: var(--sp-1);
+  z-index: 20;
+  width: 216px; padding: var(--sp-2);
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--sp-1);
+  background: linear-gradient(180deg,
+    color-mix(in oklch, var(--ob-bg-2) 78%, var(--ob-bg-1)),
+    var(--ob-bg-1));
+  border: 1px solid var(--ob-line-2);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-pop), inset 0 1px 0 var(--ob-glass-hi);
+  animation: wp-pop var(--dur-2) var(--ease-snap);
+}
+.wp-lg[hidden] { display: none; }
+@keyframes wp-pop {
+  from { opacity: 0; transform: translateY(-4px) scale(.98); }
+  to   { opacity: 1; transform: none; }
+}
+.wp-lg-cell {
+  display: flex; flex-direction: column; align-items: center; gap: 5px;
+  padding: 7px 3px 5px;
+  border: 1px solid var(--ob-line-1);
+  border-radius: var(--radius-sm);
+  background: var(--ob-bg-2); color: var(--ob-fg-3);
+  cursor: pointer;
+  transition: background .12s ease, border-color .12s ease, color .12s ease;
+}
+.wp-lg-cell:hover { background: var(--ob-bg-3); border-color: var(--ob-line-3); color: var(--ob-fg-1); }
+.wp-lg-cell.activo { background: var(--ob-accent-14); border-color: var(--ob-accent-24); color: var(--ob-accent-fg); }
+.wp-lg-cell > span:last-child { font: 500 9px var(--font-ui); }
+.wp-lg-mini { width: 40px; height: 28px; display: grid; gap: 2px; color: currentColor; }
+.wp-lg-mini i { background: currentColor; border-radius: 1px; opacity: .85; }
+.wp-lg-mini i:nth-child(1) { grid-area: a; } .wp-lg-mini i:nth-child(2) { grid-area: b; }
+.wp-lg-mini i:nth-child(3) { grid-area: c; } .wp-lg-mini i:nth-child(4) { grid-area: d; }
+.wp-lg-1  { grid-template: "a" 1fr / 1fr; }
+.wp-lg-2c { grid-template: "a b" 1fr / 1fr 1fr; }
+.wp-lg-2r { grid-template: "a" 1fr "b" 1fr / 1fr; }
+.wp-lg-3c { grid-template: "a b c" 1fr / 1fr 1fr 1fr; }
+.wp-lg-3L { grid-template: "a b" 1fr "a c" 1fr / 1.4fr 1fr; }
+.wp-lg-3T { grid-template: "a b" 1fr "c c" 1fr / 1fr 1fr; }
+.wp-lg-4  { grid-template: "a b" 1fr "c d" 1fr / 1fr 1fr; }
+.wp-lg-4c { grid-template: "a b c d" 1fr / repeat(4, 1fr); }
+.wp-lg-4L { grid-template: "a b" 1fr "a c" 1fr "a d" 1fr / 1.5fr 1fr; }
+
+/* Iframe: fondo NEGRO fijo (independiente del tema — pedido del usuario) + color-scheme
+   dark, para que TODO lo que el navegador pinta "por defecto" salga oscuro en vez de
+   blanco: el flash de carga, about:blank y las páginas de error propias del navegador
+   (ERR_CONNECTION_REFUSED "localhost rechazó la conexión", DNS, etc.). Las páginas que
+   SÍ eligen su fondo lo siguen respetando; solo desaparece el blanco default. Hex fijo a
+   propósito: el requerimiento es "siempre negro" sin importar el tema. NUNCA se anima width. */
+.wp-iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: #000;
+  color-scheme: dark;
+}
+.wp-iframe[hidden] { display: none; }
+
+/* Estados empty / fallback: centrados, premium con glow ambiental (Nave) */
+.wp-empty,
+.wp-fallback {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-4);
+  padding: var(--sp-8) var(--sp-6);
+  text-align: center;
+}
+.wp-empty {
+  background:
+    radial-gradient(64% 52% at 50% 34%, var(--ob-accent-08), transparent 70%),
+    radial-gradient(46% 38% at 84% 100%, var(--ob-aurora-2), transparent 70%),
+    radial-gradient(40% 34% at 10% 92%, var(--ob-aurora-1), transparent 72%);
+}
+/* Grilla de puntos sutil detrás del hero (se desvanece hacia los bordes) */
+.wp-empty::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(color-mix(in oklch, var(--ob-fg-3) 16%, transparent) 1px, transparent 1px);
+  background-size: 22px 22px;
+  -webkit-mask-image: radial-gradient(72% 62% at 50% 40%, #000, transparent 82%);
+  mask-image: radial-gradient(72% 62% at 50% 40%, #000, transparent 82%);
+  pointer-events: none;
+}
+.wp-empty > * { position: relative; }   /* el contenido flota sobre la grilla */
+.wp-empty[hidden],
+.wp-fallback[hidden] { display: none; }
+
+.wp-empty-icon,
+.wp-fallback-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 66px; height: 66px;
+  border-radius: var(--radius-pill);
+  position: relative;
+}
+.wp-empty-icon {
+  color: var(--ob-accent-fg);
+  background: radial-gradient(circle at 50% 34%, var(--ob-accent-14), var(--ob-bg-2));
+  border: 1px solid var(--ob-accent-24);
+  box-shadow: 0 0 0 6px var(--ob-accent-08), 0 0 34px -8px var(--ob-accent-glow), inset 0 1px 0 var(--ob-glass-hi);
+  animation: wp-flotar 6s var(--ease-in-out) infinite;
+}
+/* Anillo orbital punteado que gira lento alrededor del globo */
+.wp-empty-icon::after {
+  content: '';
+  position: absolute;
+  inset: -13px;
+  border-radius: 50%;
+  border: 1px dashed var(--ob-accent-24);
+  animation: wp-orbita 28s linear infinite;
+}
+.wp-empty-icon svg { width: 30px; height: 30px; }
+@keyframes wp-flotar {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-6px); }
+}
+@keyframes wp-orbita { to { transform: rotate(360deg); } }
+.wp-fallback-icon {
+  color: var(--ob-err);
+  background: radial-gradient(circle at 50% 34%, var(--ob-err-08), var(--ob-bg-2));
+  border: 1px solid color-mix(in oklch, var(--ob-err) 30%, transparent);
+  box-shadow: 0 0 0 6px color-mix(in oklch, var(--ob-err) 5%, transparent);
+}
+
+.wp-empty h2,
+.wp-fallback h2 {
+  margin: 0;
+  font: 600 var(--text-md) var(--font-ui);
+  letter-spacing: -0.01em;
+  color: var(--ob-fg-0);
+}
+.wp-empty p,
+.wp-fallback p {
+  margin: 0;
+  max-width: 340px;
+  font: 400 var(--text-sm)/1.6 var(--font-ui);
+  color: var(--ob-fg-2);
+}
+.wp-empty code,
+.wp-fallback code {
+  padding: 1px 5px;
+  border-radius: var(--radius-sm);
+  background: var(--ob-bg-2);
+  border: 1px solid var(--ob-line-1);
+  font: 400 var(--text-xs) var(--font-mono);
+  color: var(--ob-accent-fg);
+}
+
+/* Chips del empty state: accesos directos a búsqueda web / YouTube */
+.wp-empty-chips {
+  display: flex;
+  gap: var(--sp-2);
+  margin-top: var(--sp-2);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.wp-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-4);
+  border: 1px solid var(--ob-line-2);
+  border-radius: var(--radius-pill);
+  background: linear-gradient(180deg, var(--ob-bg-3), var(--ob-bg-2));
+  box-shadow: inset 0 1px 0 var(--ob-glass-hi);
+  color: var(--ob-fg-1);
+  font: 500 var(--text-sm) var(--font-ui);
+  cursor: pointer;
+  transition: background .12s ease, border-color .12s ease, color .12s ease, transform .12s ease, box-shadow .18s ease;
+}
+.wp-chip:hover {
+  background: linear-gradient(180deg, var(--ob-bg-4), var(--ob-bg-3));
+  border-color: var(--ob-accent-24);
+  color: var(--ob-fg-0);
+  transform: translateY(-1px);
+  box-shadow: inset 0 1px 0 var(--ob-glass-hi), 0 6px 16px -8px var(--ob-accent-glow);
+}
+.wp-chip svg { color: var(--ob-fg-3); pointer-events: none; }
+.wp-chip:hover svg { color: var(--ob-accent-fg); }
+
+/* CTAs del fallback */
+.wp-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  margin-top: var(--sp-1);
+  padding: var(--sp-2) var(--sp-5);
+  border: 1px solid var(--ob-line-2);
+  border-radius: var(--radius);
+  background: var(--ob-bg-3);
+  color: var(--ob-fg-0);
+  font: 500 var(--text-sm) var(--font-ui);
+  cursor: pointer;
+  transition: background .12s ease, border-color .12s ease;
+}
+.wp-cta:hover { background: var(--ob-bg-4); border-color: var(--ob-line-3); }
+.wp-cta.primario {
+  background: var(--ob-accent);
+  border-color: var(--ob-accent);
+  color: var(--ob-on-accent);
+  box-shadow: inset 0 1px 0 var(--ob-bevel-accent), 0 4px 14px -6px var(--ob-accent-glow);
+}
+.wp-cta.primario:hover { background: var(--ob-accent-dim); border-color: var(--ob-accent-dim); }
+.wp-cta svg { color: currentColor; opacity: .85; }
+
+/* Capa de loading: barra de progreso FINA arriba (estilo browser) — el
+   contenido que ya está cargado sigue visible, sin velo encima. */
+.wp-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  pointer-events: none;
+  z-index: 4;
+}
+.wp-loading[hidden] { display: none; }
+.wp-loading .ob-spinner { display: none; }
+.wp-loading-barra {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  overflow: hidden;
+}
+.wp-loading-barra::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    var(--ob-accent) 35%,
+    var(--ob-accent-fg) 50%,
+    var(--ob-accent) 65%,
+    transparent 100%);
+  box-shadow: 0 0 12px var(--ob-accent-glow);
+  animation: wp-progreso 1.15s var(--ease-in-out) infinite;
+}
+@keyframes wp-progreso {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(100%); }
+}
+
+/* ── Fila de pestañas (estilo browser) ──────────────────────────────────── */
+/* Tokens --ob-* siempre; sin animaciones de width (regla xterm). */
+.wp-tabs {
+  flex: 0 0 34px;
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  padding: 4px var(--sp-1) 0;
+  background: linear-gradient(180deg, var(--ob-bg-void), var(--ob-bg-0));
+  border-bottom: 1px solid var(--ob-line-1);
+  overflow-x: auto;
+  scrollbar-width: none;            /* muchas pestañas → scroll sin barra */
+}
+.wp-tabs::-webkit-scrollbar { display: none; }
+
+.wp-tab {
+  position: relative;
+  /* Reparten el ancho en partes iguales: crecen hasta 'max' cuando son pocas
+     y se comprimen hasta el chip-ícono (min) cuando son muchas / el dock es
+     angosto — el favicon SIEMPRE entra, no se empuja al scroll. */
+  flex: 1 1 0;
+  min-width: 30px;
+  max-width: 168px;
+  /* Container query POR pestaña: cada una decide, según SU propio ancho, si
+     muestra el título o queda como chip-ícono (ver @container abajo). */
+  container-type: inline-size;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 0 4px 0 var(--sp-2);
+  border: 1px solid transparent;
+  border-bottom: 0;
+  border-radius: var(--radius) var(--radius) 0 0;
+  color: var(--ob-fg-2);
+  font: 400 var(--text-sm) var(--font-ui);
+  cursor: pointer;
+  overflow: hidden;
+  user-select: none;
+  transition: background .12s ease, color .12s ease;
+}
+.wp-tab:hover { background: var(--ob-bg-2); color: var(--ob-fg-1); }
+.wp-tab.activa {
+  /* La pestaña activa se reserva ancho para SÍ mostrar título + ×; las demás
+     se comprimen a chip-ícono. Así el × nunca pisa el favicon/título propios.
+     Piel Glass Pro: gradiente con un toque de acento + bisel superior. */
+  min-width: 88px;
+  background: linear-gradient(180deg,
+    color-mix(in oklch, var(--ob-accent) 7%, var(--ob-bg-3)),
+    var(--ob-bg-2));
+  border-color: var(--ob-line-1);
+  box-shadow: inset 0 1px 0 var(--ob-glass-hi);
+  color: var(--ob-fg-0);
+}
+.wp-tab.activa::after {             /* subrayado de acento (look Nave) */
+  content: '';
+  position: absolute;
+  left: var(--sp-2); right: var(--sp-2); bottom: -1px;
+  height: 2px; border-radius: 2px;
+  background: var(--ob-accent);
+  box-shadow: 0 0 8px var(--ob-accent-glow);
+}
+
+/* Favicon del sitio (img real con fallback a inicial coloreada / globo). Es lo
+   ÚLTIMO que se sacrifica al comprimir: flex 0 0 + min-width fijo ⇒ nunca se
+   encoge ni se recorta, cualquiera sea el ancho de la pestaña. */
+.wp-tab-fav {
+  flex: 0 0 auto;
+  width: 15px; height: 15px;
+  min-width: 15px;
+  border-radius: 4px;
+  display: grid; place-items: center;
+  overflow: hidden;
+  font: 700 8px var(--font-ui); color: #fff;
+}
+.wp-tab-fav img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.wp-tab-fav svg { width: 12px; height: 12px; }   /* globo de pestaña sin sitio */
+.wp-tab-fav-blank { background: var(--ob-bg-4); color: var(--ob-fg-3); }
+
+.wp-tab-titulo {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+}
+/* El título deja hueco para el × SOLO cuando el × se muestra (hover/activa):
+   así una pestaña comprimida a ícono no reserva ancho muerto para el botón. */
+.wp-tab:hover .wp-tab-titulo,
+.wp-tab.activa .wp-tab-titulo { padding-right: 16px; }
+
+/* Cerrar: overlay anclado a la derecha, FUERA del flujo flex. Al no ocupar
+   ancho no infla el mínimo de la pestaña (más favicons entran sin scroll) y
+   nunca queda recortado por el overflow como cuando era inline. */
+.wp-tab-cerrar {
+  position: absolute;
+  right: 3px; top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 17px; height: 17px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--ob-fg-3);
+  font: 400 14px/1 var(--font-ui);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity .12s ease, background .12s ease, color .12s ease;
+}
+.wp-tab:hover .wp-tab-cerrar,
+.wp-tab.activa .wp-tab-cerrar { opacity: 1; }
+.wp-tab-cerrar:hover { background: var(--ob-bg-4); color: var(--ob-fg-0); }
+
+/* Chip-ícono: cuando la pestaña se comprime (muchas pestañas / dock angosto) el
+   título ya no cabría más que como un carácter suelto → lo escondemos y dejamos
+   SOLO el favicon, centrado y limpio. El × también se oculta (click para activar
+   y ahí sí aparece título + ×). OJO: el @container mide el CONTENT-BOX (ancho −
+   padding 12px − borde 2px), no el border-box. La activa (mín 88/76px border ⇒
+   content 74/62px) queda por ENCIMA de 50, así que jamás cae acá: siempre lleva
+   título; las inactivas comprimidas (≈41px border ⇒ content ≈27px) sí caen. */
+@container (max-width: 50px) {
+  .wp-tab-titulo { display: none; }
+  .wp-tab-cerrar { display: none; }
+  /* margin auto centra el favicon en el chip (es el único flex-item visible).
+     Va sobre el favicon —descendiente— porque una regla sobre .wp-tab miraría
+     el ancho del PANE, no el de la pestaña. */
+  .wp-tab-fav { margin-inline: auto; }
+}
+
+.wp-tab-new {
+  flex: 0 0 auto;
+  align-self: center;
+  width: 26px; height: 26px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--ob-fg-3);
+  font: 400 16px/1 var(--font-ui);
+  cursor: pointer;
+  transition: background .12s ease, color .12s ease;
+}
+.wp-tab-new:hover { background: var(--ob-bg-2); color: var(--ob-fg-0); }
+
+/* 🌙 dark forzado del iframe: invert + hue-rotate (los matices se conservan,
+   las imágenes quedan invertidas — por eso es opt-in). El fondo del iframe
+   pasa a oscuro para que el flash de carga tampoco sea blanco. */
+.wp-iframe.wp-dark-forzado {
+  filter: invert(1) hue-rotate(180deg);
+  background: #111;
+}
+.wp-nav.activo { background: var(--ob-accent-14); color: var(--ob-fg-0); }
+
+/* ── Reorden de pestañas por arrastre (mantener y mover) ──────────────
+   La arrastrada sigue al puntero SIN transición en transform (inline, va
+   pegada al mouse) y flota sobre la fila; las demás se corren en vivo con
+   una transición corta. */
+.wp-tabs.reordenando .wp-tab {
+  /* corrimiento de las vecinas: curva suave con llegada amortiguada */
+  transition: background .12s ease, color .12s ease, transform .18s cubic-bezier(.2, .7, .3, 1);
+}
+.wp-tab.arrastrando {
+  transition: background .12s ease, color .12s ease;   /* transform: ninguna */
+  z-index: 3;
+  cursor: grabbing;
+  background: var(--ob-bg-2);
+  box-shadow: var(--shadow-1);
+  opacity: .95;
+}
+
+/* .wp-nav con [hidden] debe ocultarse (vs .wp-nav{display:inline-flex}) */
+.wp-nav[hidden] { display: none; }
+
+/* ── Foco: sin rectángulo feo dentro de los pills ───────────────────────────
+   Los inputs que viven dentro de un contenedor pill (.wp-omni)
+   NO deben dibujar su propio ring: el foco lo marca el pill con :focus-within.
+   Si no, aparece un rectángulo dentro del borde redondeado (muy feo). */
+.wp-url:focus, .wp-url:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* ═══ DOCK ANGOSTO (lateral, ≤430px): chrome compacto ═══════════════════════
+   El Web Preview vive dos vidas: pegado al costado derecho (dock ~300-320px) o
+   maximizado a todo el ancho. El look Nave se diseñó a ancho completo y a 300px
+   la omnibar quedaba aplastada (los 7 botones fijos se comían la URL). Acá el
+   chrome se adapta AL ANCHO DEL PANE (container query, no viewport): la omnibar
+   sigue siendo lo primario y las 3 acciones secundarias (abrir-afuera / fondo
+   oscuro / dividir) se colapsan en el popover del kebab ⋯. Por encima de 430px
+   todo vuelve a su forma completa (ver reglas .wp-more-* base). */
+@container (max-width: 430px) {
+  /* Barra más apretada + botones un punto más chicos → aire para la URL */
+  .wp-bar { gap: 2px; padding: 0 var(--sp-1); }
+  .wp-nav { width: 28px; height: 28px; }
+  /* Menos chrome interno en la omnibar para que el input nunca caiga por
+     debajo de su mínimo usable con el dock angosto. */
+  .wp-omni { padding: 0 var(--sp-2); gap: var(--sp-1); }
+  /* Chip LOCAL: en angosto queda solo el punto vivo (la etiqueta cede su
+     ancho a la URL); el title sigue contando qué es. */
+  .wp-omni-local { padding: 0 2px; border: 0; background: transparent; }
+  .wp-omni-local b { display: none; }
+
+  /* Aparece el kebab; el tray pasa de inline a popover vertical anclado a la barra */
+  .wp-more-btn { display: inline-flex; }
+  .wp-more-btn.activo { background: var(--ob-accent-14); color: var(--ob-fg-0); }
+  .wp-more-tray {
+    position: absolute;
+    top: calc(100% + 4px); right: var(--sp-1);
+    z-index: 20;
+    display: flex; flex-direction: column; gap: 2px;
+    min-width: 176px; padding: var(--sp-1);
+    background: linear-gradient(180deg,
+      color-mix(in oklch, var(--ob-bg-2) 78%, var(--ob-bg-1)),
+      var(--ob-bg-1));
+    border: 1px solid var(--ob-line-2);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-pop), inset 0 1px 0 var(--ob-glass-hi);
+    animation: wp-pop var(--dur-2) var(--ease-snap);
+  }
+  .wp-more-tray[hidden] { display: none; }
+  /* Items del popover: ícono + etiqueta, fila a todo el ancho */
+  .wp-more-tray .wp-nav {
+    width: 100%; height: auto; justify-content: flex-start;
+    gap: var(--sp-2); padding: var(--sp-2);
+    color: var(--ob-fg-1);
+  }
+  .wp-more-tray .wp-nav:hover:not(:disabled) { background: var(--ob-bg-3); color: var(--ob-fg-0); }
+  .wp-more-tray .wp-nav-lbl { display: inline; font: 400 var(--text-sm) var(--font-ui); white-space: nowrap; }
+
+  /* Pestañas: chip-ícono aún más compacto para que TODOS los favicons entren
+     en el dock lateral sin empujarse al scroll. La activa se afina a 76px para
+     dejar aire a los íconos vecinos ya a 300px (mínimo del dock). */
+  .wp-tab { min-width: 28px; max-width: 140px; }
+  .wp-tab.activa { min-width: 76px; }
+  .wp-tabs { gap: 1px; padding-inline: 2px; }
+
+  /* Empty / fallback: menos padding e ícono un poco menor (no ahogar el texto) */
+  .wp-empty, .wp-fallback { padding: var(--sp-6) var(--sp-4); gap: var(--sp-3); }
+  .wp-empty p, .wp-fallback p { font-size: var(--text-sm); }
+  .wp-empty-icon, .wp-fallback-icon { width: 56px; height: 56px; }
+  .wp-empty-icon svg { width: 26px; height: 26px; }
+  .wp-empty-chips { gap: var(--sp-2); }
+}
+
+/* ── Browse NATIVO  ─────────────────────────────────────────
+   Hueco que marca dónde va el webview hijo nativo del shell. El webview
+   real FLOTA por encima del DOM: este div solo define el rect (el vigilante
+   de native-browse.js lo mide) y da el fondo mientras la página arranca. */
+.wp-nativo {
+  position: absolute;
+  inset: 0;
+  background: var(--ob-bg-0);
+}
+.wp-nativo[hidden] { display: none; }

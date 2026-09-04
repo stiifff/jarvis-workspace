@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Jarvis Workspace</title>
+  <link rel="icon" href="/favicon.ico" sizes="48x48">
+  <link rel="icon" href="/static/shared/favicon.svg?v=1" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/static/shared/apple-touch-icon.png?v=1">
+  <!-- PWA: Jarvis instalable como app standalone (sin chrome del navegador ni ✕ de fullscreen). -->
+  <link rel="manifest" href="/manifest.webmanifest">
+  <meta name="theme-color" content="#0d0d12">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Instrument+Serif:ital@1&family=JetBrains+Mono:wght@400;500;600&display=swap">
+  <link rel="stylesheet" href="/static/shared/tokens.css?v=17">
+  <link rel="stylesheet" href="/static/sections/home/home.css?v=16">
+</head>
+<body>
+<script src="/static/shared/themes.js?v=9"></script>
+<script src="/static/shared/escala.js?v=4"></script>
+<script>window.JarvisThemes?.init?.(); window.JarvisEscala?.init?.();</script>
+
+<!-- Background atmospheric layer (fijo, no afecta layout).
+     .atmosphere-strands: cintas de luz WebGL detrás del hero (shared/strands.js);
+     si no hay WebGL2 queda solo la aurora estática de CSS. -->
+<div class="atmosphere" aria-hidden="true"><div class="atmosphere-strands" id="atmo-strands"></div></div>
+
+<div class="home">
+
+  <!-- ═══ TOP BAR (52px) ═══════════════════════════════════════ -->
+  <header class="hc-top">
+    <div class="hc-brand">
+      <div class="hc-mark" aria-hidden="true">J</div>
+      <span class="hc-brand-name">Jarvis</span>
+      <span class="hc-brand-divider">·</span>
+      <span class="hc-brand-sub">Workspace</span>
+    </div>
+
+    <div class="hc-actions">
+      <span class="hc-host" id="hc-host">localhost:3000</span>
+      <button class="hc-cta" id="btn-new-project" type="button">
+        <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true">
+          <line x1="7" y1="2.5" x2="7" y2="11.5"/>
+          <line x1="2.5" y1="7" x2="11.5" y2="7"/>
+        </svg>
+        <span>Nuevo proyecto</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- ═══ MAIN (centro 1280px max) ═══════════════════════════ -->
+  <main class="hc-main">
+
+    <!-- Hero compacto: 1 línea -->
+    <div class="hc-hero">
+      <h1 class="hc-hero-name" id="hc-greeting">Buenas tardes.</h1>
+      <div class="hc-hero-stats" id="hc-hero-stats">
+        <span><b id="stat-projects">0</b> proyectos</span>
+        <span class="hc-stat-dot">·</span>
+        <span class="live"><b id="stat-agents">0</b> agentes activos</span>
+      </div>
+    </div>
+
+    <!-- Toolbar: search + filtros -->
+    <div class="hc-toolbar">
+      <div class="hc-search">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+          <circle cx="11" cy="11" r="7"/>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+        <input type="text" id="hc-search-input"
+               placeholder="Buscar proyecto, branch o ruta…"
+               autocomplete="off" spellcheck="false" aria-label="Buscar proyectos">
+        <span class="hc-kbd">⌘K</span>
+      </div>
+
+      <div class="hc-filters" id="hc-filters" role="tablist">
+        <button class="hc-filter activo" data-filter="all" role="tab">
+          Todos <span class="hc-filter-count" data-count="all">0</span>
+        </button>
+        <button class="hc-filter" data-filter="pinned" role="tab">
+          Anclados <span class="hc-filter-count" data-count="pinned">0</span>
+        </button>
+        <button class="hc-filter" data-filter="active" role="tab">
+          Activos <span class="hc-filter-count" data-count="active">0</span>
+        </button>
+        <button class="hc-filter" data-filter="archived" role="tab">
+          Archivados <span class="hc-filter-count" data-count="archived">0</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Grid de proyectos (cards generadas por JS) -->
+    <div class="hc-grid" id="hc-grid" data-i18n-skip></div>
+
+    <!-- Empty state (visible si no hay proyectos) -->
+    <div class="hc-empty" id="hc-empty">
+      <div class="hc-empty-mark" aria-hidden="true">J</div>
+      <h2 class="hc-empty-title">Tu console está vacía.</h2>
+      <p class="hc-empty-text">
+        Conectá tu primera carpeta para empezar a orquestar agentes de IA en paralelo.
+      </p>
+      <button class="hc-cta" id="btn-new-project-empty" type="button">
+        <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true">
+          <line x1="7" y1="2.5" x2="7" y2="11.5"/>
+          <line x1="2.5" y1="7" x2="11.5" y2="7"/>
+        </svg>
+        <span>Nuevo proyecto</span>
+      </button>
+    </div>
+
+  </main>
+
+  <!-- ═══ FOOTER ═══════════════════════════════════════════════ -->
+  <footer class="hc-footer">
+    <div class="hc-footer-left">
+      <span>Jarvis Workspace</span>
+      <span class="hc-footer-dot" id="hc-footer-ver-sep" hidden>·</span>
+      <span id="hc-footer-ver" hidden></span>
+      <span class="hc-footer-dot">·</span>
+      <span id="hc-footer-host">localhost:3000</span>
+    </div>
+  </footer>
+
+</div>
+
+
+<script src="/static/shared/ui.js?v=11"></script>
+<script src="/static/shared/i18n.js?v=3"></script>
+<script src="/static/shared/i18n-dict.js?v=26"></script>
+<script src="/static/shared/strands.js?v=1"></script>
+<script src="/static/sections/home/bienvenida.js?v=2"></script>
+<script src="/static/sections/home/home.js?v=14"></script>
+<!-- Chrome de ventana de la APP (Jarvis.exe): minimizar/maximizar/cerrar, F11 y
+     arrastre. La app ATERRIZA acá, no en el workspace — sin esto la ventana
+     quedaba sin botones y sin poder moverse hasta entrar a un proyecto. En un
+     browser normal el módulo es no-op (no existe window.__shell). -->
+<script src="/static/shell/window-chrome.js?v=5"></script>
+</body>
+</html>

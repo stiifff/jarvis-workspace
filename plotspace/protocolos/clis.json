@@ -1,0 +1,84 @@
+[
+  {
+    "id": "claude",
+    "label": "Claude Code",
+    "modo": "claude",
+    "como_loguear": "claude → /login",
+    "cred_file": "~/.claude/.credentials.json",
+    "config_file": "~/.claude.json"
+  },
+  {
+    "id": "codex",
+    "label": "Codex",
+    "modo": "files",
+    "como_loguear": "codex login",
+    "_nota": "~/.codex está compartido con el sqlite de otro producto: SOLO auth.json",
+    "files": [
+      "$CODEX_HOME/auth.json"
+    ],
+    "principales": [
+      "$CODEX_HOME/auth.json"
+    ]
+  },
+  {
+    "id": "grok",
+    "label": "Grok Build",
+    "modo": "files",
+    "como_loguear": "grok (login en el primer arranque)",
+    "_nota": "Se llevan también los MCPs y las preferencias para que el switch no las mezcle entre cuentas.",
+    "files": [
+      "~/.grok/auth.json",
+      "~/.grok/mcp_credentials.json",
+      "~/.grok/settings.json"
+    ],
+    "principales": [
+      "~/.grok/auth.json"
+    ]
+  },
+  {
+    "id": "antigravity",
+    "label": "Antigravity",
+    "modo": "files",
+    "binario": true,
+    "como_loguear": "agy auth login",
+    "_nota": "agy guarda en su propia subcarpeta (no pisa al gemini CLI). credentials.enc es el formato LEGACY de 1.0.x, un blob binario: por eso `binario`, que hace copiar bytes crudos y no texto.",
+    "files": [
+      "~/.gemini/antigravity-cli/antigravity-oauth-token",
+      "~/.gemini/antigravity-cli/credentials.enc",
+      "~/.gemini/antigravity-cli/settings.json"
+    ],
+    "principales": [
+      "~/.gemini/antigravity-cli/antigravity-oauth-token",
+      "~/.gemini/antigravity-cli/credentials.enc"
+    ]
+  },
+  {
+    "id": "opencode",
+    "label": "OpenCode",
+    "modo": "files",
+    "como_loguear": "opencode auth login",
+    "files": [
+      "~/.local/share/opencode/auth.json",
+      "~/.local/share/opencode/mcp-auth.json"
+    ],
+    "principales": [
+      "~/.local/share/opencode/auth.json"
+    ]
+  },
+  {
+    "id": "qwen",
+    "label": "Qwen Code",
+    "modo": "files",
+    "como_loguear": "qwen (login en el primer arranque)",
+    "files": [
+      "~/.qwen/oauth_creds.json",
+      "~/.qwen/google_accounts.json",
+      "~/.qwen/.env"
+    ],
+    "principales": [
+      "~/.qwen/oauth_creds.json",
+      "~/.qwen/.env"
+    ],
+    "cuenta_file": "~/.qwen/google_accounts.json"
+  }
+]

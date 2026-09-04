@@ -1,0 +1,730 @@
+/* ─── Mobile Studio — panel acoplado (Obsidian Glass) ───────────────────────
+   Lienzo interactivo (pan/zoom/multi-teléfono) sobre la app Expo REAL en iframes.
+   Todo con tokens --ob-* de shared/tokens.css (theme-aware) y clases namespaced
+   `mps-` para no colisionar en el árbol compartido del workspace. El "por qué"
+   visual + gotchas viven en la memoria [[mobile-studio-rediseno]]. */
+
+.panel-mobile-preview {
+  position: relative;
+  width: 100%; height: 100%;
+  display: grid; grid-template-rows: auto 1fr auto;
+  min-height: 0; overflow: hidden;
+  background: linear-gradient(180deg, var(--ob-bg-1), var(--ob-bg-0));
+  color: var(--ob-fg-1);
+  container: mps / inline-size;   /* la toolbar se compacta por @container en dock angosto */
+  --ease-spring: cubic-bezier(0.34, 1.4, 0.5, 1);   /* único token ausente del set */
+}
+.panel-mobile-preview.hidden { display: none; }
+.panel-mobile-preview * { box-sizing: border-box; }
+/* Reset de botones (antes global en el mockup): sin esto los <button> del riel/
+   barra toman el fondo default del navegador → salían como círculos blancos.
+   Las clases que SÍ quieren fondo (.mps-devopt, .save…) lo re-declaran aparte.
+   :where() OBLIGATORIO: sin él este selector pesa (0,1,1) y le GANA a toda regla
+   de una sola clase (.mps-menu-item, .mps-cap-main…) → padding/font declarados
+   quedaban muertos (causa real de los "nombres que se salen de los chips"). */
+.panel-mobile-preview :where(button) {
+  font: inherit; color: inherit; cursor: pointer;
+  border: none; background: none; padding: 0;
+  -webkit-appearance: none; appearance: none;
+}
+
+/* ── Barra ── */
+.mps-bar {
+  display: flex; align-items: center; gap: var(--sp-2);
+  padding: 8px 10px; border-bottom: 1px solid var(--ob-line-1);
+  background: linear-gradient(180deg, oklch(19% 0.022 300 / .5), transparent);
+  position: relative; z-index: 14;
+}
+.mps-conn {
+  display: inline-flex; align-items: center; gap: 7px; flex-shrink: 0;
+  padding: 5px 10px 5px 8px; border-radius: var(--radius-pill);
+  background: var(--ob-bg-2); border: 1px solid var(--ob-line-1);
+  font-size: var(--text-xs); font-weight: 500; color: var(--ob-fg-2); cursor: default;
+  transition: border-color var(--dur-glow) var(--ease-out), color var(--dur-glow) var(--ease-out);
+}
+.mps-conn .pip {
+  width: 7px; height: 7px; border-radius: 50%; background: var(--ob-fg-4); flex-shrink: 0;
+  transition: background var(--dur-glow) var(--ease-out), box-shadow var(--dur-glow) var(--ease-out);
+}
+.mps-conn .lbl { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.panel-mobile-preview[data-conn="ok"] .mps-conn { color: var(--ob-fg-1); border-color: color-mix(in oklch, var(--ob-run) 30%, var(--ob-line-1)); }
+.panel-mobile-preview[data-conn="ok"] .pip { background: var(--ob-run); box-shadow: 0 0 0 3px color-mix(in oklch, var(--ob-run) 12%, transparent), 0 0 10px color-mix(in oklch, var(--ob-run) 45%, transparent); }
+.panel-mobile-preview[data-conn="wait"] .pip { background: var(--ob-work); box-shadow: 0 0 0 3px color-mix(in oklch, var(--ob-work) 14%, transparent); animation: mps-pulse 1.6s var(--ease-in-out) infinite; }
+.panel-mobile-preview[data-conn="wait"] .mps-conn { color: var(--ob-fg-1); }
+.panel-mobile-preview[data-conn="off"] .pip { background: var(--ob-err); box-shadow: 0 0 0 3px color-mix(in oklch, var(--ob-err) 12%, transparent); }
+
+.mps-route {
+  flex: 1; min-width: 0; display: flex; align-items: center; gap: 7px; padding: 0 10px; height: 30px;
+  border-radius: var(--radius); background: var(--ob-bg-void); border: 1px solid var(--ob-line-1);
+  transition: border-color var(--dur-1) var(--ease-out), box-shadow var(--dur-1) var(--ease-out);
+}
+.mps-route:focus-within { border-color: var(--ob-accent-24); box-shadow: 0 0 0 3px var(--ob-accent-08); }
+.mps-route .globe { color: var(--ob-fg-4); flex-shrink: 0; display: grid; }
+.mps-route input { flex: 1; min-width: 0; border: none; background: none; outline: none; color: var(--ob-fg-1); font: 500 var(--text-xs)/1 var(--font-mono); }
+.mps-route input::placeholder { color: var(--ob-fg-4); }
+
+.mps-icobtn {
+  width: 30px; height: 30px; flex-shrink: 0; display: grid; place-items: center;
+  border-radius: var(--radius); color: var(--ob-fg-2); border: 1px solid transparent;
+  transition: background var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out), transform var(--dur-1) var(--ease-snap), border-color var(--dur-1) var(--ease-out);
+}
+.mps-icobtn:hover { background: var(--ob-bg-3); color: var(--ob-fg-0); }
+.mps-icobtn:active { transform: scale(.92); }
+.mps-icobtn[aria-pressed="true"] { background: var(--ob-accent-14); color: var(--ob-accent-fg); border-color: var(--ob-accent-24); }
+.mps-icobtn.spin svg { animation: mps-spin .5s var(--ease-out); }
+.mps-icobtn:disabled { opacity: .4; cursor: default; }
+.mps-icobtn:disabled:hover { background: none; color: var(--ob-fg-2); }
+
+.mps-more-wrap { position: relative; flex-shrink: 0; }
+.mps-menu {
+  position: absolute; top: calc(100% + 6px); right: 0; z-index: 30; min-width: 216px; padding: 6px;
+  border-radius: var(--radius-lg); background: var(--ob-glass);
+  backdrop-filter: blur(16px) saturate(150%); -webkit-backdrop-filter: blur(16px) saturate(150%);
+  border: 1px solid var(--ob-line-2); box-shadow: 0 1px 0 var(--ob-glass-hi) inset, var(--shadow-3);
+  opacity: 0; transform: scale(.96) translateY(-6px); transform-origin: top right; pointer-events: none;
+  transition: opacity var(--dur-2) var(--ease-out), transform var(--dur-2) var(--ease-snap);
+}
+.mps-menu.open { opacity: 1; transform: none; pointer-events: auto; }
+.mps-menu-h { font: 500 var(--text-2xs)/1 var(--font-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--ob-fg-4); padding: 8px 10px 5px; }
+.mps-menu-item { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 10px; border-radius: var(--radius); text-align: left; font-size: var(--text-sm); color: var(--ob-fg-1); transition: background var(--dur-1) var(--ease-out); }
+.mps-menu-item:hover { background: var(--ob-bg-3); }
+.mps-menu-item svg { color: var(--ob-fg-3); flex-shrink: 0; }
+/* Toggles del menú (encaje / zonas seguras): dot de acento cuando están ON. */
+.mps-menu-item[aria-checked="true"]::after { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--ob-accent-fg); margin-left: auto; flex-shrink: 0; }
+.mps-menu-item .k { margin-left: auto; font: 500 var(--text-2xs) var(--font-mono); color: var(--ob-fg-4); }
+.mps-menu-sep { height: 1px; background: var(--ob-line-1); margin: 5px 4px; }
+.mps-menu-seg { display: flex; gap: 2px; padding: 6px; }
+.mps-menu-seg button { flex: 1; padding: 6px; border-radius: 6px; font-size: var(--text-xs); font-weight: 500; color: var(--ob-fg-3); background: var(--ob-bg-2); border: 1px solid var(--ob-line-1); cursor: pointer; }
+.mps-menu-seg button[aria-pressed="true"] { color: var(--ob-fg-0); background: var(--ob-bg-4); border-color: var(--ob-line-2); }
+
+/* ── Lienzo (stage) ── */
+.mps-stage {
+  position: relative; overflow: hidden; min-height: 0; touch-action: none; cursor: grab;
+  background: radial-gradient(100% 70% at 50% 40%, oklch(15% 0.02 300), var(--ob-bg-void));
+}
+.mps-stage.panning { cursor: grabbing; }
+.mps-board-bg {
+  position: absolute; inset: -40%; z-index: 0; pointer-events: none;
+  background-image: radial-gradient(var(--ob-line-1) 0.9px, transparent 0.9px); background-size: 24px 24px;
+  -webkit-mask: radial-gradient(70% 60% at 50% 45%, #000, transparent 82%); mask: radial-gradient(70% 60% at 50% 45%, #000, transparent 82%); opacity: .5;
+}
+.mps-board { position: absolute; top: 0; left: 0; z-index: 2; transform-origin: 0 0; will-change: transform; }
+
+/* ── Teléfono en el lienzo ── */
+.mps-phone { position: absolute; z-index: 3; }
+.mps-phone.sel { z-index: 9; }
+/* SIN CHASIS (2026-07-19, pedido del usuario): el chasis negro + su sombra
+   `oklch(0% 0 0/.7)` se leían como un rectángulo negro pegado al teléfono, no
+   como profundidad. El teléfono ES su pantalla: vidrio con el radio real del
+   device, apoyado limpio sobre el lienzo. Nada de sombra negra acá — la única
+   separación contra el fondo es el halo de selección. */
+.mps-glow { position: absolute; inset: -3px; border-radius: calc(var(--dev-sr, 42px) + 3px); pointer-events: none; opacity: 0; box-shadow: 0 0 0 1.5px var(--ob-accent-24), 0 0 26px var(--ob-accent-glow); transition: opacity var(--dur-2) var(--ease-out); }
+.mps-phone.sel .mps-glow { opacity: 1; }
+/* Anillo de agarre: margen INVISIBLE alrededor del vidrio para arrastrar. Es
+   lo que reemplaza al bezel como zona de drag — antes eran ~11px de marco
+   (menos con zoom < 1) y por eso el teléfono "a veces" se dejaba mover. Queda
+   por DEBAJO de .mps-pframe (orden del DOM), así que solo agarra el margen: la
+   app de adentro sigue clickeable. */
+.mps-grab { position: absolute; inset: calc(-1 * var(--mps-grab, 22px)); border-radius: calc(var(--dev-sr, 42px) + var(--mps-grab, 22px)); cursor: grab; }
+.mps-pframe { position: relative; transform-origin: top left; }
+.mps-frame { position: relative; border-radius: var(--dev-sr, 42px); cursor: grab; }
+.mps-frame::after { content: ''; position: absolute; inset: -2px; border-radius: inherit; pointer-events: none; box-shadow: 0 0 0 0 var(--ob-accent-glow); opacity: 0; transition: box-shadow var(--dur-glow) var(--ease-out), opacity var(--dur-glow) var(--ease-out); }
+.mps-phone.reloading .mps-frame::after { box-shadow: 0 0 22px 3px var(--ob-accent-glow), 0 0 0 2px var(--ob-accent-24); opacity: 1; transition: none; }
+.mps-screen { position: relative; overflow: hidden; border-radius: var(--dev-sr, 42px); width: var(--dev-w); height: var(--dev-h); background: #0a0a0c; isolation: isolate; cursor: default; transition: background var(--dur-1) var(--ease-out); }
+/* Backing oscuro (matchea .mps-screen) + color-scheme dark: si Metro está caído,
+   la página de error del navegador sale oscura en vez del blanco default.
+   Geometría (left/top/width/height) INLINE desde _layoutPhone: con "Encajar en
+   zonas seguras" el iframe recibe el área de CONTENIDO real del sistema. */
+.mps-iframe { position: absolute; border: 0; background: #0a0a0c; color-scheme: dark; display: block; }
+/* Franja inferior (zona del home indicator): pintada del color muestreado de
+   la app → el fondo se ve continuo, como el aparato real. */
+.mps-band { display: none; position: absolute; left: 0; right: 0; bottom: 0; background: #0a0a0c; pointer-events: none; transition: background var(--dur-1) var(--ease-out); }
+/* ── Hardware del device dibujado 1:1 (geometría real desde device-catalog) ──
+   Recorte / status bar / home indicator son OVERLAYS: el contenido del iframe
+   pasa por debajo, exactamente como una app edge-to-edge en el aparato. La
+   posición/tamaño llegan inline en px (= pt del device). Colores del hardware
+   fijos a propósito (#000 vidrio, #fff indicador): NO son chrome de Jarvis. */
+.mps-cut { display: none; position: absolute; z-index: 8; background: #000; pointer-events: none; }
+.mps-cut[data-tipo="island"] { border-radius: var(--radius-pill); }
+.mps-cut[data-tipo="punch"] { border-radius: 50%; box-shadow: 0 0 0 1.5px oklch(0% 0 0/.45); }
+.mps-cut[data-tipo="notch"] { border-radius: 0 0 18px 18px; }
+.mps-status {
+  position: absolute; top: 0; left: 0; right: 0; z-index: 7; pointer-events: none;
+  display: flex; align-items: center; justify-content: space-between; padding: 0 16px;
+  color: #fff; text-shadow: 0 1px 2px oklch(0% 0 0/.35);
+  transition: color var(--dur-1) var(--ease-out);
+}
+/* Adaptativo (sampler): sobre fondo CLARO de la app los íconos van oscuros,
+   exactamente como el status bar real de iOS/Android. */
+.mps-status.claro { color: #0b0b0d; text-shadow: none; }
+.mps-status.claro .st-ics { filter: none; }
+.mps-status .st-t { font: 600 15px/1 var(--font-ui); letter-spacing: -0.2px; }
+.mps-status .st-ics { display: flex; align-items: center; gap: 6px; filter: drop-shadow(0 1px 1.5px oklch(0% 0 0/.3)); }
+/* Con recorte (isla/notch): hora e íconos centrados en las "orejas" laterales. */
+.mps-status.con-recorte { padding: 0; }
+.mps-status.con-recorte .st-t, .mps-status.con-recorte .st-ics { width: var(--ear); justify-content: center; text-align: center; }
+.mps-status.con-recorte .st-t { padding-top: 1px; }
+/* Sin recorte, iPhone clásico (SE): la hora va CENTRADA como en iOS sin notch. */
+.mps-status[data-marca="apple"]:not(.con-recorte) .st-t { position: absolute; left: 50%; transform: translateX(-50%); }
+.mps-status[data-marca="apple"]:not(.con-recorte) { justify-content: flex-end; }
+.mps-homebar { display: none; position: absolute; z-index: 7; border-radius: var(--radius-pill); background: rgba(255,255,255,.9); pointer-events: none; transition: background var(--dur-1) var(--ease-out); }
+.mps-homebar.claro { background: rgba(0,0,0,.75); }
+/* Guías de zonas seguras: sombreado + medida real en pt (toggle del menú ⋯). */
+.mps-guides { position: absolute; inset: 0; z-index: 10; pointer-events: none; }
+.mps-guides i {
+  position: absolute; display: flex; align-items: center; justify-content: center;
+  background: repeating-linear-gradient(-45deg, color-mix(in oklch, var(--ob-accent) 16%, transparent) 0 6px, transparent 6px 12px);
+  outline: 1px dashed color-mix(in oklch, var(--ob-accent) 55%, transparent); outline-offset: -1px;
+}
+.mps-guides b { font: 600 9px var(--font-mono); letter-spacing: .08em; color: var(--ob-accent-fg); background: oklch(0% 0 0/.55); padding: 2px 6px; border-radius: var(--radius-pill); }
+.mps-scanline {
+  position: absolute; left: 0; right: 0; top: 0; height: 40%; z-index: 9; pointer-events: none; opacity: 0;
+  background: linear-gradient(180deg, transparent, color-mix(in oklch, var(--ob-accent) 22%, transparent) 60%, color-mix(in oklch, var(--ob-accent) 50%, transparent)); border-bottom: 1.5px solid var(--ob-accent-fg);
+}
+.mps-phone.reloading .mps-scanline { animation: mps-scan .7s var(--ease-out); }
+
+/* Estado "Sin conexión" POR TELÉFONO (independiente): tapa la app y la vuelve
+   inusable en ese teléfono — para probar cómo responde tu app sin red. */
+.mps-offline { position: absolute; inset: 0; z-index: 6; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 2px; text-align: center; padding: 24px;
+  background: oklch(14% 0.02 300 / .94); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); color: var(--ob-fg-1); }
+.mps-phone[data-net="off"] .mps-offline { display: flex; }
+.mps-offline .off-ic { width: 54px; height: 54px; border-radius: 50%; display: grid; place-items: center; background: var(--ob-bg-3); color: var(--ob-fg-3); margin-bottom: 12px; }
+.mps-offline b { font-size: 16px; font-weight: 700; color: var(--ob-fg-0); }
+.mps-offline p { margin: 5px 0 15px; font-size: 12px; color: var(--ob-fg-3); max-width: 22ch; line-height: 1.5; }
+.mps-offline .off-retry { padding: 8px 17px; border-radius: var(--radius-pill); background: var(--ob-accent); color: #fff; font-size: 12px; font-weight: 600; }
+.mps-offline .off-retry:hover { background: var(--ob-accent-dim); }
+.mps-wifi-off { position: absolute; top: 10px; right: 14px; z-index: 8; display: none; color: var(--ob-err); }
+.mps-phone[data-net="off"] .mps-wifi-off { display: block; }
+
+/* cap (nombre + cambiar device + quitar) */
+.mps-cap {
+  /* -50px: sin chasis el nodo empieza en el vidrio, así que la cápsula necesita
+     los ~11px del bezel que perdió para no quedar pegada a la pantalla. */
+  position: absolute; left: 50%; top: -50px; transform: translateX(-50%); display: inline-flex; align-items: center; gap: 2px; padding: 2px;
+  border-radius: var(--radius-pill); background: var(--ob-glass); backdrop-filter: blur(12px) saturate(150%); -webkit-backdrop-filter: blur(12px) saturate(150%);
+  border: 1px solid var(--ob-line-2); box-shadow: var(--shadow-1); white-space: nowrap; cursor: grab; user-select: none;
+}
+.mps-cap.grabbing { cursor: grabbing; }
+.mps-cap .grip { display: flex; padding: 0 2px 0 6px; color: var(--ob-fg-4); }
+.mps-cap-main { display: inline-flex; align-items: center; gap: 5px; padding: 4px 7px 4px 4px; border-radius: var(--radius-pill); color: var(--ob-fg-1); font-size: var(--text-xs); font-weight: 600; transition: background var(--dur-1) var(--ease-out); }
+.mps-cap-main:hover { background: var(--ob-bg-3); color: var(--ob-fg-0); }
+.mps-cap-main .ch { color: var(--ob-fg-4); }
+.mps-cap-x { width: 22px; height: 22px; display: grid; place-items: center; border-radius: 50%; color: var(--ob-fg-3); transition: background var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out); }
+.mps-cap-x:hover { background: color-mix(in oklch, var(--ob-err) 18%, transparent); color: var(--ob-err); }
+.mps-dims { position: absolute; left: 50%; bottom: -26px; transform: translateX(-50%); font: 500 var(--text-2xs) var(--font-mono); color: var(--ob-fg-3); font-variant-numeric: tabular-nums; white-space: nowrap; letter-spacing: .04em; cursor: grab; }
+.mps-phone.sel .mps-dims { color: var(--ob-accent-fg); }
+/* Resize: el handle NO se muestra por estar seleccionado. Es una zona caliente
+   invisible de 34px anclada FUERA de la esquina inferior derecha (arranca 4px
+   antes del borde: con el radio del vidrio esos 4px caen en el aire, no sobre
+   la app); la pastilla aparece recién al llevar el puntero hasta ahí. */
+.mps-handle { position: absolute; right: -30px; bottom: -30px; width: 34px; height: 34px; z-index: 7; cursor: nwse-resize; }
+.mps-handle::before {
+  content: ''; position: absolute; right: 21px; bottom: 21px; width: 20px; height: 20px; border-radius: 50%;
+  background: var(--ob-bg-4); border: 1.5px solid var(--ob-line-3);
+  opacity: 0; transform: scale(.6); transform-origin: 100% 100%;
+  transition: opacity var(--dur-1) var(--ease-out), transform var(--dur-1) var(--ease-out), border-color var(--dur-1) var(--ease-out);
+}
+.mps-handle::after {
+  content: ''; position: absolute; right: 26px; bottom: 26px; width: 10px; height: 10px;
+  border-right: 2px solid var(--ob-fg-3); border-bottom: 2px solid var(--ob-fg-3); border-radius: 0 0 2px 0;
+  opacity: 0; transition: opacity var(--dur-1) var(--ease-out);
+}
+.mps-handle:hover::before { opacity: 1; transform: none; border-color: var(--ob-accent); }
+.mps-handle:hover::after { opacity: 1; }
+
+.mps-stage.dragging, .mps-stage.dragging * { cursor: grabbing !important; user-select: none; -webkit-user-select: none; }
+
+/* ── Toolbar del lienzo: UNA isla liquid-glass, controles planos ──────────────
+   Rediseño total 2026-07-08: antes cada control era su propia burbuja glass con
+   bisel (pesado, de juguete). Ahora el vidrio vive en la ISLA (misma receta del
+   riel .mps-gdock → un solo lenguaje) y los controles son planos y crisp;
+   "Teléfono" es el ÚNICO relleno (cristal de acento, receta del pulgar del
+   riel). Solo tokens --ob-* → sigue a los 7 temas (lo viejo fijaba hue 300). */
+.mps-tools {
+  position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%); z-index: 13;
+  display: flex; align-items: center; gap: 2px; padding: 5px;
+  /* width explícito: sin él, un abs-pos con left:50% hace shrink-to-fit contra
+     la MITAD del stage y la isla envuelve en 2 filas aunque entre de sobra. */
+  width: max-content; max-width: calc(100% - 20px); flex-wrap: wrap; justify-content: center;
+  border-radius: 18px;
+  background: linear-gradient(180deg,
+    color-mix(in oklch, var(--ob-line-2) 38%, transparent),
+    color-mix(in oklch, var(--ob-bg-1) 55%, transparent));
+  backdrop-filter: blur(26px) saturate(190%); -webkit-backdrop-filter: blur(26px) saturate(190%);
+  border: 1px solid color-mix(in oklch, var(--ob-fg-1) 17%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in oklch, var(--ob-fg-0) 24%, transparent),
+              inset 0 -1.5px 2px oklch(0% 0 0 / .35),
+              0 14px 40px -12px oklch(0% 0 0 / .7),
+              0 2px 8px -2px oklch(0% 0 0 / .5);
+}
+.mps-tools .mps-tl {
+  height: 36px; flex: none; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 0 14px; border-radius: 13px; border: 1px solid transparent;
+  color: var(--ob-fg-1); font-size: var(--text-base); font-weight: 600; line-height: 1; white-space: nowrap;
+  transition: background var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out),
+              border-color var(--dur-1) var(--ease-out), box-shadow var(--dur-1) var(--ease-out),
+              transform var(--dur-1) var(--ease-snap);
+}
+.mps-tools .mps-tl svg { width: 16px; height: 16px; flex: none; filter: drop-shadow(0 1px 1px oklch(0% 0 0 / .3)); }
+.mps-tools .mps-tl:hover { background: color-mix(in oklch, var(--ob-fg-0) 9%, transparent); color: var(--ob-fg-0); }
+.mps-tools .mps-tl:active { transform: scale(.95); }
+.mps-tools .mps-tl:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--ob-accent-glow); }
+.mps-tools .mps-tl:disabled { opacity: .38; cursor: default; }
+.mps-tools .mps-tl:disabled:hover { background: none; color: var(--ob-fg-1); transform: none; }
+.mps-tools .mps-tl.ico { width: 36px; padding: 0; }
+.mps-tools .mps-tl.ico svg { width: 17px; height: 17px; }
+/* zoom: valor mono clickeable (vuelve a 100%) entre − y + */
+.mps-tools .mps-tl.zv {
+  min-width: 52px; padding: 0 8px;
+  font-family: var(--font-mono); font-size: var(--text-xs); font-weight: 600;
+  font-variant-numeric: tabular-nums; letter-spacing: .02em; color: var(--ob-fg-2);
+}
+.mps-tools .mps-tl.zv:hover { color: var(--ob-fg-0); }
+/* Teléfono: cristal de acento — único relleno de la isla */
+.mps-tools .mps-tl.primary {
+  color: var(--ob-on-accent);
+  background: linear-gradient(180deg,
+    color-mix(in oklch, var(--ob-bevel-accent) 26%, var(--ob-accent)),
+    var(--ob-accent-dim));
+  border-color: color-mix(in oklch, var(--ob-bevel-accent) 55%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in oklch, white 40%, transparent),
+              inset 0 -2px 4px oklch(0% 0 0 / .25),
+              0 4px 14px -4px var(--ob-accent-glow);
+}
+.mps-tools .mps-tl.primary svg { filter: drop-shadow(0 1px 1px oklch(0% 0 0 / .35)); }
+.mps-tools .mps-tl.primary:hover {
+  color: var(--ob-on-accent);
+  background: linear-gradient(180deg,
+    color-mix(in oklch, var(--ob-bevel-accent) 40%, var(--ob-accent)),
+    var(--ob-accent));
+  box-shadow: inset 0 1px 0 color-mix(in oklch, white 50%, transparent),
+              inset 0 -2px 4px oklch(0% 0 0 / .22),
+              0 6px 18px -4px var(--ob-accent-glow);
+}
+.mps-tools .mps-tl.primary:focus-visible {
+  box-shadow: inset 0 1px 0 color-mix(in oklch, white 40%, transparent), 0 0 0 2px var(--ob-accent-glow);
+}
+.mps-tools .mps-tl-sep { width: 1px; height: 18px; margin: 0 5px; flex: none; background: color-mix(in oklch, var(--ob-fg-0) 13%, transparent); }
+/* Dock angosto: la isla se compacta a iconos (el title sigue contando la acción) */
+@container mps (max-width: 480px) {
+  .mps-tools .mps-tl .tl-lbl { display: none; }
+  .mps-tools .mps-tl { padding: 0 10px; }
+  .mps-tools .mps-tl.ico { padding: 0; }
+  .mps-tools .mps-tl.zv { min-width: 46px; padding: 0 5px; }
+  .mps-tools .mps-tl-sep { margin: 0 3px; }
+}
+
+/* ── Riel Liquid Obsidian Glass (iconos, a un costado) ── */
+.mps-gdock {
+  position: absolute; top: 14px; left: 12px; z-index: 16; display: flex; flex-direction: column; gap: 4px; padding: 5px;
+  border-radius: var(--radius-pill); background: linear-gradient(180deg, oklch(34% 0.03 300 / .34), oklch(15% 0.02 300 / .5));
+  backdrop-filter: blur(26px) saturate(190%); -webkit-backdrop-filter: blur(26px) saturate(190%);
+  border: 1px solid oklch(82% 0.03 300 / .16);
+  box-shadow: inset 0 1px 0 oklch(96% 0.02 300 / .28), inset 0 -1.5px 2px oklch(0% 0 0 / .35), 0 14px 40px -12px oklch(0% 0 0 / .7), 0 2px 8px -2px oklch(0% 0 0/.5);
+}
+.mps-gthumb {
+  position: absolute; top: 5px; left: 5px; width: 38px; height: 38px; border-radius: 50%; pointer-events: none; opacity: 0;
+  background: radial-gradient(120% 130% at 50% 22%, oklch(74% 0.15 293 / .5), oklch(52% 0.2 293 / .34) 70%);
+  border: 1px solid oklch(84% 0.12 293 / .34);
+  box-shadow: inset 0 1.5px 0 oklch(96% 0.08 293 / .55), inset 0 -3px 8px oklch(42% 0.2 293 / .5), 0 0 20px var(--ob-accent-glow), 0 3px 8px oklch(0% 0 0/.4);
+  transition: transform .42s var(--ease-spring), opacity var(--dur-2) var(--ease-out);
+}
+.mps-gdock.active .mps-gthumb { opacity: 1; }
+.mps-gtab { position: relative; z-index: 2; width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; color: var(--ob-fg-2); transition: color var(--dur-2) var(--ease-out), transform var(--dur-1) var(--ease-snap); }
+.mps-gtab:hover { color: var(--ob-fg-0); }
+.mps-gtab:active { transform: scale(.9); }
+.mps-gtab.on { color: #fff; }
+.mps-gtab svg { filter: drop-shadow(0 1px 1px oklch(0% 0 0/.35)); }
+.mps-gbadge { position: absolute; top: 1px; right: 1px; min-width: 15px; height: 15px; padding: 0 3px; border-radius: var(--radius-pill); display: none; place-items: center; font: 600 9px var(--font-mono); background: var(--ob-accent); color: #fff; box-shadow: 0 0 0 2px oklch(15% 0.02 300 / .85); pointer-events: none; }
+.mps-gbadge.show { display: grid; }
+
+/* ── Panel de info dockeado abajo ── */
+.mps-ipanel {
+  display: flex; flex-direction: column; max-height: 0; overflow: hidden; border-top: 1px solid transparent;
+  background: linear-gradient(180deg, oklch(19% 0.022 300 / .92), oklch(13% 0.018 300 / .97));
+  backdrop-filter: blur(20px) saturate(160%); -webkit-backdrop-filter: blur(20px) saturate(160%);
+  box-shadow: inset 0 1px 0 oklch(96% 0.02 300 / .1); transition: max-height var(--dur-3) var(--ease-out);
+}
+.mps-ipanel.open { max-height: 300px; border-top-color: var(--ob-line-1); }
+.mps-ihead { display: flex; align-items: center; justify-content: space-between; padding: 9px 8px 9px 16px; flex-shrink: 0; }
+.mps-ititle { font: 600 var(--text-sm) var(--font-ui); color: var(--ob-fg-0); letter-spacing: .01em; }
+.mps-ix { width: 26px; height: 26px; border-radius: 7px; display: grid; place-items: center; color: var(--ob-fg-3); transition: background var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out); }
+.mps-ix:hover { background: oklch(32% 0.02 300 / .6); color: var(--ob-fg-0); }
+.mps-ibody { flex: 1; overflow-y: auto; min-height: 0; }
+.mps-pane { padding: 2px 16px 14px; display: none; }
+.mps-pane.on { display: block; }
+
+/* consola (log de actividad) */
+.mps-log { font: 500 var(--text-xs)/1.7 var(--font-mono); padding: 3px 0; display: flex; gap: 9px; border-bottom: 1px solid color-mix(in oklch, var(--ob-line-1) 50%, transparent); }
+.mps-log .ts { color: var(--ob-fg-4); flex-shrink: 0; }
+.mps-log .tag { flex-shrink: 0; font-weight: 600; }
+.mps-log.info .tag { color: var(--ob-info); } .mps-log.ok .tag { color: var(--ob-run); } .mps-log.warn .tag { color: var(--ob-work); } .mps-log.err .tag { color: var(--ob-err); }
+.mps-log .msg { color: var(--ob-fg-2); min-width: 0; } .mps-log .msg b { color: var(--ob-fg-0); font-weight: 600; }
+.mps-empty-note { font-size: var(--text-xs); color: var(--ob-fg-4); padding: 10px 0; }
+
+/* red (backend de la app) */
+.mps-netrow { display: flex; align-items: flex-start; gap: 9px; padding: 8px 0; border-bottom: 1px solid color-mix(in oklch, var(--ob-line-1) 50%, transparent); font-size: var(--text-xs); color: var(--ob-fg-2); }
+.mps-netrow .dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 4px; flex-shrink: 0; background: var(--ob-fg-4); }
+.mps-netrow .dot.ok { background: var(--ob-run); } .mps-netrow .dot.warn { background: var(--ob-work); } .mps-netrow .dot.err { background: var(--ob-err); }
+.mps-netrow code { font: 500 var(--text-2xs) var(--font-mono); color: var(--ob-fg-1); background: var(--ob-bg-void); padding: 1px 5px; border-radius: 5px; }
+
+/* ── Inspector: buscador + lista de textos editables + edición inline ── */
+.mps-insp-hint { display: flex; gap: 9px; padding: 9px 11px; border-radius: var(--radius); font-size: var(--text-xs); margin: 4px 0 10px; align-items: flex-start; }
+.mps-insp-hint.off { background: var(--ob-bg-2); border: 1px solid var(--ob-line-1); color: var(--ob-fg-2); }
+.mps-insp-hint.on { background: var(--ob-accent-08); border: 1px solid var(--ob-accent-24); color: var(--ob-accent-fg); }
+.mps-insp-hint svg { flex-shrink: 0; margin-top: 1px; }
+.mps-insp-search { display: flex; align-items: center; gap: 7px; height: 32px; padding: 0 10px; border-radius: var(--radius); background: var(--ob-bg-void); border: 1px solid var(--ob-line-1); margin-bottom: 10px; }
+.mps-insp-search:focus-within { border-color: var(--ob-accent-24); box-shadow: 0 0 0 3px var(--ob-accent-08); }
+.mps-insp-search svg { color: var(--ob-fg-4); flex-shrink: 0; }
+.mps-insp-search input { flex: 1; min-width: 0; border: none; background: none; outline: none; color: var(--ob-fg-1); font: 500 var(--text-sm) var(--font-ui); }
+.mps-insp-search input::placeholder { color: var(--ob-fg-4); }
+/* CAMPO DE SELECCIÓN — qué texto y de dónde se está editando */
+.mps-insp-sel { border-radius: var(--radius-lg); border: 1px solid var(--ob-line-1); background: var(--ob-bg-void); padding: 11px 12px; margin-bottom: 12px; transition: border-color var(--dur-2) var(--ease-out), background var(--dur-2) var(--ease-out); }
+.mps-insp-sel.active { border-color: var(--ob-accent-24); background: var(--ob-accent-08); }
+.mps-insp-sel .sel-empty { display: flex; align-items: center; gap: 9px; font-size: var(--text-xs); color: var(--ob-fg-3); }
+.mps-insp-sel .sel-empty svg { color: var(--ob-fg-4); flex-shrink: 0; }
+.mps-insp-sel .sel-loc { display: flex; align-items: center; gap: 6px; font: 500 var(--text-xs) var(--font-mono); color: var(--ob-accent-fg); margin-bottom: 9px; flex-wrap: wrap; }
+.mps-insp-sel .sel-loc svg { color: var(--ob-accent); flex-shrink: 0; }
+.mps-insp-sel .sel-loc b { color: var(--ob-fg-0); font-weight: 600; }
+.mps-insp-sel .sel-line { color: var(--ob-fg-1); }
+.mps-insp-sel .sel-path { color: var(--ob-fg-4); font-size: var(--text-2xs); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mps-insp-sel .sel-row { display: flex; align-items: center; gap: 8px; }
+.mps-insp-sel .sel-row input { flex: 1; min-width: 0; height: 34px; padding: 0 12px; border-radius: var(--radius); background: var(--ob-bg-void); border: 1px solid var(--ob-accent-24); color: var(--ob-fg-0); font: 500 var(--text-sm) var(--font-ui); outline: none; }
+.mps-insp-sel .sel-row input:focus { box-shadow: 0 0 0 3px var(--ob-accent-08); }
+.mps-insp-sel .sel-save { height: 34px; padding: 0 15px; border-radius: var(--radius); background: var(--ob-accent); color: #fff; font: 600 var(--text-sm) var(--font-ui); flex-shrink: 0; }
+.mps-insp-sel .sel-save:hover { background: var(--ob-accent-dim); }
+.mps-insp-sel .sel-save:disabled { opacity: .6; }
+.mps-insp-sel .sel-hint { font-size: var(--text-2xs); color: var(--ob-fg-4); margin-top: 8px; }
+
+/* filas de la lista (botones) */
+.mps-txt { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; padding: 8px 10px; border-radius: var(--radius); transition: background var(--dur-1) var(--ease-out); }
+.mps-txt:hover { background: var(--ob-bg-2); }
+.mps-txt.sel { background: var(--ob-accent-14); }
+.mps-txt .val { flex: 1; min-width: 0; font-size: var(--text-sm); color: var(--ob-fg-0); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mps-txt .loc { font: 500 var(--text-2xs) var(--font-mono); color: var(--ob-fg-4); flex-shrink: 0; }
+.mps-txt.sel .loc { color: var(--ob-accent-fg); }
+.mps-txt .go { width: 24px; height: 24px; border-radius: 6px; display: grid; place-items: center; color: var(--ob-fg-3); flex-shrink: 0; opacity: 0; transition: opacity var(--dur-1) var(--ease-out); }
+.mps-txt:hover .go, .mps-txt.sel .go { opacity: 1; }
+
+/* pane Red: conexión por teléfono */
+.mps-net-h { font: 500 var(--text-2xs) var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--ob-fg-4); margin: 14px 0 6px; }
+.mps-netphone { display: flex; align-items: center; gap: 9px; padding: 7px 0; border-bottom: 1px solid color-mix(in oklch, var(--ob-line-1) 50%, transparent); }
+.mps-netphone .np-nm { flex: 1; min-width: 0; font-size: var(--text-sm); color: var(--ob-fg-1); }
+.mps-netphone .np-i { color: var(--ob-fg-4); font: 500 var(--text-2xs) var(--font-mono); }
+.mps-net-tog { display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border-radius: var(--radius-pill); font-size: var(--text-xs); font-weight: 600; color: var(--ob-run); background: color-mix(in oklch, var(--ob-run) 12%, transparent); border: 1px solid color-mix(in oklch, var(--ob-run) 28%, transparent); flex-shrink: 0; }
+.mps-net-tog.off { color: var(--ob-err); background: color-mix(in oklch, var(--ob-err) 14%, transparent); border-color: color-mix(in oklch, var(--ob-err) 30%, transparent); }
+.mps-net-tog svg { flex-shrink: 0; }
+
+/* ── Empty state (esperando la señal) ── */
+.mps-empty { position: absolute; inset: 0; z-index: 12; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 30px 26px;
+  background: radial-gradient(70% 50% at 50% 40%, oklch(15% 0.02 300 / .7), transparent); }
+.mps-empty .core { position: relative; width: 62px; height: 62px; margin-bottom: 22px; }
+.mps-empty .rings { position: absolute; inset: 0; border-radius: 50%; border: 1.5px solid var(--ob-accent-24); }
+.mps-empty .rings.r2 { inset: -14px; border-color: var(--ob-accent-14); animation: mps-ripple 2.6s var(--ease-out) infinite; }
+.mps-empty .rings.r3 { inset: -28px; border-color: var(--ob-accent-08); animation: mps-ripple 2.6s var(--ease-out) infinite .5s; }
+.mps-empty .heart { position: absolute; inset: 0; border-radius: 50%; display: grid; place-items: center; background: radial-gradient(circle at 50% 40%, var(--ob-accent), var(--ob-accent-dim)); box-shadow: 0 0 24px var(--ob-accent-glow); color: #fff; animation: mps-breathe 3.2s var(--ease-in-out) infinite; }
+.mps-empty h2 { margin: 0; font: italic 400 var(--text-2xl) var(--font-display); color: var(--ob-fg-0); line-height: 1.05; }
+.mps-empty p { margin: 9px 0 0; max-width: 32ch; font-size: var(--text-sm); color: var(--ob-fg-3); line-height: 1.55; }
+.mps-empty .cmd { margin-top: 16px; display: inline-flex; align-items: center; gap: 9px; padding: 9px 13px; border-radius: var(--radius); background: var(--ob-bg-void); border: 1px solid var(--ob-line-2); font: 500 var(--text-xs) var(--font-mono); color: var(--ob-fg-1); }
+.mps-empty .cmd .dolar { color: var(--ob-accent-fg); }
+.mps-empty .steps { margin-top: 20px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.mps-empty .st { display: flex; align-items: center; gap: 7px; font-size: var(--text-2xs); color: var(--ob-fg-3); }
+.mps-empty .st .n { width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; font: 600 10px var(--font-mono); background: var(--ob-bg-2); border: 1px solid var(--ob-line-2); color: var(--ob-fg-2); }
+.mps-empty .st.done .n { background: var(--ob-run); border-color: var(--ob-run); color: #08140a; }
+.mps-empty .arw { color: var(--ob-fg-4); }
+
+/* ── Picker de dispositivo (hoja de vidrio) ── */
+.mps-scrim { position: absolute; inset: 0; z-index: 50; background: oklch(0% 0 0/.45); backdrop-filter: blur(3px); opacity: 0; pointer-events: none; transition: opacity var(--dur-2) var(--ease-out); }
+.mps-scrim.open { opacity: 1; pointer-events: auto; }
+.mps-sheet { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%) translateY(16px); width: min(520px, calc(100% - 24px)); z-index: 51; border-radius: var(--radius-xl);
+  background: var(--ob-glass); backdrop-filter: blur(20px) saturate(150%); -webkit-backdrop-filter: blur(20px) saturate(150%); border: 1px solid var(--ob-line-2); box-shadow: 0 1px 0 var(--ob-glass-hi) inset, var(--shadow-3); padding: 14px; opacity: 0; pointer-events: none;
+  transition: transform var(--dur-3) var(--ease-spring), opacity var(--dur-2) var(--ease-out); }
+.mps-sheet.open { transform: translateX(-50%); opacity: 1; pointer-events: auto; }
+.mps-sheet h3 { margin: 2px 4px 12px; font: 500 var(--text-2xs) var(--font-mono); text-transform: uppercase; letter-spacing: .12em; color: var(--ob-fg-4); }
+.mps-devgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 8px; max-height: min(calc(var(--jw-vh, 100vh) * .46), 380px); overflow-y: auto; overscroll-behavior: contain; padding-right: 2px; }
+.mps-devgrp { grid-column: 1 / -1; margin: 6px 2px 0; font: 500 var(--text-2xs) var(--font-mono); text-transform: uppercase; letter-spacing: .12em; color: var(--ob-fg-4); }
+.mps-devgrp:first-child { margin-top: 0; }
+.mps-devopt { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 12px 6px; border-radius: var(--radius-lg); background: var(--ob-bg-2); border: 1px solid var(--ob-line-1); transition: all var(--dur-1) var(--ease-out); cursor: pointer; }
+.mps-devopt:hover { background: var(--ob-bg-3); border-color: var(--ob-line-2); transform: translateY(-2px); }
+.mps-devopt.on { border-color: var(--ob-accent); background: var(--ob-accent-08); }
+/* Silueta con la PROPORCIÓN real del device (aspect-ratio inline) + su recorte. */
+.mps-sil { height: 46px; width: auto; border-radius: 6px; border: 1.5px solid var(--ob-fg-3); position: relative; flex-shrink: 0; }
+.mps-devopt.on .mps-sil { border-color: var(--ob-accent-fg); }
+.mps-sil::before { content: ''; position: absolute; top: 3px; left: 50%; transform: translateX(-50%); background: var(--ob-fg-4); }
+.mps-sil[data-cut="island"]::before { width: 11px; height: 3px; border-radius: 3px; }
+.mps-sil[data-cut="notch"]::before { top: 0; width: 13px; height: 3px; border-radius: 0 0 3px 3px; }
+.mps-sil[data-cut="punch"]::before { width: 3px; height: 3px; border-radius: 50%; }
+.mps-sil[data-cut="none"]::before { display: none; }
+.mps-devopt .nm { font-size: var(--text-2xs); font-weight: 600; color: var(--ob-fg-1); text-align: center; line-height: 1.2; }
+.mps-devopt.on .nm { color: var(--ob-accent-fg); }
+.mps-devopt .dm { font: 500 9px var(--font-mono); color: var(--ob-fg-4); }
+
+/* ── Menú contextual (click derecho sobre un teléfono) ── */
+.mps-ctx { position: absolute; z-index: 70; min-width: 190px; padding: 6px; border-radius: 12px; display: none; transform-origin: top left;
+  background: oklch(19% 0.02 300 / .9); backdrop-filter: blur(22px) saturate(160%); -webkit-backdrop-filter: blur(22px) saturate(160%);
+  border: 1px solid var(--ob-line-2); box-shadow: inset 0 1px 0 oklch(96% 0.02 300/.1), var(--shadow-3), 0 0 0 1px oklch(0% 0 0/.4); }
+.mps-ctx.show { display: block; animation: mps-ctx-in .12s var(--ease-out); }
+.mps-ctx-item { display: flex; align-items: center; gap: 11px; width: 100%; padding: 8px 10px; border-radius: 8px; color: var(--ob-fg-1); font-size: var(--text-sm); text-align: left; transition: background var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out); }
+.mps-ctx-item:hover { background: var(--ob-bg-3); } .mps-ctx-item svg { color: var(--ob-fg-3); flex-shrink: 0; } .mps-ctx-item:hover svg { color: var(--ob-accent-fg); }
+.mps-ctx-item .k { margin-left: auto; font: 500 var(--text-2xs) var(--font-mono); color: var(--ob-fg-4); }
+.mps-ctx-item.danger:hover { background: color-mix(in oklch, var(--ob-err) 16%, transparent); color: var(--ob-err); } .mps-ctx-item.danger:hover svg { color: var(--ob-err); }
+.mps-ctx-sep { height: 1px; background: var(--ob-line-1); margin: 5px 4px; }
+
+/* toast + flash */
+.mps-toast { position: absolute; left: 50%; bottom: 72px; transform: translateX(-50%) translateY(10px); z-index: 40; display: inline-flex; align-items: center; gap: 9px; padding: 9px 14px; border-radius: var(--radius-pill);
+  background: var(--ob-glass); backdrop-filter: blur(14px) saturate(150%); -webkit-backdrop-filter: blur(14px) saturate(150%); border: 1px solid var(--ob-line-2); box-shadow: var(--shadow-2); color: var(--ob-fg-1); font-size: var(--text-xs); font-weight: 500; opacity: 0; pointer-events: none; transition: opacity var(--dur-2) var(--ease-out), transform var(--dur-2) var(--ease-out); }
+.mps-toast.show { opacity: 1; transform: translateX(-50%); }
+.mps-toast svg { color: var(--ob-run); }
+.mps-flash { position: absolute; inset: 0; z-index: 45; background: #fff; opacity: 0; pointer-events: none; }
+.mps-flash.go { animation: mps-flashk .5s var(--ease-out); }
+
+/* backend-status banner (franja bajo la barra) */
+.mps-backend { display: none; align-items: center; gap: 8px; padding: 7px 12px; font-size: var(--text-xs); border-bottom: 1px solid var(--ob-line-1); }
+.mps-backend.show { display: flex; }
+.mps-backend.ok { color: var(--ob-run); } .mps-backend.warn { color: var(--ob-work); } .mps-backend.err { color: var(--ob-err); }
+.mps-backend code { font: 500 var(--text-2xs) var(--font-mono); }
+
+/* keyframes */
+@keyframes mps-pulse { 0%,100% { opacity: .6; transform: scale(.85); } 50% { opacity: 1; transform: scale(1.1); } }
+@keyframes mps-spin { to { transform: rotate(360deg); } }
+@keyframes mps-scan { 0% { opacity: .9; transform: translateY(-42%); } 100% { opacity: 0; transform: translateY(240%); } }
+@keyframes mps-ripple { 0% { transform: scale(.7); opacity: .9; } 100% { transform: scale(1.5); opacity: 0; } }
+@keyframes mps-flashk { 0% { opacity: 0; } 18% { opacity: .9; } 100% { opacity: 0; } }
+@keyframes mps-breathe { 0%,100% { transform: scale(.95); } 50% { transform: scale(1.06); } }
+@keyframes mps-ctx-in { from { opacity: 0; transform: scale(.96); } to { opacity: 1; transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) { .panel-mobile-preview *, .panel-mobile-preview *::before, .panel-mobile-preview *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; } }
+
+/* ── Cards de NAVEGADOR en el lienzo (browse nativo) ───────────────
+   Marco Obsidian con barrita (grip + URL + ⟳ ✕), RIELES laterales y pie: todo
+   el marco AGARRA para mover; la manija de la esquina redimensiona (patrón de
+   los teléfonos). El CUERPO es el hueco del webview nativo (flota ENCIMA del
+   DOM): el marco entero queda fuera de su rect a propósito — siempre clickeable. */
+.mps-web { position: absolute; z-index: 3; display: flex; flex-direction: column; }
+.mps-web:hover { z-index: 8; }
+.mps-wcap {
+  display: flex; align-items: center; gap: 7px; padding: 7px 9px;
+  border-radius: 14px 14px 0 0; background: var(--ob-glass);
+  backdrop-filter: blur(12px) saturate(150%); -webkit-backdrop-filter: blur(12px) saturate(150%);
+  border: 1px solid var(--ob-line-2); border-bottom: 0;
+  box-shadow: 0 1px 0 var(--ob-glass-hi) inset; cursor: grab; user-select: none;
+}
+.mps-wcap:active { cursor: grabbing; }
+.mps-wcap .grip { display: flex; color: var(--ob-fg-4); flex: none; }
+.mps-wcap .wglobe { display: flex; color: var(--ob-fg-3); flex: none; }
+.mps-wurl {
+  flex: 1 1 auto; min-width: 0; background: var(--ob-bg-2); border: 1px solid var(--ob-line-1);
+  border-radius: var(--radius-pill); padding: 5px 12px; color: var(--ob-fg-1);
+  font: 500 var(--text-xs) var(--font-mono); letter-spacing: .01em; outline: none;
+  transition: border-color var(--dur-1) var(--ease-out), background var(--dur-1) var(--ease-out);
+}
+.mps-wurl:focus { border-color: var(--ob-accent-40); background: var(--ob-bg-1); }
+.mps-wbtn {
+  width: 26px; height: 26px; display: grid; place-items: center; flex: none;
+  border-radius: 50%; color: var(--ob-fg-3);
+  transition: background var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out);
+}
+.mps-wbtn:hover { background: var(--ob-bg-3); color: var(--ob-fg-0); }
+.mps-wbtn.wx:hover { background: color-mix(in oklch, var(--ob-err) 18%, transparent); color: var(--ob-err); }
+.mps-wmid { display: flex; flex: 1 1 auto; min-height: 0; }
+.mps-wrail {
+  flex: none; width: 12px; background: var(--ob-glass);
+  border: 1px solid var(--ob-line-2); border-top: 0; border-bottom: 0;
+  cursor: grab; user-select: none;
+}
+.mps-wrail.l { border-right: 0; }
+.mps-wrail.r { border-left: 0; }
+.mps-wrail:active { cursor: grabbing; }
+.mps-wrail:hover { background: var(--ob-bg-3); }
+.mps-wbody { position: relative; flex: 1 1 auto; min-width: 0; overflow: hidden; background: var(--ob-bg-0); }
+.mps-whueco {
+  position: absolute; inset: 0;
+  background: radial-gradient(120% 90% at 50% 30%, oklch(22% 0.025 300 / .9), var(--ob-bg-0) 70%);
+  display: grid; place-items: center;
+}
+.mps-whueco[hidden] { display: none; }
+/* Se ve EXACTAMENTE cuando el webview nativo está oculto (gesto/oclusión):
+   el congelado se lee como intencional, no como "se puso en negro". */
+.mps-wfrio { display: flex; flex-direction: column; align-items: center; gap: 9px; color: var(--ob-fg-4); }
+.mps-wfrio svg { width: 22px; height: 22px; opacity: .55; animation: mps-wfrio-pulso 1.8s ease-in-out infinite; }
+.mps-wfrio span { font: 600 var(--text-2xs) var(--font-mono); letter-spacing: .05em; opacity: .8; }
+@keyframes mps-wfrio-pulso { 0%,100% { transform: scale(1); opacity: .55; } 50% { transform: scale(1.12); opacity: .85; } }
+/* Fondo NEGRO fijo + color-scheme dark: el blanco "default" del navegador (flash de
+   carga, about:blank, páginas de error) sale oscuro; la web que elige su fondo lo respeta.
+   Hex fijo a propósito (siempre negro, sin importar el tema). Igual que .wp-iframe del Web Preview. */
+.mps-wiframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: #000; color-scheme: dark; }
+.mps-wvacio {
+  position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 10px; color: var(--ob-fg-4); text-align: center;
+}
+.mps-wvacio svg { width: 26px; height: 26px; opacity: .5; }
+.mps-wvacio p { font-size: var(--text-xs); margin: 0; }
+.mps-wvacio[hidden] { display: none; }
+.mps-wfoot {
+  height: 20px; flex: none; display: flex; align-items: center; justify-content: center;
+  border-radius: 0 0 14px 14px; background: var(--ob-glass);
+  backdrop-filter: blur(12px) saturate(150%); -webkit-backdrop-filter: blur(12px) saturate(150%);
+  border: 1px solid var(--ob-line-2); border-top: 0; cursor: grab; user-select: none;
+}
+.mps-wfoot:active { cursor: grabbing; }
+.mps-wfoot .grip { display: flex; color: var(--ob-fg-4); transform: rotate(90deg); opacity: .55; }
+.mps-web:hover .mps-wfoot .grip { opacity: 1; }
+/* Manija de resize: esquina inf-der, GRANDE y con área de toque extendida —
+   vive fuera del rect del webview (sobre el pie/borde), siempre alcanzable. */
+.mps-whandle {
+  position: absolute; right: -10px; bottom: -10px; width: 24px; height: 24px; z-index: 6;
+  border-radius: 50%; background: var(--ob-bg-4); border: 1.5px solid var(--ob-line-3);
+  cursor: nwse-resize; opacity: 0;
+  transition: opacity var(--dur-1) var(--ease-out), border-color var(--dur-1) var(--ease-out);
+}
+.mps-whandle::before { content: ''; position: absolute; inset: -8px; }   /* hit area 40px */
+.mps-whandle::after {
+  content: ''; position: absolute; inset: 6px;
+  border-right: 2px solid var(--ob-fg-3); border-bottom: 2px solid var(--ob-fg-3);
+  border-radius: 0 0 2px 0;
+}
+.mps-web:hover .mps-whandle { opacity: 1; }
+.mps-whandle:hover { border-color: var(--ob-accent-40); }
+
+/* ── NOTAS del proyecto en el lienzo ──────────────────────────────────────────
+   Papel de vidrio pegado al board: título arriba, cuerpo que se escribe solo
+   (autoguardado), tintes y candado. El TINTE es solo un HUE: el fondo real se
+   mezcla contra los tokens del tema (color-mix), así el papel sigue a los 24
+   temas —claros incluidos— sin un solo color de texto hardcodeado. */
+.mps-note {
+  --n-tint: var(--ob-fg-3);
+  position: absolute; z-index: 5; display: flex; flex-direction: column;
+  border-radius: 16px; overflow: visible;
+  background: linear-gradient(180deg,
+    color-mix(in oklch, var(--n-tint) 9%, var(--ob-bg-1)),
+    color-mix(in oklch, var(--n-tint) 4%, var(--ob-bg-1)));
+  border: 1px solid color-mix(in oklch, var(--n-tint) 26%, var(--ob-line-2));
+  box-shadow: inset 0 1px 0 var(--ob-glass-hi),
+              0 18px 40px -18px oklch(0% 0 0 / .6),
+              0 2px 6px -2px oklch(0% 0 0 / .35);
+  transition: box-shadow var(--dur-1) var(--ease-out), border-color var(--dur-1) var(--ease-out);
+}
+.mps-note:hover { box-shadow: inset 0 1px 0 var(--ob-glass-hi), 0 22px 50px -18px oklch(0% 0 0 / .68), 0 2px 8px -2px oklch(0% 0 0 / .4); }
+.mps-note:focus-within { border-color: color-mix(in oklch, var(--n-tint) 55%, var(--ob-line-3)); }
+/* Cinta de color: la identidad de la nota se lee de reojo, sin teñir el texto */
+.mps-note::before {
+  content: ''; position: absolute; left: 14px; right: 14px; top: 0; height: 2px;
+  border-radius: 0 0 3px 3px;
+  background: linear-gradient(90deg, transparent, var(--n-tint) 22%, var(--n-tint) 78%, transparent);
+  opacity: .85;
+}
+.mps-note[data-color="ambar"]   { --n-tint: oklch(79% 0.145 78); }
+.mps-note[data-color="violeta"] { --n-tint: oklch(70% 0.16 300); }
+.mps-note[data-color="verde"]   { --n-tint: oklch(76% 0.15 155); }
+.mps-note[data-color="cian"]    { --n-tint: oklch(78% 0.12 210); }
+.mps-note[data-color="rosa"]    { --n-tint: oklch(75% 0.16 5); }
+@keyframes mps-note-in { from { opacity: 0; transform: translateY(6px) scale(.97); } to { opacity: 1; transform: none; } }
+.mps-note.nueva { animation: mps-note-in var(--dur-2, .22s) var(--ease-out); }
+
+.mps-ncap {
+  display: flex; align-items: center; gap: 6px; padding: 8px 9px 6px;
+  border-radius: 16px 16px 0 0; cursor: grab; user-select: none; flex: none;
+}
+.mps-ncap:active { cursor: grabbing; }
+.mps-ncap .grip { display: flex; color: var(--ob-fg-4); flex: none; opacity: .6; }
+.mps-note:hover .mps-ncap .grip { opacity: 1; }
+.mps-ntitle {
+  flex: 1 1 auto; min-width: 0; background: none; border: 0; outline: none; padding: 3px 4px;
+  color: var(--ob-fg-0); font-size: var(--text-base); font-weight: 650; letter-spacing: -.01em;
+  border-bottom: 1px solid transparent; border-radius: 4px; cursor: text;
+  transition: border-color var(--dur-1) var(--ease-out), background var(--dur-1) var(--ease-out);
+}
+.mps-ntitle::placeholder { color: var(--ob-fg-4); font-weight: 500; }
+.mps-ntitle:hover { background: color-mix(in oklch, var(--ob-fg-0) 5%, transparent); }
+.mps-ntitle:focus { border-bottom-color: color-mix(in oklch, var(--n-tint) 60%, transparent); background: color-mix(in oklch, var(--ob-fg-0) 6%, transparent); }
+.mps-nbtn {
+  width: 25px; height: 25px; display: grid; place-items: center; flex: none;
+  border-radius: 50%; color: var(--ob-fg-3); opacity: .7;
+  transition: background var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out), opacity var(--dur-1) var(--ease-out);
+}
+.mps-note:hover .mps-nbtn { opacity: 1; }
+.mps-nbtn:hover { background: var(--ob-bg-3); color: var(--ob-fg-0); }
+.mps-nbtn:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--ob-accent-glow); opacity: 1; }
+/* El candado activo se pinta sobre el TINTE (lightness fija ~78%): su texto va
+   oscuro SIEMPRE — un token de tema acá daría blanco-sobre-ámbar en los oscuros. */
+.mps-nbtn.nlock.on { opacity: 1; color: oklch(22% 0.03 300); background: color-mix(in oklch, var(--n-tint) 72%, var(--ob-bg-3)); }
+.mps-nbtn.nx:hover { background: color-mix(in oklch, var(--ob-err) 18%, transparent); color: var(--ob-err); }
+
+.mps-nbody { position: relative; flex: 1 1 auto; min-height: 0; display: flex; }
+.mps-ntext {
+  flex: 1 1 auto; min-height: 0; width: 100%; resize: none; border: 0; outline: none;
+  padding: 2px 15px 8px; background: none; color: var(--ob-fg-1);
+  font: 500 var(--text-xs)/1.65 var(--font-mono); letter-spacing: .005em;
+  white-space: pre-wrap; overflow-wrap: anywhere;
+  transition: filter var(--dur-2, .22s) var(--ease-out);
+}
+.mps-ntext::placeholder { color: var(--ob-fg-4); font-family: inherit; }
+.mps-ntext::-webkit-scrollbar { width: 8px; }
+.mps-ntext::-webkit-scrollbar-thumb { background: var(--ob-line-3); border-radius: 8px; }
+/* Nota protegida: el contenido se difumina y el velo lo destapa a pedido.
+   Es privacidad de PANTALLA (miradas de reojo, capturas), no cifrado. */
+.mps-note.tapada .mps-ntext { filter: blur(7px); pointer-events: none; user-select: none; }
+.mps-nveil {
+  position: absolute; inset: 0; display: none; flex-direction: column; align-items: center;
+  justify-content: center; gap: 9px; text-align: center; padding: 12px;
+  background: color-mix(in oklch, var(--ob-bg-1) 55%, transparent);
+}
+.mps-note.tapada .mps-nveil { display: flex; }
+.mps-nveil .vic { display: flex; color: var(--n-tint); opacity: .9; }
+.mps-nveil b { color: var(--ob-fg-2); font-size: var(--text-xs); font-weight: 600; }
+.nveil-btn {
+  display: inline-flex; align-items: center; gap: 6px; padding: 6px 13px;
+  border-radius: var(--radius-pill); border: 1px solid color-mix(in oklch, var(--n-tint) 40%, var(--ob-line-2));
+  background: var(--ob-bg-2); color: var(--ob-fg-1);
+  font-size: var(--text-2xs); font-weight: 600;
+  transition: background var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out), transform var(--dur-1) var(--ease-snap);
+}
+.nveil-btn:hover { background: var(--ob-bg-3); color: var(--ob-fg-0); }
+.nveil-btn:active { transform: scale(.96); }
+.nveil-btn:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--ob-accent-glow); }
+
+.mps-nfoot {
+  flex: none; display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 7px 11px 8px; border-radius: 0 0 16px 16px;
+  border-top: 1px solid color-mix(in oklch, var(--ob-fg-0) 7%, transparent);
+  cursor: grab; user-select: none;
+}
+.mps-nfoot:active { cursor: grabbing; }
+.mps-ntints { display: flex; align-items: center; gap: 5px; }
+.mps-ntint {
+  width: 13px; height: 13px; border-radius: 50%; flex: none;
+  border: 1px solid color-mix(in oklch, var(--ob-fg-0) 22%, transparent);
+  opacity: .5; transition: opacity var(--dur-1) var(--ease-out), transform var(--dur-1) var(--ease-snap), box-shadow var(--dur-1) var(--ease-out);
+}
+.mps-note:hover .mps-ntint { opacity: .8; }
+.mps-ntint:hover { opacity: 1; transform: scale(1.18); }
+.mps-ntint.on { opacity: 1; box-shadow: 0 0 0 2px var(--ob-bg-1), 0 0 0 3.5px currentColor; }
+.mps-ntint:focus-visible { outline: none; opacity: 1; box-shadow: 0 0 0 2px var(--ob-accent-glow); }
+.mps-ntint[data-c="papel"]   { background: var(--ob-fg-3); color: var(--ob-fg-3); }
+.mps-ntint[data-c="ambar"]   { background: oklch(79% 0.145 78);  color: oklch(79% 0.145 78); }
+.mps-ntint[data-c="violeta"] { background: oklch(70% 0.16 300);  color: oklch(70% 0.16 300); }
+.mps-ntint[data-c="verde"]   { background: oklch(76% 0.15 155);  color: oklch(76% 0.15 155); }
+.mps-ntint[data-c="cian"]    { background: oklch(78% 0.12 210);  color: oklch(78% 0.12 210); }
+.mps-ntint[data-c="rosa"]    { background: oklch(75% 0.16 5);    color: oklch(75% 0.16 5); }
+/* Estado del autoguardado: aparece cuando pasa algo y se apaga solo */
+.mps-nsave {
+  font: 600 var(--text-2xs) var(--font-mono); letter-spacing: .04em; color: var(--ob-fg-4);
+  opacity: 0; transition: opacity var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out);
+}
+.mps-nsave[data-estado="guardando"] { opacity: .8; }
+.mps-nsave[data-estado="ok"] { opacity: .75; color: color-mix(in oklch, var(--ob-run) 80%, var(--ob-fg-3)); }
+.mps-nsave[data-estado="error"] { opacity: 1; color: var(--ob-err); }
+/* Manija de resize: mismo lenguaje que las cards web */
+.mps-nhandle {
+  position: absolute; right: -9px; bottom: -9px; width: 22px; height: 22px; z-index: 6;
+  border-radius: 50%; background: var(--ob-bg-4); border: 1.5px solid var(--ob-line-3);
+  cursor: nwse-resize; opacity: 0;
+  transition: opacity var(--dur-1) var(--ease-out), border-color var(--dur-1) var(--ease-out);
+}
+.mps-nhandle::before { content: ''; position: absolute; inset: -8px; }
+.mps-nhandle::after {
+  content: ''; position: absolute; inset: 6px;
+  border-right: 2px solid var(--ob-fg-3); border-bottom: 2px solid var(--ob-fg-3);
+  border-radius: 0 0 2px 0;
+}
+.mps-note:hover .mps-nhandle, .mps-note:focus-within .mps-nhandle { opacity: 1; }
+.mps-nhandle:hover { border-color: var(--ob-accent-40); }

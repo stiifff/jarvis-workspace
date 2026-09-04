@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Jarvis Workspace — Editor</title>
+  <link rel="icon" href="/favicon.ico" sizes="48x48">
+  <link rel="icon" href="/static/shared/favicon.svg?v=1" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/shared/tokens.css?v=17">
+  <link rel="stylesheet" href="/static/shared/base.css?v=72">
+  <link rel="stylesheet" href="/static/sections/editor/editor.css?v=23">
+  <style>
+    html, body { height: 100%; margin: 0; background: var(--ob-bg-0); }
+    /* --jw-vh (shared/escala.js) = alto de ventana ajustado por la Escala de la
+       app; 100vh pelado ignora el `zoom` de <html> y desborda la pantalla. */
+    .ed-standalone { display: flex; flex-direction: column; height: var(--jw-vh, 100vh); }
+    .ed-standalone-bar { height: 38px; flex: none; display: flex; align-items: center; gap: 9px;
+      padding: 0 14px; border-bottom: 1px solid var(--ob-line-1);
+      font: 600 12.5px var(--font-ui); color: var(--ob-fg-1); }
+    .panel-editor { flex: 1; min-height: 0; }
+  </style>
+</head>
+<body>
+  <script src="/static/shared/themes.js?v=8"></script>
+  <script src="/static/shared/escala.js?v=4"></script>
+  <script>window.JarvisThemes?.init?.(); window.JarvisEscala?.init?.();</script>
+  <div class="ed-standalone">
+    <div class="ed-standalone-bar"><span id="ed-proj">editor</span></div>
+    <!-- Copiado verbatim del pane editor de workspace.html (IDs idénticos) -->
+    <section class="panel-editor" id="panel-editor">
+      <!-- File tree (220px) -->
+      <div class="file-tree" id="file-tree">
+        <div class="file-tree-header">
+          <span class="ft-title" id="ft-project-name">archivos</span>
+          <button class="ft-refresh-btn" id="ft-upload-btn" title="Subir al proyecto" aria-label="Subir al proyecto"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
+          <button class="ft-refresh-btn" id="ft-refresh-btn" title="Refrescar árbol" aria-label="Refrescar árbol"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36M21 3v6h-6"/></svg></button>
+          <input type="file" id="ft-upload-input" multiple hidden aria-hidden="true">
+          <input type="file" id="ft-upload-dir-input" webkitdirectory directory multiple hidden aria-hidden="true">
+          <input type="file" id="ft-upload-zip-input" accept=".zip,application/zip" hidden aria-hidden="true">
+          <div class="ft-upload-menu" id="ft-upload-menu" hidden>
+            <button type="button" data-act="files">Subir archivos</button>
+            <button type="button" data-act="dir">Subir carpeta</button>
+            <button type="button" data-act="zip">Subir .zip</button>
+          </div>
+        </div>
+        <div class="ft-search-row">
+          <input type="text" id="ft-search-input" class="ft-search" placeholder="Filtrar archivos…"
+                 autocomplete="off" spellcheck="false">
+        </div>
+        <div class="file-tree-body" id="file-tree-body">
+          <div class="ft-empty">Cargando…</div>
+        </div>
+      </div>
+
+      <!-- Panel de búsqueda en contenido (⌘⇧F). Oculto por defecto. -->
+      <div class="search-panel oculto" id="search-panel">
+        <div class="search-panel-head">
+          <input type="text" class="search-input" id="search-input"
+                 placeholder="Buscar en archivos…" spellcheck="false" autocomplete="off">
+          <div class="search-toggles">
+            <button class="search-toggle" id="search-case" title="Distinguir mayúsculas (Aa)">Aa</button>
+            <button class="search-toggle" id="search-word" title="Palabra completa">\b</button>
+            <button class="search-toggle" id="search-regex" title="Expresión regular">.*</button>
+          </div>
+        </div>
+        <div class="search-meta" id="search-meta"></div>
+        <div class="search-results" id="search-results"></div>
+      </div>
+
+      <!-- Monaco container -->
+      <div class="monaco-container" id="monaco-container">
+        <div class="monaco-tabs" id="monaco-tabs"></div>
+        <div class="editor-breadcrumb" id="editor-breadcrumb" hidden></div>
+        <div class="monaco-split" id="monaco-split">
+          <div class="monaco-group" id="monaco-group-0" data-group="0">
+            <div class="monaco-editor-wrap" id="monaco-editor-wrap">
+              <div class="monaco-placeholder" id="monaco-placeholder">
+                <svg class="mp-icon" viewBox="0 0 16 16" width="64" height="64" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 2.5h5l4 4v7a1 1 0 0 1-1 1h-8a1 1 0 0 1-1-1v-10a1 1 0 0 1 1-1z"/><path d="M8.5 2.5v4h4"/></svg>
+                <span class="mp-text">Abrí un archivo del árbol para empezar a editar.</span>
+              </div>
+              <div class="editor-binary-view" id="editor-binary-view" hidden></div>
+              <div class="monaco-editor-host" id="monaco-editor-host"></div>
+            </div>
+          </div>
+          <div class="monaco-splitter" id="monaco-splitter" hidden></div>
+          <div class="monaco-group" id="monaco-group-1" data-group="1" hidden>
+            <div class="monaco-editor-wrap" id="monaco-editor-wrap-1">
+              <div class="monaco-placeholder" id="monaco-placeholder-1">
+                <svg class="mp-icon" viewBox="0 0 16 16" width="64" height="64" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 2.5h5l4 4v7a1 1 0 0 1-1 1h-8a1 1 0 0 1-1-1v-10a1 1 0 0 1 1-1z"/><path d="M8.5 2.5v4h4"/></svg>
+                <span class="mp-text">Panel secundario.</span>
+              </div>
+              <div class="editor-binary-view" id="editor-binary-view-1" hidden></div>
+              <div class="monaco-editor-host" id="monaco-editor-host-1"></div>
+            </div>
+          </div>
+        </div>
+        <div class="status-bar" id="monaco-footer">
+          <span class="sb-seg sb-lang" id="mf-lang">—</span>
+          <span class="sb-seg sb-pos" id="mf-pos">Ln 1, Col 1</span>
+          <span class="sb-seg sb-enc">UTF-8</span>
+          <span class="mf-save-status" id="editor-save-status"></span>
+          <span class="sb-spacer"></span>
+          <button class="sb-save-btn" id="mf-save-btn" title="Guardar (Ctrl+S)">
+            <svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 2.5h8l3 3v8a1 1 0 0 1-1 1h-10a1 1 0 0 1-1-1v-10a1 1 0 0 1 1-1z"/><path d="M4.5 2.5v4h6v-4M5.5 10.5h5"/></svg>
+            <span>Guardar</span>
+          </button>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script src="/static/shared/ui.js?v=8"></script>
+  <script>
+    // Shims mínimos del shell que editor.js espera (workspace.js no se carga acá):
+    //  - esc(): NO lo define ui.js, vive en workspace.js → shimear sí o sí.
+    //  - editorVisible / togglePanel: el editor consulta visibilidad y togglea el
+    //    dock; acá el editor está siempre visible y no hay dock, así que noop.
+    //  - pedirTexto: ui.js ya lo define; el || lo preserva (defensivo).
+    window.esc = window.esc || ((s) => { const d = document.createElement('div'); d.textContent = String(s ?? ''); return d.innerHTML; });
+    window.pedirTexto = window.pedirTexto || (async (msg, def = '') => prompt(msg, def));
+    window.editorVisible = true;
+    window.togglePanel = () => {};
+  </script>
+  <script src="/static/sections/editor/editor.js?v=32"></script>
+  <script>
+    const pid = new URLSearchParams(location.search).get('project');
+    if (!pid) { document.getElementById('ed-proj').textContent = 'Falta ?project='; }
+    else {
+      fetch(`/api/projects/${pid}`).then(r => r.json()).then(p => {
+        document.title = `Jarvis — ${p.nombre}`;
+        document.getElementById('ed-proj').textContent = p.nombre;
+      }).catch(() => {});
+      JarvisEditor.init(pid); // cargarMonaco() e iniciarPolling() los dispara init() internamente vía _arrancarSiVisible (editorVisible=true)
+      window.addEventListener('resize', () => JarvisEditor.relayout());
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,261 @@
+/* ═══════════════════════════════════════════════════════════════
+   SECTION — Task Board (kanban conectado a los workflows)
+   Vista full-screen exclusiva.
+   Prefijo: tk-  ·  tokens --ob-* (shared/tokens.css)
+═══════════════════════════════════════════════════════════════ */
+
+/* Task Board: llena su pane del dock (la visibilidad la controla .jw-pane[hidden]). */
+#tasks-panel {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+}
+
+.tk-root {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  background: var(--ob-bg-0);
+  color: var(--ob-fg-1);
+  font-family: var(--font-ui);
+  overflow: hidden;
+}
+
+/* ── Topbar ── */
+.tk-topbar {
+  height: 52px;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 18px;
+  border-bottom: 1px solid var(--ob-line-1);
+  background: var(--ob-bg-1);
+}
+.tk-title {
+  font: italic 400 var(--text-xl) var(--font-display);
+  color: var(--ob-fg-0);
+}
+.tk-sub {
+  font: 500 var(--text-2xs) var(--font-mono);
+  letter-spacing: var(--ls-caps);
+  text-transform: uppercase;
+  color: var(--ob-fg-3);
+}
+.tk-spacer { flex: 1; }
+/* .tk-nueva — CTA premium; base + :hover comunes viven en base.css (cargado antes).
+   Acá solo los overrides propios (height/padding/glow 14px/transición) y el :active. */
+.tk-nueva {
+  gap: 6px;
+  height: 32px;
+  padding: 0 14px;
+  box-shadow: inset 0 1px 0 var(--ob-bevel-accent),
+              0 0 14px -5px var(--ob-accent-glow);
+  transition: background var(--dur-1) var(--ease-out),
+              transform var(--dur-1) var(--ease-out);
+}
+.tk-nueva:active { transform: scale(.98); }
+
+/* ── Board ── */
+.tk-board {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--sp-3);
+  padding: var(--sp-4);
+  min-height: 0;
+  overflow-x: auto;
+}
+.tk-col {
+  display: flex;
+  flex-direction: column;
+  min-width: 220px;
+  min-height: 0;
+  border: 1px solid var(--ob-line-1);
+  border-radius: var(--radius-lg);
+  background: var(--ob-bg-1);
+  overflow: hidden;
+}
+.tk-col.drag-over {
+  border-color: var(--ob-accent-24);
+  background: var(--ob-accent-08);
+}
+.tk-col-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--ob-line-1);
+}
+.tk-col-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.tk-col[data-col="backlog"] .tk-col-dot { background: var(--ob-fg-4); }
+.tk-col[data-col="running"] .tk-col-dot {
+  background: var(--ob-accent);
+  box-shadow: 0 0 8px var(--ob-accent-glow);
+  animation: ob-pulse 1.8s var(--ease-in-out) infinite;
+}
+.tk-col[data-col="blocked"] .tk-col-dot { background: var(--ob-err);  box-shadow: 0 0 6px color-mix(in oklch, var(--ob-err) 45%, transparent); }
+.tk-col[data-col="done"]    .tk-col-dot { background: var(--ob-run);  box-shadow: 0 0 6px color-mix(in oklch, var(--ob-run) 45%, transparent); }
+.tk-col-nombre {
+  font: 500 var(--text-2xs) var(--font-mono);
+  letter-spacing: var(--ls-caps);
+  text-transform: uppercase;
+  color: var(--ob-fg-2);
+}
+.tk-col-count {
+  margin-left: auto;
+  font: 600 var(--text-2xs) var(--font-mono);
+  color: var(--ob-fg-3);
+}
+.tk-col-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--sp-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.tk-col-empty {
+  padding: 18px 8px;
+  text-align: center;
+  font: 400 var(--text-xs) var(--font-ui);
+  color: var(--ob-fg-4);
+}
+
+/* ── Cards ── */
+.tk-card {
+  position: relative;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  background:
+    linear-gradient(var(--ob-bg-2), var(--ob-bg-2)) padding-box,
+    linear-gradient(160deg, var(--ob-line-3), var(--ob-line-1) 55%) border-box;
+  padding: 10px 11px;
+  box-shadow: inset 0 1px 0 oklch(85% 0.02 280 / 0.05);
+  animation: ob-pop-in var(--dur-2) var(--ease-out) calc(var(--i, 0) * 25ms) both;
+  transition: box-shadow var(--dur-1) var(--ease-out);
+}
+.tk-card[draggable="true"] { cursor: grab; }
+.tk-card.dragging { opacity: .5; cursor: grabbing; }
+.tk-card:hover { box-shadow: var(--shadow-1), inset 0 1px 0 oklch(85% 0.02 280 / 0.07); }
+
+.tk-card-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+}
+.tk-card-titulo {
+  flex: 1;
+  min-width: 0;
+  font: 500 var(--text-sm) var(--font-ui);
+  color: var(--ob-fg-0);
+  line-height: var(--lh-snug);
+  word-break: break-word;
+}
+.tk-card-desc {
+  margin-top: 4px;
+  font: 400 var(--text-xs) var(--font-ui);
+  color: var(--ob-fg-2);
+  line-height: var(--lh-snug);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.tk-card-meta {
+  margin-top: 7px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.tk-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font: 500 var(--text-2xs) var(--font-mono);
+  letter-spacing: var(--ls-wide);
+  text-transform: uppercase;
+  padding: 1px 7px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--ob-line-2);
+  color: var(--ob-fg-3);
+}
+.tk-badge.wf      { color: var(--ob-accent-fg); border-color: var(--ob-accent-14); background: var(--ob-accent-08); }
+.tk-badge.agente  { color: var(--ob-info); border-color: color-mix(in oklch, var(--ob-info) 30%, transparent); }
+
+/* Acciones de card (hover) */
+.tk-card-acciones {
+  position: absolute;
+  top: 6px; right: 6px;
+  display: none;
+  gap: 2px;
+}
+.tk-card:hover .tk-card-acciones { display: inline-flex; }
+.tk-card-acciones button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px; height: 22px;
+  background: var(--ob-bg-3);
+  border: 1px solid var(--ob-line-2);
+  border-radius: var(--radius-sm);
+  color: var(--ob-fg-2);
+  cursor: pointer;
+  transition: color var(--dur-1) var(--ease-out),
+              border-color var(--dur-1) var(--ease-out);
+}
+.tk-card-acciones button:hover { color: var(--ob-fg-0); border-color: var(--ob-line-3); }
+.tk-card-acciones button.asignar:hover { color: var(--ob-accent-fg); border-color: var(--ob-accent-24); }
+.tk-card-acciones button.peligro:hover { color: var(--ob-err); border-color: color-mix(in oklch, var(--ob-err) 40%, transparent); }
+
+/* ── Picker de agente (asignar) ── */
+.tk-picker {
+  position: fixed;
+  z-index: var(--z-dropdown);
+  min-width: 220px;
+  padding: 6px;
+  border: 1px solid var(--ob-line-2);
+  border-radius: var(--radius-lg);
+  background: color-mix(in oklch, var(--ob-bg-1) 80%, transparent);
+  backdrop-filter: blur(12px) saturate(140%);
+  -webkit-backdrop-filter: blur(12px) saturate(140%);
+  box-shadow: var(--shadow-pop);
+  animation: ob-pop-in var(--dur-2) var(--ease-snap);
+}
+.tk-picker-titulo {
+  padding: 5px 9px 7px;
+  font: 500 var(--text-2xs) var(--font-mono);
+  letter-spacing: var(--ls-caps);
+  text-transform: uppercase;
+  color: var(--ob-fg-3);
+}
+.tk-picker button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 9px;
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--ob-fg-1);
+  font: 500 var(--text-sm) var(--font-ui);
+  cursor: pointer;
+  text-align: left;
+  transition: background var(--dur-1) var(--ease-out);
+}
+.tk-picker button:hover { background: var(--ob-accent-08); color: var(--ob-fg-0); }
+.tk-picker .tk-picker-vacio {
+  padding: 10px;
+  font: 400 var(--text-xs) var(--font-ui);
+  color: var(--ob-fg-3);
+  text-align: center;
+}
+
+/* Badges de rol de swarm */
+.tk-badge.rol-scout    { color: var(--ob-info); border-color: color-mix(in oklch, var(--ob-info) 35%, transparent); background: color-mix(in oklch, var(--ob-info) 8%, transparent); }
+.tk-badge.rol-reviewer { color: var(--ob-accent-fg); border-color: var(--ob-accent-24); background: var(--ob-accent-08); }

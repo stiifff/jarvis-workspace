@@ -1,0 +1,42 @@
+#!/bin/sh
+set -uo pipefail
+
+# Qué Python usar. En Windows (Git Bash / Git for Windows) `python3` no existe:
+# el instalador oficial deja `python`. Sin esto, los guards fallan en silencio
+# y el hook deja pasar secretos y commits de archivos ajenos justo en la
+# plataforma nueva — o sea, todo el candado apagado sin que nadie lo note.
+if command -v python3 >/dev/null 2>&1; then _JV_PY=python3
+elif command -v python >/dev/null 2>&1; then _JV_PY=python
+else
+  echo "⚠ jarvis: no encontré Python — los guards del commit NO corrieron" >&2
+  exit 0     # falla ABIERTO: un hook roto no puede brickear los commits
+fi
+# Candado anti-fuga (pedido 2026-06-12): escanea TODOS los commits salientes
+# antes del push — no solo el diff final: un secreto agregado y borrado en
+# commits intermedios igual queda publicado en la historia. Si encuentra una
+# API key / token (Anthropic, MCPs, cualquier proveedor) BLOQUEA el push.
+# La lógica vive en scripts/scan_secretos.py. Instalación en un clone nuevo:
+#   git config core.hooksPath .githooks
+raiz="$(git rev-parse --show-toplevel)"
+status=0
+while read local_ref local_sha remote_ref remote_sha; do
+  # Borrado de rama remota: no sale contenido
+  [ "$local_sha" = "0000000000000000000000000000000000000000" ] && continue
+  if [ "$remote_sha" = "0000000000000000000000000000000000000000" ]; then
+    # Rama nueva en el remoto: escanear todo lo que el remoto no tiene
+    rango="$local_sha --not --remotes=origin"
+  else
+    rango="$remote_sha..$local_sha"
+  fi
+  if ! git log -p $rango | "$_JV_PY" "$raiz/scripts/scan_secretos.py" --origen "el push ($local_ref)"; then
+    status=1
+  fi
+  # Gemelo del gate de memorias: valida el contrato de las memorias tocadas en
+  # el rango saliente — caza lo commiteado con --no-verify. Falla abierto.
+  if [ "$remote_sha" != "0000000000000000000000000000000000000000" ]; then
+    if ! "$_JV_PY" "$raiz/scripts/guard_memoria.py" --rango "$remote_sha" "$local_sha"; then
+      status=1
+    fi
+  fi
+done
+exit $status

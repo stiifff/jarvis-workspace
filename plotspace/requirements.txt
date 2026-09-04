@@ -1,0 +1,39 @@
+fastapi>=0.104.0
+# uvicorn SIN el extra [standard] a propósito: ese extra arrastra uvloop, que en
+# este entorno (WSL2 + Python 3.14) traba el event loop ~0.4-1s de forma periódica
+# y corta el eco del tipeo de TODAS las terminales a la vez. Sin uvloop instalado,
+# uvicorn cae SIEMPRE en asyncio → tipeo fluido AUTOMÁTICO, sin el banner "Optimizar
+# tipeo" ni depender de recordar `--loop asyncio`. Traemos a mano las deps útiles de
+# [standard] MENOS uvloop (websockets = WS de terminales/eventos; httptools = parser).
+uvicorn>=0.24.0
+websockets>=12.0
+httptools>=0.6.0
+ptyprocess>=0.7.0
+# Puertos en LISTEN, cwd y cmdline de procesos (dev_detect + puertos): el mismo
+# código en Linux, macOS y Windows. Reemplaza a `ss -tlnp` y a leer /proc, que
+# no existen fuera de Linux — es lo que permite que la detección de dev servers
+# funcione cuando el motor no corre sobre WSL. Los caminos viejos quedan de
+# respaldo por si psutil no está.
+psutil>=5.9.0
+aiofiles>=23.0.0
+python-multipart>=0.0.6
+anthropic>=0.100.0
+httpx>=0.27.0
+python-dotenv>=1.0.0
+# STT motor default: parakeet-tdt-0.6b-v3 int8 vía onnx-asr — 3× más rápido que
+# whisper small fp32 en este CPU, mejor español, puntuación nativa (benchmark
+# 2026-07-09, memoria deepwork-audio-transcripcion). OJO: onnxruntime 1.24.1
+# tiene incompatibilidad documentada con onnx-asr — cualquier otra ≥1.18 sirve.
+onnx-asr[cpu,hub]>=0.11
+# STT vía de escape (STT_MOTOR=whisper): faster-whisper (CTranslate2) — sin
+# torch (menos RAM/disco y sin el segfault de libtorch bajo Py3.14).
+faster-whisper>=1.1.0
+numpy>=1.24.0
+edge-tts>=6.0.0
+# Browser remoto del Web Preview (Fase 2). Es dep de runtime: sin esto,
+# remote_browser.py crashea al importar Playwright en una máquina limpia.
+# Tras instalar: `playwright install chromium`.
+playwright>=1.50.0
+# El "Ojo" del Web Builder (core/page_eye.py) capa los JPEG con Pillow. Faltaba
+# en este archivo y el venv restaurado quedó sin ella → test_page_eye fallaba.
+Pillow>=10.0.0

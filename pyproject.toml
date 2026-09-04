@@ -1,0 +1,75 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "plotspace"
+version = "1.8.52"
+description = "Tu flota de agentes de código, en una app"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { file = "LICENSE" }
+authors = [{ name = "Jarvis Workspace contributors" }]
+keywords = ["ai", "agents", "terminal", "claude", "codex", "orchestration"]
+classifiers = [
+  "Environment :: Console",
+  "Environment :: Web Environment",
+  "Intended Audience :: Developers",
+  "Operating System :: Microsoft :: Windows",
+  "Operating System :: MacOS",
+  "Operating System :: POSIX :: Linux",
+  "Programming Language :: Python :: 3",
+  "Topic :: Software Development",
+]
+
+# Lo MÍNIMO para arrancar y trabajar. Todo lo pesado va en extras: sin eso, un
+# `pip install plotspace` se baja 1,3 GB para alguien que quizá nunca use el
+# dictado local ni el browser remoto. Espejo de packaging/requirements-base.txt,
+# que es lo que viaja en el instalador.
+dependencies = [
+  "fastapi>=0.104.0",
+  "uvicorn>=0.24.0",
+  "websockets>=12.0",
+  "httptools>=0.6.0",
+  "aiofiles>=23.0.0",
+  "python-multipart>=0.0.6",
+  "anthropic>=0.100.0",
+  "httpx>=0.27.0",
+  "python-dotenv>=1.0.0",
+  "edge-tts>=6.0.0",
+  # Puertos en LISTEN, cwd y cmdline de procesos: reemplaza a `ss` y a leer
+  # /proc, que no existen fuera de Linux.
+  "psutil>=5.9.0",
+  # Solo Unix (arrastra pty/termios/fcntl). En Windows el motor de terminales
+  # es el termhost y este paquete no hace falta.
+  "ptyprocess>=0.7.0; sys_platform != 'win32'",
+]
+
+[project.optional-dependencies]
+# Dictado con el modelo corriendo en tu máquina. Con STT_MOTOR=groq el dictado
+# es remoto y no hace falta nada de esto.
+voice = ["onnx-asr[cpu,hub]>=0.11", "numpy>=1.24.0"]
+# Vía de escape del dictado local (STT_MOTOR=whisper).
+whisper = ["faster-whisper>=1.1.0", "numpy>=1.24.0"]
+# Browser remoto del Web Preview: para los sitios que bloquean el iframe.
+# Además del paquete hay que bajar el navegador: `playwright install chromium`.
+browser = ["playwright>=1.50.0", "Pillow>=10.0.0"]
+all = ["plotspace[voice,browser]"]
+
+[project.urls]
+Homepage = "https://github.com/stiifff/jarvis-workspace"
+Issues = "https://github.com/stiifff/jarvis-workspace/issues"
+
+[project.scripts]
+jarvis = "plotspace.cli:main"
+plotspace = "plotspace.cli:main"
+
+[tool.setuptools]
+# El paquete se llama como el producto. `frontend/` queda como hermano y no
+# adentro: moverlo cambiaría cada ruta relativa del repo sin aportar nada hoy
+# (el instalador lo toma igual, ver packaging/armar_bundle.py).
+packages = ["plotspace", "plotspace.core", "plotspace.routers"]
+include-package-data = true
+
+[tool.setuptools.package-data]
+plotspace = ["../frontend/**/*"]

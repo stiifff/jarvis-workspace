@@ -1,0 +1,87 @@
+#!/usr/bin/env bash
+# JARVIS — guard de pre-commit: IMPIDE commitear (y por ende pushear) secretos.
+#
+# Activado vía `git config core.hooksPath .githooks` (lo hace scripts/setup-hooks.sh).
+# Bloquea por NOMBRE de archivo (token, .env, claves) y por CONTENIDO del diff
+# (API keys, claves privadas). Falso positivo real → `git commit --no-verify`.
+set -uo pipefail
+
+# Qué Python usar. En Windows (Git Bash / Git for Windows) `python3` no existe:
+# el instalador oficial deja `python`. Sin esto, los guards fallan en silencio
+# y el hook deja pasar secretos y commits de archivos ajenos justo en la
+# plataforma nueva — o sea, todo el candado apagado sin que nadie lo note.
+if command -v python3 >/dev/null 2>&1; then _JV_PY=python3
+elif command -v python >/dev/null 2>&1; then _JV_PY=python
+else
+  echo "⚠ jarvis: no encontré Python — los guards del commit NO corrieron" >&2
+  exit 0     # falla ABIERTO: un hook roto no puede brickear los commits
+fi
+
+fail=0
+staged=$(git diff --cached --name-only --diff-filter=ACM 2>/dev/null)
+
+# ── 1) Archivos sensibles por ruta / nombre ──────────────────────────────────
+while IFS= read -r f; do
+  [ -z "$f" ] && continue
+  base=$(basename "$f")
+  case "$f" in
+    data/jarvis_token.txt|*/jarvis_token.txt|jarvis_token.txt)
+      echo "✖ BLOQUEADO: $f — token de acceso de Jarvis (nunca se commitea)"; fail=1 ;;
+  esac
+  case "$base" in
+    .env.example) : ;;                                  # plantilla pública: OK
+    .env|.env.*)  echo "✖ BLOQUEADO: $f — archivo .env con secretos"; fail=1 ;;
+  esac
+  case "$base" in
+    *.pem|*.key|*.p12|*.pfx|id_rsa|id_ed25519|id_dsa)
+      echo "✖ BLOQUEADO: $f — clave privada / credencial"; fail=1 ;;
+    jarvis.db) echo "✖ BLOQUEADO: $f — base de datos local (estado, no código)"; fail=1 ;;
+  esac
+done <<< "$staged"
+
+# ── 2) Secretos por CONTENIDO del diff staged ────────────────────────────────
+# Patrones de alta señal. El placeholder 'sk-ant-...' del README NO matchea
+# (los '...' no son [a-z0-9-]).
+if git diff --cached -U0 2>/dev/null | grep -aiqE \
+   'sk-ant-[a-z0-9]{20}|AKIA[0-9A-Z]{16}|-----BEGIN (RSA|OPENSSH|EC|DSA|PRIVATE) KEY|ghp_[A-Za-z0-9]{30}|AIza[0-9A-Za-z_-]{30}|xox[baprs]-[A-Za-z0-9-]{10}'; then
+  echo "✖ BLOQUEADO: el contenido staged contiene un patrón de secreto (API key / clave privada)."
+  fail=1
+fi
+
+# ── 3) Escáner profundo (scripts/scan_secretos.py, 2026-06-12) ───────────────
+# Más proveedores (Telegram, GitHub PAT, OpenAI, JWT, asignaciones genéricas)
+# + los VALORES REALES de los secretos locales (token, .env, telegram.json),
+# leídos en runtime. Su gemelo pre-push re-escanea TODO el rango saliente.
+if ! git diff --cached | "$_JV_PY" "$(git rev-parse --show-toplevel)/scripts/scan_secretos.py" --origen "el commit (staged)"; then
+  fail=1
+fi
+
+# ── 4) Candado de propiedad entre agentes (2026-06-16) ───────────────────────
+# Impide que un agente commitee archivos cuyo 🔒 dueño (en .jarvis/LIVE.md) es
+# OTRO agente — el enforcement duro de la regla «commiteá SOLO tus archivos».
+# Identifica al committer por su sesión tmux. Falla ABIERTO (sin tmux = el
+# usuario en su shell, sin LIVE.md, o ante error → permite).
+if ! "$_JV_PY" "$(git rev-parse --show-toplevel)/scripts/guard_propiedad.py"; then
+  fail=1
+fi
+
+# ── 5) Gate de admisión de memorias (.jarvis/memory/) ────────────────────────
+# Contrato duro al nacer: frontmatter completo (estado obligatorio), ≤150
+# líneas, sin títulos-bitácora, resumen: en las nuevas. Mensajes de fix de una
+# línea. Falla ABIERTO ante error del guard.
+if ! "$_JV_PY" "$(git rev-parse --show-toplevel)/scripts/guard_memoria.py"; then
+  fail=1
+fi
+
+# ── 6) Aviso de mailbox (mensajes sin leer) — NUNCA bloquea ──────────────────
+# Si otro agente te avisó algo (p.ej. "cambié la interfaz que usás") y no lo
+# leíste, el commit es el momento de enterarte. Solo imprime.
+"$_JV_PY" "$(git rev-parse --show-toplevel)/scripts/guard_mailbox.py" || true
+
+if [ "$fail" -ne 0 ]; then
+  echo ""
+  echo "Commit abortado (ver el motivo arriba)."
+  echo "Si es un falso positivo legítimo: git commit --no-verify"
+  exit 1
+fi
+exit 0

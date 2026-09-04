@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Reportar una vulnerabilidad
+    url: https://github.com/stiifff/jarvis-workspace/security/advisories/new
+    about: En privado, no como issue pública. Jarvis Workspace ejecuta comandos en tu máquina.

@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Jarvis Workspace</title>
+<style>
+  /* ── Jarvis Workspace — splash de arranque ─────────────────────────────────────
+     Composición: lockup chico + tagline → hero dos líneas (la 2ª apagada) →
+     slot de estado/botón → microcopy. Canvas noir violeta con grilla de
+     líneas y esquineros tipo viewfinder. LA FIRMA: la constelación del logo
+     se dibuja en loop mientras el motor arranca (el logo ES el spinner) y se
+     completa + flamea la chispa al quedar listo. Dos voces tipográficas: la
+     marca en Segoe, la máquina (estados/build) en monospace de terminal. */
+  :root {
+    --obs-0: #08070d;        /* canvas */
+    --obs-1: #14111d;        /* tile del mark */
+    --violet: #7c5cff;
+    --violet-lo: #5b3fd6;
+    --violet-hi: #b9a6ff;
+    --tinta: #ece7fb;        /* titular */
+    --humo: #8f88ad;         /* secundario */
+    --humo-oscuro: #55506f;  /* hero línea 2 (apagada, como la referencia) */
+    --faint: #47425f;
+    --mono: ui-monospace, "Cascadia Mono", "SF Mono", Consolas, monospace;
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  * { box-sizing: border-box; }
+  html { color-scheme: dark; }
+
+  body {
+    margin: 0; height: 100vh; overflow: hidden;
+    background: var(--obs-0); color: var(--tinta);
+    font: 15px/1.6 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
+    user-select: none; -webkit-user-select: none; cursor: default;
+  }
+
+  /* ── Atmósfera: grilla de líneas + glow + vignette + esquineros ────────── */
+  .scene { position: fixed; inset: 0; display: grid; place-items: center; }
+
+  .grid {
+    position: absolute; inset: 0; opacity: 0;
+    background-image:
+      linear-gradient(rgba(165,148,255,.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(165,148,255,.05) 1px, transparent 1px);
+    background-size: 44px 44px;
+    -webkit-mask: radial-gradient(ellipse 72% 64% at 50% 44%, #000 30%, transparent 78%);
+    mask: radial-gradient(ellipse 72% 64% at 50% 44%, #000 30%, transparent 78%);
+    animation: aparecer .8s ease .05s forwards;
+  }
+
+  .aurora {
+    position: absolute; width: 720px; height: 520px; border-radius: 50%;
+    left: 50%; top: 26%; transform: translateX(-50%);
+    background: radial-gradient(ellipse, rgba(124,92,255,.16) 0%, transparent 65%);
+    filter: blur(40px); pointer-events: none;
+  }
+  /* contraluz baja para dar profundidad al canvas */
+  .aurora-b {
+    position: absolute; width: 540px; height: 380px; border-radius: 50%;
+    right: 6%; bottom: -12%;
+    background: radial-gradient(ellipse, rgba(91,63,214,.10) 0%, transparent 62%);
+    filter: blur(46px); pointer-events: none;
+  }
+
+  .scene::after {
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    background: radial-gradient(ellipse 95% 95% at 50% 44%, transparent 52%, rgba(3,2,7,.92) 100%);
+  }
+
+  /* esquineros viewfinder */
+  .marco { position: absolute; inset: 22px; pointer-events: none; opacity: 0; animation: aparecer .9s ease .15s forwards; }
+  .marco i { position: absolute; width: 26px; height: 26px; border: 0 solid rgba(178,166,226,.22); }
+  .marco .tl { top: 0;    left: 0;    border-top-width: 2px;    border-left-width: 2px; }
+  .marco .tr { top: 0;    right: 0;   border-top-width: 2px;    border-right-width: 2px; }
+  .marco .bl { bottom: 0; left: 0;    border-bottom-width: 2px; border-left-width: 2px; }
+  .marco .br { bottom: 0; right: 0;   border-bottom-width: 2px; border-right-width: 2px; }
+
+  @keyframes aparecer { to { opacity: 1; } }
+
+  /* ── Columna central ───────────────────────────────────────────────────── */
+  .stage {
+    position: relative; z-index: 2; text-align: center;
+    display: flex; flex-direction: column; align-items: center;
+    max-width: 620px; padding: 0 32px;
+  }
+
+  /* Lockup: mark + nombre, tagline debajo */
+  .lockup {
+    display: flex; align-items: center; gap: 12px;
+    opacity: 0; transform: translateY(10px) scale(.96);
+    animation: subir .8s var(--ease-out) .1s forwards;
+  }
+  .lockup .nombre {
+    font-size: 19px; font-weight: 700; letter-spacing: -0.01em; color: var(--tinta);
+  }
+  .tagline {
+    margin: 10px 0 0; font-size: 12.5px; font-style: italic;
+    letter-spacing: .04em; color: var(--humo);
+    opacity: 0; transform: translateY(8px);
+    animation: subir .8s var(--ease-out) .2s forwards;
+  }
+
+  /* El mark: cinta angular SUELTA (sin tile), la trayectoria del plot */
+  .mark { width: 42px; height: 42px; position: relative; flex: none; }
+  .mark svg { display: block; width: 100%; height: 100%; overflow: visible; }
+  /* la cinta se dibuja en loop mientras carga (el logo ES el spinner) */
+  .mark .trazo, .mark .brillo {
+    stroke-dasharray: 100;
+    animation: trazar 2.1s var(--ease-out) infinite;
+  }
+  .mark.listo .trazo, .mark.listo .brillo { animation: none; stroke-dashoffset: 0; }
+  .mark .chispa-n { animation: latir 2.1s ease-in-out infinite; transform-origin: 50px 15px; }
+  .mark.listo .chispa-n { animation: flamear 1.8s ease-in-out infinite; }
+  /* los rayos de la chispa se ENCIENDEN recién con el motor listo */
+  .mark .rayos { opacity: 0; transition: opacity .5s ease; transform-origin: 50px 15px; }
+  .mark.listo .rayos { opacity: 1; animation: flamear 1.8s ease-in-out infinite; }
+  @keyframes trazar {
+    0% { stroke-dashoffset: 100; opacity: .35; }
+    55% { stroke-dashoffset: 0; opacity: 1; }
+    100% { stroke-dashoffset: 0; opacity: 1; }
+  }
+  @keyframes latir  { 0%,45%,100% { opacity: .45; } 60% { opacity: 1; } }
+  @keyframes flamear {
+    0%,100% { opacity: .9; transform: scale(1); }
+    50%     { opacity: 1;  transform: scale(1.28); }
+  }
+
+  /* Campo de constelaciones ambiente: nodos ploteados en la oscuridad */
+  .campo { position: absolute; inset: 0; pointer-events: none; opacity: 0; animation: aparecer 1.4s ease .3s forwards; }
+  .campo svg { width: 100%; height: 100%; }
+  .campo .tw1 { animation: titilar 4.2s ease-in-out 1.2s infinite; }
+  .campo .tw2 { animation: titilar 5.6s ease-in-out 2.6s infinite; }
+  @keyframes titilar { 0%,100% { opacity: .14; } 50% { opacity: .5; } }
+
+  /* ── Hero: dos líneas, la segunda apagada ──────────────────────────────── */
+  .hero {
+    margin: clamp(30px, 6vh, 52px) 0 0;
+    font-size: clamp(40px, 5.2vw, 58px); font-weight: 800;
+    line-height: 1.06; letter-spacing: -0.025em; color: var(--tinta);
+    text-shadow: 0 0 30px rgba(124,92,255,.15);
+  }
+  .hero .l1, .hero .l2 { display: block; opacity: 0; transform: translateY(16px); }
+  .hero .l1 { animation: subir .9s var(--ease-out) .28s forwards; }
+  .hero .l2 { color: var(--humo-oscuro); animation: subir .9s var(--ease-out) .38s forwards; }
+  /* punto final geométrico (no el glifo "." — cambia por fuente): dot violeta
+     con glow, eco de la chispa del mark */
+  .hero .punto {
+    display: inline-block; width: .13em; height: .13em; border-radius: 50%;
+    background: var(--violet); margin-left: .06em;
+    box-shadow: 0 0 16px rgba(124,92,255,.85);
+  }
+
+  .sub {
+    margin: 18px 0 0; font-size: 14.5px; color: var(--humo); letter-spacing: .01em;
+    opacity: 0; transform: translateY(10px);
+    animation: subir .9s var(--ease-out) .5s forwards;
+  }
+
+  /* ── Slot: estado de la máquina o botón Entrar ─────────────────────────── */
+  .slot {
+    margin-top: clamp(28px, 5.5vh, 46px); min-height: 76px; width: 100%;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    opacity: 0; animation: aparecer .9s ease .62s forwards;
+  }
+
+  /* estado: voz de máquina (mono) con nodo pulsante */
+  #estado {
+    margin: 0; display: inline-flex; align-items: center; gap: 9px;
+    font-family: var(--mono); font-size: 12.5px; letter-spacing: .02em;
+    color: var(--humo); transition: opacity .3s ease;
+  }
+  #estado::before {
+    content: ""; width: 6px; height: 6px; border-radius: 50%; flex: none;
+    background: var(--violet); box-shadow: 0 0 8px var(--violet);
+    animation: latir 2.1s ease-in-out infinite;
+  }
+  #estado.oculto { opacity: 0; }
+  #estado.error {
+    display: block; font-size: 12px; line-height: 1.6; text-align: left;
+    color: #ffa2a2; white-space: pre-wrap; max-width: 520px;
+    padding: 14px 18px; border-radius: 10px;
+    background: rgba(255,90,90,.06); border: 1px solid rgba(255,90,90,.18);
+    border-left: 3px solid rgba(255,110,110,.55);
+  }
+  #estado.error::before { content: none; }
+
+  /* Botón primario: blanco, ancho, único (craft de la referencia) */
+  .enter[hidden] { display: none; }
+  .enter {
+    position: relative; overflow: hidden;
+    display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+    width: min(360px, 84vw); height: 48px; border: 0; border-radius: 10px;
+    font: inherit; font-size: 15px; font-weight: 650; letter-spacing: .01em;
+    color: #0b0a12; cursor: pointer;
+    background: linear-gradient(180deg, #ffffff 0%, #eceaf6 100%);
+    box-shadow: 0 1px 0 rgba(255,255,255,.55) inset,
+                0 10px 30px -12px rgba(124,92,255,.55),
+                0 2px 10px rgba(0,0,0,.5);
+    opacity: 0; transform: translateY(10px);
+    transition: transform .22s var(--ease-out), box-shadow .22s var(--ease-out);
+  }
+  .enter.show { animation: entrar .5s var(--ease-out) forwards; }
+  @keyframes entrar { to { opacity: 1; transform: translateY(0); } }
+  .enter:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 1px 0 rgba(255,255,255,.55) inset,
+                0 16px 42px -12px rgba(124,92,255,.8),
+                0 3px 12px rgba(0,0,0,.55);
+  }
+  .enter:active { transform: translateY(0); }
+  .enter:focus-visible { outline: 2px solid var(--violet-hi); outline-offset: 3px; }
+  .enter .flecha { transition: transform .22s var(--ease-out); }
+  .enter:hover .flecha { transform: translateX(4px); }
+
+  /* microcopy bajo el slot */
+  .nota {
+    margin: 26px 0 0; font-size: 11.5px; letter-spacing: .03em; color: var(--faint);
+    opacity: 0; animation: aparecer 1s ease .75s forwards;
+  }
+
+  /* ── Márgenes: marca madre + build ─────────────────────────────────────── */
+  /* rótulos de margen: SIEMPRE adentro del marco (inset 22px + 2px de línea)
+     para no quedar atravesados por el esquinero */
+  .madre, .build {
+    position: fixed; bottom: 34px; z-index: 3;
+    font: 10.5px/1 var(--mono); letter-spacing: .1em; color: var(--faint);
+    opacity: 0; animation: aparecer 1s ease .9s forwards;
+  }
+  .madre { left: 38px; }
+  .build { right: 38px; display: inline-flex; align-items: center; gap: 7px; }
+  .build .dot {
+    width: 5px; height: 5px; border-radius: 50%; background: var(--violet);
+    box-shadow: 0 0 6px var(--violet); animation: latir 2.6s ease-in-out infinite;
+  }
+
+  /* ── Chrome de ventana (sin decoración nativa) ─────────────────────────── */
+  /* Sin botones min/max/cerrar en el splash (pedido del usuario): lienzo
+     limpio como la referencia. La barra invisible sigue para poder ARRASTRAR
+     la ventana; cerrar durante el boot = Alt+F4. El workspace adentro tiene
+     su propio chrome (window-chrome.js). */
+  .titlebar {
+    position: fixed; top: 0; left: 0; right: 0; height: 40px; z-index: 5;
+    -webkit-app-region: drag; app-region: drag;
+  }
+
+  /* ── Secuencia de salida: zambullida EN la constelación ────────────────
+     Click en Entrar → la UI se apaga → la cámara se adentra en la
+     constelación (zoom hacia la chispa + warp de la grilla) → la
+     constelación sale volando → burst de luz → workspace. ~1.25s, una vez
+     por boot. Con reduced-motion: solo el flash de siempre. */
+  /* El warp es un CANVAS que se redibuja por frame (cámara real, vectores
+     siempre nítidos, parallax de profundidad). Nada de escalar una capa
+     rasterizada — eso se veía como un PNG estirado volando. */
+  #warp {
+    position: fixed; inset: 0; z-index: 4; pointer-events: none; display: none;
+  }
+
+  /* la escena acompaña: UI afuera, grilla a velocidad warp, aurora que arde */
+  .salida .stage { animation: stageOut .32s ease forwards; }
+  @keyframes stageOut { to { opacity: 0; transform: scale(.94); filter: blur(3px); } }
+  .salida .marco, .salida .madre, .salida .build, .salida .campo {
+    transition: opacity .3s ease; opacity: 0 !important; animation: none;
+  }
+  .salida .grid {
+    animation: gridWarp 1.35s cubic-bezier(.6,0,.8,1) forwards;
+  }
+  @keyframes gridWarp {
+    0%   { opacity: 1; transform: scale(1); }
+    60%  { opacity: .85; }
+    100% { opacity: 0; transform: scale(3.6); }
+  }
+  .salida .aurora { animation: auroraArde 1.35s ease forwards; }
+  @keyframes auroraArde {
+    0% { opacity: 1; } 45% { opacity: 1.0; transform: translateX(-50%) scale(1.35); }
+    100% { opacity: 0; transform: translateX(-50%) scale(1.9); }
+  }
+
+  /* flash de salida al entrar */
+  .flash {
+    position: fixed; inset: 0; z-index: 9; pointer-events: none;
+    background: radial-gradient(circle at 50% 44%, rgba(185,166,255,.9), rgba(124,92,255,.5) 30%, transparent 70%);
+    opacity: 0;
+  }
+  .flash.go { animation: flash .5s ease-out forwards; }
+  @keyframes flash { 0% { opacity: 0; transform: scale(.6);} 40% { opacity: 1;} 100% { opacity: 0; transform: scale(2.2);} }
+
+  @keyframes subir { to { opacity: 1; transform: translateY(0) scale(1); } }
+
+  /* ── Accesibilidad: sin movimiento ─────────────────────────────────────── */
+  @media (prefers-reduced-motion: reduce) {
+    .grid, .marco, .lockup, .tagline, .hero .l1, .hero .l2, .sub, .slot,
+    .nota, .madre, .build {
+      opacity: 1 !important; transform: none !important; animation: none !important;
+    }
+    .mark .trazo, .mark .brillo { animation: none; stroke-dashoffset: 0; }
+    .mark .chispa-n, .mark .rayos, #estado::before, .build .dot,
+    .campo .tw1, .campo .tw2 { animation: none; }
+    .enter { opacity: 1 !important; transform: none !important; }
+    .enter.show { animation: none; }
+    .flash.go { animation: none; }
+  }
+</style>
+</head>
+<body>
+  <div class="scene">
+    <div class="grid"></div>
+    <div class="aurora"></div>
+    <div class="aurora-b"></div>
+    <!-- campo de constelaciones: nodos ploteados titilando en la oscuridad -->
+    <div class="campo" aria-hidden="true">
+      <svg viewBox="0 0 1400 860" preserveAspectRatio="xMidYMid slice" fill="none">
+        <g stroke="rgba(124,92,255,.09)" stroke-width="1">
+          <path d="M172 236 L233 197 L287 226"/>
+          <path d="M1108 590 L1173 545 L1231 583 L1288 522"/>
+          <path d="M1122 178 L1188 214"/>
+          <path d="M218 664 L282 630"/>
+        </g>
+        <g fill="#9d86ff">
+          <circle cx="172" cy="236" r="1.6" opacity=".22"/>
+          <circle class="tw1" cx="233" cy="197" r="2.1" opacity=".3"/>
+          <circle cx="287" cy="226" r="1.4" opacity=".18"/>
+          <circle cx="1108" cy="590" r="1.5" opacity=".2"/>
+          <circle cx="1173" cy="545" r="1.9" opacity=".26"/>
+          <circle class="tw2" cx="1231" cy="583" r="1.5" opacity=".2"/>
+          <circle cx="1288" cy="522" r="2.2" opacity=".3"/>
+          <circle cx="1122" cy="178" r="1.7" opacity=".22"/>
+          <circle class="tw2" cx="1188" cy="214" r="2.0" opacity=".28"/>
+          <circle cx="218" cy="664" r="1.6" opacity=".2"/>
+          <circle class="tw1" cx="282" cy="630" r="1.9" opacity=".24"/>
+          <circle cx="418" cy="130" r="1.3" opacity=".16"/>
+          <circle cx="985" cy="112" r="1.4" opacity=".16"/>
+          <circle cx="1330" cy="330" r="1.3" opacity=".14"/>
+          <circle cx="92" cy="430" r="1.4" opacity=".15"/>
+        </g>
+        <!-- crosshairs de la retícula -->
+        <g stroke="rgba(178,166,226,.12)" stroke-width="1">
+          <path d="M352 396 h14 M359 389 v14"/>
+          <path d="M1044 296 h14 M1051 289 v14"/>
+          <path d="M958 690 h14 M965 683 v14"/>
+        </g>
+      </svg>
+    </div>
+    <div class="marco" aria-hidden="true"><i class="tl"></i><i class="tr"></i><i class="bl"></i><i class="br"></i></div>
+
+    <main class="stage">
+      <div class="lockup">
+        <div class="mark" id="mark" aria-hidden="true">
+          <svg viewBox="0 0 64 64" fill="none">
+            <defs>
+              <linearGradient id="cinta" x1="0" y1="1" x2="1" y2="0">
+                <stop offset="0" stop-color="#5b3fd6"/>
+                <stop offset=".55" stop-color="#7c5cff"/>
+                <stop offset="1" stop-color="#b9a6ff"/>
+              </linearGradient>
+            </defs>
+            <!-- halo blando debajo de la cinta -->
+            <path d="M12 46 L24 35 L32 41 L50 15" stroke="rgba(124,92,255,.35)"
+                  stroke-width="12" stroke-linecap="round" stroke-linejoin="round" filter="blur(4px)"/>
+            <!-- la cinta: trayectoria del plot, sólida y facetada -->
+            <path class="trazo" d="M12 46 L24 35 L32 41 L50 15" pathLength="100"
+                  stroke="url(#cinta)" stroke-width="7"
+                  stroke-linecap="round" stroke-linejoin="miter" stroke-miterlimit="5"/>
+            <!-- arista de luz en el borde superior (dimensión) -->
+            <path class="brillo" d="M12 46 L24 35 L32 41 L50 15" pathLength="100"
+                  stroke="rgba(255,255,255,.38)" stroke-width="1.8"
+                  stroke-linecap="round" stroke-linejoin="round" transform="translate(-0.7,-1.6)"/>
+            <!-- nodo ancla + puntos ploteados remachados en la cinta -->
+            <circle cx="12" cy="46" r="3.4" fill="#4a30b8"/>
+            <circle cx="12" cy="46" r="1.6" fill="#c9bcff"/>
+            <circle cx="24" cy="35" r="1.7" fill="#2c1e63"/>
+            <circle cx="32" cy="41" r="1.7" fill="#2c1e63"/>
+            <!-- chispa cúspide: núcleo + halo; los rayos se encienden al estar listo -->
+            <circle class="chispa-n" cx="50" cy="15" r="7.5" fill="rgba(185,166,255,.30)"/>
+            <circle class="chispa-n" cx="50" cy="15" r="3.4" fill="#ffffff"/>
+            <g class="rayos" stroke="#ffffff" stroke-width="1.6" stroke-linecap="round">
+              <path d="M50 5.5 V9.5"/><path d="M50 20.5 V24.5"/>
+              <path d="M40.5 15 H44.5"/><path d="M55.5 15 H59.5"/>
+            </g>
+          </svg>
+        </div>
+        <span class="nombre">Jarvis Workspace</span>
+      </div>
+      <p class="tagline">tus agentes, en una sola app</p>
+
+      <h1 class="hero">
+        <span class="l1">Bienvenido a</span>
+        <span class="l2">Jarvis Workspace<span class="punto" aria-hidden="true"></span></span>
+      </h1>
+
+      <p class="sub">Tu flota de agentes de código, en una app.</p>
+
+      <div class="slot">
+        <p id="estado">Preparando…</p>
+        <button class="enter" id="entrar" hidden aria-hidden="true">
+          <svg width="16" height="16" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+            <path d="M12 46 L24 35 L32 41 L50 15" stroke="currentColor" stroke-width="9"
+                  stroke-linecap="round" stroke-linejoin="miter" stroke-miterlimit="5"/>
+            <circle cx="50" cy="15" r="6.5" fill="currentColor"/>
+          </svg>
+          <span id="entrar-txt">Entrar al workspace</span>
+          <svg class="flecha" width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="2.2"
+                  stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+        <p class="nota">Motor local en WSL — tu código no sale de tu máquina.</p>
+      </div>
+    </main>
+
+    <span class="madre">LOCAL · BYOK</span>
+    <div class="build" id="build" hidden><span class="dot"></span><span id="build-txt"></span></div>
+  </div>
+  <!-- constelación warp: se redibuja por frame en el canvas (ver lanzarWarp) -->
+  <canvas id="warp" aria-hidden="true"></canvas>
+
+  <div class="flash" id="flash"></div>
+  <div class="titlebar"></div>
+
+  <script>
+    (function () {
+      var estado  = document.getElementById('estado');
+      var entrar  = document.getElementById('entrar');
+      var mark    = document.getElementById('mark');
+      var flash   = document.getElementById('flash');
+      var build   = document.getElementById('build');
+      var buildTx = document.getElementById('build-txt');
+      var destino = null;
+
+      // ── Idioma: el splash sigue el idioma del SISTEMA (WebView2 hereda el
+      // de Windows vía navigator.language) — la misma señal que lee el shell
+      // (GetUserDefaultUILanguage), así todo el arranque habla un solo idioma.
+      // Si config.json trae un idioma EXPLÍCITO ("en"/"es"), el shell lo
+      // empuja con window.__idioma (idempotente: puede llegar en cualquier
+      // momento del boot y las veces que sea). Corre antes del primer paint
+      // (todo nace con opacity 0): no hay flash del otro idioma.
+      var IDIOMAS = {
+        es: {
+          '.tagline': 'tus agentes, en una sola app',
+          '.hero .l1': 'Bienvenido a',
+          '.sub': 'Tu flota de agentes de código, en una app.',
+          '#estado': 'Preparando…',
+          '#entrar-txt': 'Entrar al workspace',
+          '.nota': 'Motor local en WSL — tu código no sale de tu máquina.',
+          '.madre': 'LOCAL · BYOK'
+        },
+        en: {
+          '.tagline': 'your agents, in one app',
+          '.hero .l1': 'Welcome to',
+          '.sub': 'Your fleet of code agents, in one app.',
+          '#estado': 'Getting ready…',
+          '#entrar-txt': 'Enter the workspace',
+          '.nota': 'Local engine on WSL — your code never leaves your machine.',
+          '.madre': 'LOCAL · BYOK'
+        }
+      };
+      var estadoVivo = false;   // true tras el primer __estado real del shell
+      function aplicarIdioma(lang) {
+        lang = (lang === 'es') ? 'es' : 'en';
+        var txt = IDIOMAS[lang];
+        for (var sel in txt) {
+          if (sel === '#estado' && estadoVivo) continue; // no pisar el estado real
+          var el = document.querySelector(sel);
+          if (el) el.textContent = txt[sel];
+        }
+        document.documentElement.lang = lang;
+      }
+      if (!/^es/i.test(navigator.language || 'es')) aplicarIdioma('en');
+      window.__idioma = aplicarIdioma;
+
+      // El shell (Rust) empuja el progreso mientras prepara el motor.
+      window.__estado = function (msg, esError) {
+        estadoVivo = true;
+        entrar.hidden = true; entrar.classList.remove('show');
+        estado.hidden = false; estado.classList.remove('oculto');
+        estado.textContent = msg;
+        estado.className = esError ? 'error' : '';
+        mark.classList.toggle('listo', !!esError);   // error: frenar el loop de trazo
+      };
+
+      // El shell nos pasa el número de build al arrancar.
+      window.__build = function (n) {
+        buildTx.textContent = 'BUILD ' + n;
+        build.hidden = false;
+      };
+
+      // Motor listo: la constelación se completa, la chispa flamea y aparece
+      // el botón. El usuario decide cuándo entrar.
+      window.__listo = function (url) {
+        destino = url;
+        mark.classList.add('listo');
+        estado.classList.add('oculto');
+        setTimeout(function () {
+          estado.hidden = true;
+          entrar.hidden = false; entrar.setAttribute('aria-hidden', 'false');
+          void entrar.offsetWidth;   // reflow: dispara la animación de entrada
+          entrar.classList.add('show');
+          // sin .focus() programático: pintaba el anillo de focus de entrada;
+          // Enter/Espacio ya funcionan por el keydown global de abajo
+        }, 300);
+      };
+
+      // ─── Zambullida: cámara real sobre canvas ─────────────────────────
+      // La constelación se REDIBUJA por frame (vectores nítidos a cualquier
+      // zoom) con parallax de profundidad: los satélites viajan en capas
+      // distintas y las estelas venden la velocidad. Coreografía:
+      // presentación (0-28%) → zambullida hacia la chispa (28-74%) → sale
+      // volando arriba-derecha con estelas (74-100%).
+      var TRAY = [[12, 46], [24, 35], [32, 41], [50, 15]];
+      var CHISPA = [50, 15], CENTRO = [31, 31];
+      // satélites: [x0,y0 → x1,y1, profundidad] (z<1 lejos, z>1 cerca)
+      var SATS = [[12, 46, 2, 55, .8], [24, 35, 18, 24, 1.3], [32, 41, 38, 52, .7],
+                  [50, 15, 60, 6, 1.45], [50, 15, 62, 22, 1.1]];
+
+      function _outCubic(x) { return 1 - Math.pow(1 - x, 3); }
+      function _inCubic(x) { return x * x * x; }
+
+      function lanzarWarp(duracion) {
+        var cv = document.getElementById('warp');
+        var dpr = Math.min(window.devicePixelRatio || 1, 2);
+        var W = window.innerWidth, H = window.innerHeight;
+        cv.width = W * dpr; cv.height = H * dpr;
+        cv.style.display = 'block';
+        var ctx = cv.getContext('2d');
+        var t0 = performance.now();
+
+        function frame(ahora) {
+          var t = Math.min((ahora - t0) / duracion, 1);
+          ctx.setTransform(1, 0, 0, 1, 0, 0);
+          ctx.clearRect(0, 0, cv.width, cv.height);
+          ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+          // cámara: zoom (px por unidad de mundo), foco, rotación, deriva, alpha
+          var zBase = Math.min(W, H) / 120;          // presentación ≈ logo de ~1/3 de pantalla
+          var zoom, fx, fy, rot = 0, ox = 0, oy = 0, alpha = 1, vuelo = 0;
+          if (t < .28) {
+            var k = _outCubic(t / .28);
+            zoom = zBase * (1 + .14 * k);
+            fx = CENTRO[0]; fy = CENTRO[1];
+            alpha = Math.min(1, t / .09);
+          } else if (t < .74) {
+            var k = _inCubic((t - .28) / .46);
+            zoom = zBase * (1.14 + 11 * k);          // la zambullida
+            var fk = Math.min(1, k * 1.2);
+            fx = CENTRO[0] + (CHISPA[0] - CENTRO[0]) * fk;
+            fy = CENTRO[1] + (CHISPA[1] - CENTRO[1]) * fk;
+            rot = -.05 * k;
+          } else {
+            vuelo = _inCubic((t - .74) / .26);
+            zoom = zBase * 12.14 * (1 - .3 * vuelo);
+            fx = CHISPA[0]; fy = CHISPA[1];
+            rot = -.05 + .22 * vuelo;
+            ox = vuelo * W * 1.15; oy = -vuelo * H * .9;   // sale volando ↗
+            alpha = 1 - vuelo * vuelo;
+          }
+
+          var cx = W / 2, cy = H / 2, cos = Math.cos(rot), sin = Math.sin(rot);
+          function S(px, py, z) {
+            var dx = (px - fx) * zoom * z, dy = (py - fy) * zoom * z;
+            return [cx + ox + dx * cos - dy * sin, cy + oy + dx * sin + dy * cos];
+          }
+
+          ctx.globalAlpha = alpha;
+          ctx.lineCap = 'round';
+
+          // satélites con parallax (detrás de la cinta)
+          SATS.forEach(function (s) {
+            var a = S(s[0], s[1], s[4]), b = S(s[2], s[3], s[4]);
+            ctx.strokeStyle = 'rgba(124,92,255,' + (.32 * s[4]) + ')';
+            ctx.lineWidth = Math.max(1, .5 * zoom * s[4]);
+            ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke();
+            ctx.fillStyle = 'rgba(157,134,255,' + (.55 * Math.min(1, s[4])) + ')';
+            ctx.beginPath(); ctx.arc(b[0], b[1], Math.max(1.2, .9 * zoom * s[4]), 0, 7); ctx.fill();
+          });
+
+          // la cinta (glow en 3 pasadas + gradiente + arista de luz)
+          var pts = TRAY.map(function (p) { return S(p[0], p[1], 1); });
+          var g = ctx.createLinearGradient(pts[0][0], pts[0][1], pts[3][0], pts[3][1]);
+          g.addColorStop(0, '#5b3fd6'); g.addColorStop(.55, '#7c5cff'); g.addColorStop(1, '#b9a6ff');
+          function cinta(w, estilo, join) {
+            ctx.strokeStyle = estilo; ctx.lineWidth = w * zoom;
+            ctx.lineJoin = join || 'miter'; ctx.miterLimit = 5;
+            ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]);
+            for (var i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
+            ctx.stroke();
+          }
+          cinta(16, 'rgba(124,92,255,.10)', 'round');
+          cinta(11, 'rgba(124,92,255,.18)', 'round');
+          cinta(7, g);
+          ctx.save(); ctx.translate(-.7 * zoom, -1.6 * zoom);
+          cinta(1.8, 'rgba(255,255,255,.38)', 'round');
+          ctx.restore();
+
+          // nodo ancla + remaches
+          function dot(p, r, color) {
+            var q = S(p[0], p[1], 1);
+            ctx.fillStyle = color;
+            ctx.beginPath(); ctx.arc(q[0], q[1], r * zoom, 0, 7); ctx.fill();
+          }
+          dot(TRAY[0], 3.4, '#4a30b8'); dot(TRAY[0], 1.6, '#c9bcff');
+          dot(TRAY[1], 1.7, '#2c1e63'); dot(TRAY[2], 1.7, '#2c1e63');
+
+          // chispa: halo radial + núcleo + rayos
+          var sp = S(CHISPA[0], CHISPA[1], 1);
+          var halo = ctx.createRadialGradient(sp[0], sp[1], 0, sp[0], sp[1], 7.5 * zoom);
+          halo.addColorStop(0, 'rgba(185,166,255,.5)'); halo.addColorStop(1, 'rgba(185,166,255,0)');
+          ctx.fillStyle = halo;
+          ctx.beginPath(); ctx.arc(sp[0], sp[1], 7.5 * zoom, 0, 7); ctx.fill();
+          ctx.fillStyle = '#fff';
+          ctx.beginPath(); ctx.arc(sp[0], sp[1], 3.4 * zoom, 0, 7); ctx.fill();
+          ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.6 * zoom; ctx.lineJoin = 'round';
+          [[0, -9.5, 0, -5.5], [0, 5.5, 0, 9.5], [-9.5, 0, -5.5, 0], [5.5, 0, 9.5, 0]]
+            .forEach(function (r) {
+              ctx.beginPath();
+              ctx.moveTo(sp[0] + r[0] * zoom, sp[1] + r[1] * zoom);
+              ctx.lineTo(sp[0] + r[2] * zoom, sp[1] + r[3] * zoom);
+              ctx.stroke();
+            });
+
+          // estelas de velocidad durante la huida
+          if (vuelo > 0) {
+            ctx.globalAlpha = alpha * .5;
+            for (var i = 0; i < 10; i++) {
+              var ang = (i / 10) * Math.PI * 2 + .35;
+              var r0 = 90 + vuelo * 260, r1 = r0 + 70 + vuelo * 420;
+              ctx.strokeStyle = i % 3 ? 'rgba(124,92,255,.5)' : 'rgba(255,255,255,.55)';
+              ctx.lineWidth = 1.4;
+              ctx.beginPath();
+              ctx.moveTo(cx + Math.cos(ang) * r0, cy + Math.sin(ang) * r0);
+              ctx.lineTo(cx + Math.cos(ang) * r1, cy + Math.sin(ang) * r1);
+              ctx.stroke();
+            }
+          }
+
+          if (t < 1) requestAnimationFrame(frame);
+          else cv.style.display = 'none';
+        }
+        requestAnimationFrame(frame);
+      }
+
+      var saliendo = false;
+      function ir() {
+        if (!destino || saliendo) return;
+        saliendo = true;
+        var nav = function () { window.location.href = destino; };
+        if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+          flash.classList.add('go');
+          setTimeout(nav, 260);
+          return;
+        }
+        // Zambullida: UI afuera + cámara del canvas → burst → workspace.
+        document.body.classList.add('salida');
+        lanzarWarp(1450);
+        setTimeout(function () { flash.classList.add('go'); }, 1150);
+        setTimeout(nav, 1490);
+      }
+
+      entrar.addEventListener('click', ir);
+      document.addEventListener('keydown', function (e) {
+        if (!entrar.hidden && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); ir(); }
+      });
+    })();
+  </script>
+</body>
+</html>

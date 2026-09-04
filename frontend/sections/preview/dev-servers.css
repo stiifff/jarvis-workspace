@@ -1,0 +1,181 @@
+/* ─── Menú de localhost activos ───────────────────────────────────────────────
+   Botón en la TOOLBAR del Web Preview (.wp-bar) con contador + popover (lista de
+   dev servers vivos con abrir-en-preview y cierre). Se movió acá desde la barra
+   del workspace. Theme-aware: tokens (--ob-*/--sb-*), sin hex. */
+
+/* ── Botón (.wp-nav): icono + contador. El id le gana al width:30px de .wp-nav
+   para ensancharse y mostrar el contador; alto/inline-flex los hereda de .wp-nav. */
+#jw-localhosts-btn { gap: 5px; width: auto; padding: 0 8px; }
+.jw-ds-count {
+  min-width: 15px;
+  padding: 0 4px;
+  font: 600 10px var(--sb-mono);
+  line-height: 15px;
+  text-align: center;
+  border-radius: var(--radius-sm);
+  background: var(--ob-accent-14);
+  color: var(--ob-accent-fg);
+}
+#jw-localhosts-btn.jw-ds-vacio .jw-ds-count {
+  background: var(--sb-bg-3);
+  color: var(--sb-fg-4);
+}
+#jw-localhosts-btn.activo .jw-ds-count {
+  background: var(--ob-accent-24);
+  color: var(--ob-accent-fg);
+}
+
+/* ── Popover — panel glass (mismo idioma que la galería/⋯ del preview) ── */
+.jw-ds-pop {
+  position: fixed;
+  z-index: 950;
+  width: 320px;
+  max-height: min(calc(var(--jw-vh, 100vh) * .7), 460px);
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(180deg,
+    color-mix(in oklch, var(--ob-bg-2) 78%, var(--ob-bg-1)),
+    var(--ob-bg-1));
+  border: 1px solid var(--ob-line-2);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-pop), inset 0 1px 0 var(--ob-glass-hi);
+  overflow: hidden;
+  animation: jw-ds-in var(--dur-2) var(--ease-snap);
+}
+.jw-ds-pop[hidden] { display: none; }
+@keyframes jw-ds-in {
+  from { opacity: 0; transform: translateY(-4px) scale(.98); }
+  to   { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .jw-ds-pop, .jw-ds-dot { animation: none; }
+}
+
+/* ── Encabezado ── */
+.jw-ds-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: linear-gradient(180deg,
+    color-mix(in oklch, var(--ob-bg-3) 45%, transparent),
+    transparent);
+  border-bottom: 1px solid var(--ob-line-1);
+}
+.jw-ds-title {
+  font: 600 12px var(--font-ui);
+  color: var(--sb-fg-1);
+  letter-spacing: .01em;
+}
+.jw-ds-n {
+  font: 600 10px var(--sb-mono);
+  color: var(--ob-accent-fg);
+  background: var(--ob-accent-14);
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+}
+.jw-ds-closeall {
+  margin-left: auto;
+  font: 600 11px var(--font-ui);
+  color: var(--ob-err);
+  background: transparent;
+  border: 1px solid color-mix(in oklch, var(--ob-err) 35%, transparent);
+  border-radius: var(--radius-btn);
+  padding: 3px 8px;
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+.jw-ds-closeall:hover { background: var(--ob-err-08); border-color: var(--ob-err); }
+.jw-ds-closeall:disabled { opacity: .4; cursor: not-allowed; }
+
+/* ── Lista ── */
+.jw-ds-list { overflow-y: auto; padding: 6px; }
+.jw-ds-vacio-msg {
+  padding: 18px 14px;
+  text-align: center;
+  font: 400 12px var(--font-ui);
+  color: var(--sb-fg-4);
+  line-height: 1.5;
+}
+
+.jw-ds-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 8px;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  cursor: pointer;
+  outline: none;
+  transition: background 110ms ease, border-color 110ms ease;
+}
+.jw-ds-row:hover,
+.jw-ds-row:focus-visible { background: var(--ob-bg-3); border-color: var(--ob-line-1); }
+
+/* Punto verde "vivo" que respira (mismo pulso que el chip LOCAL de la omnibar) */
+.jw-ds-dot {
+  flex-shrink: 0;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--ob-run);
+  box-shadow: 0 0 7px color-mix(in oklch, var(--ob-run) 50%, transparent);
+  animation: jw-ds-vivo 2.2s var(--ease-in-out) infinite;
+}
+@keyframes jw-ds-vivo {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: .5; }
+}
+/* Demo servido por el propio Jarvis: punto acento (no hay proceso propio) */
+.jw-ds-dot.demo {
+  background: var(--ob-accent);
+  box-shadow: 0 0 7px var(--ob-accent-24);
+}
+
+/* Chip "demo" al lado del nombre de la carpeta */
+.jw-ds-chip-demo {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 5px;
+  border-radius: var(--radius-pill);
+  background: var(--ob-accent-14);
+  color: var(--ob-accent);
+  font: 600 9px var(--font-ui);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  vertical-align: 1px;
+}
+
+.jw-ds-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.jw-ds-host {
+  font: 600 12.5px var(--sb-mono);
+  color: var(--sb-fg-0);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.jw-ds-quien {
+  font: 400 10.5px var(--font-ui);
+  color: var(--sb-fg-4);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.jw-ds-x {
+  flex-shrink: 0;
+  width: 26px; height: 26px;
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--sb-fg-4);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background 110ms ease, color 110ms ease;
+}
+.jw-ds-x:hover { background: var(--ob-err-08); color: var(--ob-err); }

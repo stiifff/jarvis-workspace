@@ -1,0 +1,787 @@
+/* ═══════════════════════════════════════════════════════════════════
+   JARVIS — editor.css
+   Estilos del panel editor (file tree + Monaco), extraído a window.JarvisEditor.
+
+   Fase 0 (extracción): este archivo se crea vacío a propósito. Las reglas
+   actuales del editor (.panel-editor / .file-tree / .ft-* / .monaco-* /
+   .mt-* / .mf-* y las reglas .drag-over) siguen viviendo en main.css para
+   mantener la extracción regression-safe. La Fase 2 (rediseño visual)
+   migrará esas reglas a este archivo a medida que las reescriba.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ─── Markup canónico del file tree (spec §4.3) ─────────────────────────── */
+.ft-node { position: relative; }
+.ft-caret-svg {
+  display: block;
+  transition: transform var(--dur-1) var(--ease-out);
+}
+.ft-node.ft-dir.expanded > .ft-caret .ft-caret-svg {
+  transform: rotate(90deg);
+}
+.ft-git-badge {
+  margin-left: auto;
+  flex: none;
+  font-size: var(--text-2xs);
+  line-height: 1;
+  /* vacío en Fase 1; lo llena la Fase 8 (git diff) */
+}
+.ft-indent-guide {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--ob-line-1);
+  opacity: 0.5;
+  pointer-events: none;
+}
+/* Rama activa de la guía: la fila del archivo activo tiñe sus guías de acento
+   tenue, marcando visualmente la rama del árbol que está abierta (tarea 6). */
+.ft-file.activo .ft-indent-guide {
+  background: var(--ob-accent-14);
+  opacity: 1;
+}
+
+/* ─── Iconos SVG del file tree (Task 2.2) ───────────────────────── */
+.ft-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  flex: none;
+  color: var(--ob-fg-3);
+}
+.ft-icon svg { width: 14px; height: 14px; display: block; }
+.ft-dir > .ft-icon { color: var(--ob-accent-fg); }
+
+/* ─── Tabs estilo VS Code (Task 2.3) ──────────────────────────── */
+.monaco-tabs {
+  display: flex;
+  align-items: stretch;
+  background: var(--ob-bg-1);
+  border-bottom: 1px solid var(--ob-line-1);
+  overflow-x: auto;
+  min-height: 35px;
+}
+.mt-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  min-width: 120px;
+  max-width: 200px;
+  border-right: 1px solid var(--ob-line-1);
+  border-top: 2px solid transparent;
+  /* tab inactivo = fondo de panel (la var --bg-tab-inactive no existe en el tema) */
+  background: var(--ob-bg-1);
+  color: var(--ob-fg-3);
+  cursor: pointer;
+  position: relative;
+  white-space: nowrap;
+  transition: background var(--dur-1) var(--ease-out),
+              color var(--dur-1) var(--ease-out),
+              border-color var(--dur-1) var(--ease-out);
+}
+.mt-tab.activo {
+  background: var(--ob-bg-void);
+  border-top-color: var(--ob-accent);
+  color: var(--ob-fg-0);
+}
+.mt-tab:hover { background: var(--ob-bg-3); color: var(--ob-fg-1); }
+.mt-tab.activo:hover { background: var(--ob-bg-void); color: var(--ob-fg-0); }
+.mt-icon { display: inline-flex; width: 14px; height: 14px; flex: none; }
+.mt-icon svg { width: 14px; height: 14px; }
+.mt-name { overflow: hidden; text-overflow: ellipsis; font-size: var(--text-sm); }
+.mt-dirty-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--ob-work); flex: none;
+  display: none;
+}
+.mt-tab.dirty .mt-dirty-dot { display: block; }
+.mt-tab.dirty:hover .mt-dirty-dot { display: none; }
+/* Conflicto (§4.5): el archivo cambió en disco mientras el tab tenía cambios sin guardar */
+.mt-tab.conflicto {
+  border-top-color: var(--ob-work);
+  color: var(--ob-work);
+}
+.mt-conflict-mark {
+  display: none;
+  font-size: var(--text-xs); line-height: 1; flex: none;
+  color: var(--ob-work);
+}
+.mt-tab.conflicto .mt-conflict-mark { display: inline-block; }
+/* en conflicto, el aviso ⚠ reemplaza visualmente al dirty-dot */
+.mt-tab.conflicto .mt-dirty-dot { display: none; }
+.mt-close {
+  display: flex; align-items: center; justify-content: center;
+  width: 16px; height: 16px; border-radius: 3px;
+  border: none; background: none; color: var(--ob-fg-3);
+  cursor: pointer; flex: none; opacity: 0;
+  transition: background var(--dur-1) var(--ease-out),
+              color var(--dur-1) var(--ease-out),
+              opacity var(--dur-1) var(--ease-out);
+}
+.mt-tab:hover .mt-close { opacity: 1; }
+.mt-tab.activo .mt-close { opacity: 1; }
+.mt-close:hover { background: var(--ob-bg-3); color: var(--ob-fg-0); }
+
+/* ─── Breadcrumb (Task 2.4) ───────────────────────────────────── */
+.editor-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px;
+  background: var(--ob-bg-void);
+  border-bottom: 1px solid var(--ob-line-1);
+  font-size: var(--text-xs);
+  color: var(--ob-fg-3);
+  overflow-x: auto;
+  white-space: nowrap;
+}
+.editor-breadcrumb[hidden] { display: none; }
+.bc-seg { display: inline-flex; align-items: center; gap: 3px; }
+.bc-current { color: var(--ob-fg-1); }
+.bc-icon { display: inline-flex; width: 12px; height: 12px; }
+.bc-icon svg { width: 12px; height: 12px; }
+.bc-sep { color: var(--ob-fg-3); }
+
+/* ─── Status-bar (footer estilo VS Code) (Task 2.5) ──────────── */
+.status-bar {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  height: 24px;
+  background: var(--ob-bg-1);
+  border-top: 1px solid var(--ob-line-1);
+  font: 400 var(--text-xs) var(--font-mono);
+  color: var(--ob-fg-3);
+  flex: none;
+}
+.sb-seg { padding: 0 10px; display: inline-flex; align-items: center; height: 100%; }
+.sb-lang {
+  background: var(--ob-accent-14);
+  color: var(--ob-accent-fg);
+  font-weight: 500;
+}
+.sb-spacer { flex: 1; }
+.sb-save-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 100%;
+  padding: 0 12px;
+  border: none;
+  background: none;
+  color: var(--ob-fg-3);
+  cursor: pointer;
+  font: 400 var(--text-xs) var(--font-mono);
+  transition: background var(--dur-1) var(--ease-out),
+              color var(--dur-1) var(--ease-out);
+}
+.sb-save-btn:hover { background: var(--ob-bg-3); color: var(--ob-accent-fg); }
+.sb-save-btn svg { display: block; }
+
+/* ─── Placeholder (Task 2.6) ──────────────────────────────────── */
+.monaco-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  height: 100%;
+  color: var(--ob-fg-3);
+  text-align: center;
+}
+.monaco-placeholder.oculto { display: none; }
+.mp-icon { opacity: 0.4; }
+.mp-text { font-size: var(--text-base); color: var(--ob-fg-2); }
+
+/* ─── Paleta canonica del editor (spec Fase 2) (Task 2.7) ──────── */
+/* Estas reglas viven en editor.css (cargado DESPUES de main.css) y
+   sobrescriben por orden de cascada las versiones historicas del editor
+   que todavia residen en main.css (~1593-1645). Fija exactamente la paleta
+   del spec §5 Fase 2. */
+.file-tree {
+  width: 220px;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  background: var(--ob-bg-0);
+  border-right: 1px solid var(--ob-line-1);
+}
+/* Dock angosto + SIN archivo abierto: el árbol (220px) dejaba ~100px al editor y
+   el placeholder se partía en 4 líneas. Apilamos el árbol arriba (sigue siendo
+   descubrible para elegir archivo) y el placeholder ocupa el ancho completo abajo.
+   Con un archivo abierto NO se toca el layout (Monaco intacto). */
+@container (max-width: 560px) {
+  .panel-editor:has(.monaco-placeholder:not(.oculto)) { flex-direction: column; }
+  .panel-editor:has(.monaco-placeholder:not(.oculto)) .file-tree {
+    width: 100%; max-height: 42%;
+    border-right: none; border-bottom: 1px solid var(--ob-line-1);
+  }
+}
+.file-tree-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  background: var(--ob-bg-1);
+  border-bottom: 1px solid var(--ob-line-1);
+}
+.ft-title {
+  flex: 1;
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--ob-fg-3);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.file-tree-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+.ft-node {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  height: 22px;
+  padding: 0 8px;
+  cursor: pointer;
+  color: var(--ob-fg-1);
+  font-size: var(--text-base);
+  position: relative;
+  transition: background var(--dur-1) var(--ease-out),
+              color var(--dur-1) var(--ease-out);
+}
+/* Stagger del render inicial del árbol (tarea JS 5): cada fila entra con un
+   retardo escalonado según --i (lo setea _renderFTNode, cap 20). Los toggles
+   de carpeta no re-staggean: --i solo se aplica en el primer render. */
+.ft-node[style*="--i"] {
+  animation: ob-pop-in 150ms var(--ease-out) calc(var(--i, 0) * 12ms) both;
+}
+.ft-node:hover { background: var(--ob-bg-3); }
+.ft-file.activo {
+  background: var(--ob-accent-14);
+}
+.ft-file.activo::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 2px;
+  background: var(--ob-accent);
+}
+.ft-caret {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 12px;
+  height: 12px;
+  flex: none;
+  color: var(--ob-fg-3);
+}
+.ft-caret-spacer { width: 12px; flex: none; }
+.ft-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.monaco-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: var(--ob-bg-void);
+}
+
+/* ─── Split view (Fase 9) ─────────────────────────────────────────── */
+.monaco-split {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: row;   /* vertical split = lado a lado */
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+.monaco-split.split-horizontal { flex-direction: column; } /* apilado */
+
+.monaco-group {
+  flex: 1 1 50%;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  position: relative;
+}
+.monaco-group[hidden] { display: none; }
+/* Sin split, el grupo 0 ocupa todo el ancho/alto. */
+.monaco-split:not(.is-split) #monaco-group-0 { flex-basis: 100%; }
+/* La wrap interna llena el grupo (mantiene position:relative para el host absoluto). */
+.monaco-group .monaco-editor-wrap { flex: 1 1 auto; min-height: 0; min-width: 0; }
+
+/* Borde de foco del grupo activo (solo visible en split). */
+.monaco-split.is-split .monaco-group.group-active::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+  box-shadow: inset 0 2px 0 0 var(--ob-accent);
+}
+
+.monaco-splitter {
+  flex: 0 0 4px;
+  background: var(--ob-line-1);
+  cursor: col-resize;
+  transition: background var(--dur-1) var(--ease-out);
+}
+.monaco-splitter:hover { background: var(--ob-accent); }
+.monaco-split.split-horizontal .monaco-splitter { cursor: row-resize; }
+.monaco-splitter[hidden] { display: none; }
+
+/* Tab arrastrándose / grupo receptor durante DnD. */
+.monaco-group.drop-target {
+  outline: 2px dashed var(--ob-accent);
+  outline-offset: -2px;
+}
+.mt-tab.dragging { opacity: .5; }
+
+/* ─── Filtro del árbol ─────────────────────────────────────────────── */
+.ft-search-row {
+  padding: 4px 8px 6px;
+  border-bottom: 1px solid var(--ob-line-1);
+}
+.ft-search {
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--ob-bg-void);
+  border: 1px solid var(--ob-line-1);
+  border-radius: 4px;
+  color: var(--ob-fg-1);
+  font-size: var(--text-sm);
+  padding: 4px 8px;
+  outline: none;
+  transition: border-color var(--dur-1) var(--ease-out);
+}
+.ft-search:focus {
+  border-color: var(--ob-line-3);
+}
+.ft-node.ft-hidden { display: none; }
+.ft-node.ft-match .ft-name { color: var(--ob-accent-fg); font-weight: 600; }
+/* el filtro fuerza apertura de carpetas con descendientes que matchean */
+.ft-children.ft-filter-open { display: block; }
+
+/* ─── Menú contextual del árbol ────────────────────────────────────── */
+.ft-ctx-menu {
+  position: fixed;
+  z-index: 9999;
+  min-width: 160px;
+  backdrop-filter: blur(16px) saturate(150%);
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
+  background: color-mix(in oklch, var(--ob-bg-1) 72%, transparent);
+  border: 1px solid var(--ob-line-2);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 1px 0 oklch(85% 0.02 280 / 0.10) inset, var(--shadow-2);
+  padding: 4px 0;
+  font-size: var(--text-base);
+  user-select: none;
+  animation: ob-pop-in var(--dur-2) var(--ease-snap);
+}
+.ft-ctx-item {
+  padding: 6px 14px;
+  color: var(--ob-fg-1);
+  cursor: pointer;
+  transition: background var(--dur-1) var(--ease-out),
+              color var(--dur-1) var(--ease-out);
+}
+.ft-ctx-item:hover { background: var(--ob-bg-3); }
+.ft-ctx-item.danger { color: var(--ob-err); }
+.ft-ctx-sep {
+  height: 1px;
+  margin: 4px 0;
+  background: var(--ob-line-1);
+}
+
+/* ─── Input inline (create / rename) ───────────────────────────────── */
+.ft-inline {
+  background: var(--ob-bg-void);
+  border: 1px solid var(--ob-line-3);
+  border-radius: 3px;
+  color: var(--ob-fg-1);
+  font-size: var(--text-base);
+  font-family: inherit;
+  padding: 1px 4px;
+  outline: none;
+  width: 140px;
+  max-width: 100%;
+}
+
+/* ─── Command palette / Quick Open (Fase 5) ─────────────────────────── */
+.cmd-palette-overlay {
+  position: fixed;
+  inset: 0;
+  background: oklch(0% 0 0 / 0.45);
+  backdrop-filter: blur(2px);
+  z-index: 10003;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: calc(var(--jw-vh, 100vh) * .12);
+  animation: ob-fade-in var(--dur-2) var(--ease-out);
+}
+.cmd-palette-modal {
+  width: min(640px, calc(var(--jw-vw, 100vw) * .92));
+  max-height: calc(var(--jw-vh, 100vh) * .6);
+  display: flex;
+  flex-direction: column;
+  backdrop-filter: blur(16px) saturate(150%);
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
+  background: color-mix(in oklch, var(--ob-bg-1) 72%, transparent);
+  border: 1px solid var(--ob-line-2);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 1px 0 oklch(85% 0.02 280 / 0.10) inset, var(--shadow-2);
+  overflow: hidden;
+  animation: ob-pop-in var(--dur-2) var(--ease-snap);
+}
+.cmd-palette-input {
+  flex-shrink: 0;
+  width: 100%;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--ob-line-1);
+  color: var(--ob-fg-0);
+  font: var(--text-md)/var(--lh-snug) var(--font-ui);
+  padding: 12px 16px;
+  outline: none;
+}
+.cmd-palette-input::placeholder {
+  color: var(--ob-fg-4);
+}
+.cmd-palette-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+.cmd-palette-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px;
+  cursor: pointer;
+  color: var(--ob-fg-1);
+  font: var(--text-base)/var(--lh-snug) var(--font-ui);
+  white-space: nowrap;
+  overflow: hidden;
+  transition: background var(--dur-1) var(--ease-out),
+              color var(--dur-1) var(--ease-out);
+}
+.cmd-palette-item .cpi-name {
+  flex-shrink: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cmd-palette-item .cpi-path {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: var(--text-xs);
+  color: var(--ob-fg-3);
+}
+.cmd-palette-item.active {
+  background: var(--ob-accent-14);
+  box-shadow: inset 2px 0 0 var(--ob-accent);
+}
+.cmd-palette-item:hover {
+  background: var(--ob-bg-3);
+}
+.cmd-palette-item .cpi-hl {
+  color: var(--ob-accent-fg);
+  font-weight: 600;
+}
+.cmd-palette-empty {
+  padding: 14px 16px;
+  color: var(--ob-fg-3);
+  font: var(--text-sm)/var(--lh-snug) var(--font-ui);
+}
+
+/* ── Panel de búsqueda en contenido ─────────────────────────────── */
+.search-panel {
+  display: flex;
+  flex-direction: column;
+  width: 260px;
+  min-width: 260px;
+  background: var(--ob-bg-0);
+  border-right: 1px solid var(--ob-line-1);
+  overflow: hidden;
+}
+.search-panel.oculto { display: none; }
+.search-panel-head {
+  padding: 8px;
+  border-bottom: 1px solid var(--ob-line-1);
+}
+.search-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 6px 8px;
+  background: var(--ob-bg-1);
+  border: 1px solid var(--ob-line-1);
+  border-radius: 4px;
+  color: var(--ob-fg-1);
+  font-size: var(--text-sm);
+  outline: none;
+  transition: border-color var(--dur-1) var(--ease-out),
+              box-shadow var(--dur-1) var(--ease-out);
+}
+.search-input:focus {
+  border-color: var(--ob-accent);
+  box-shadow: 0 0 0 2px var(--ob-accent-14);
+}
+.search-toggles {
+  display: flex;
+  gap: 4px;
+  margin-top: 6px;
+}
+.search-toggle {
+  flex: 0 0 auto;
+  padding: 2px 8px;
+  background: transparent;
+  border: 1px solid var(--ob-line-1);
+  border-radius: 4px;
+  color: var(--ob-fg-3);
+  font: var(--text-xs) var(--font-mono);
+  cursor: pointer;
+  transition: background var(--dur-1) var(--ease-out),
+              color var(--dur-1) var(--ease-out),
+              border-color var(--dur-1) var(--ease-out);
+}
+.search-toggle:hover { background: var(--ob-bg-3); }
+.search-toggle.active {
+  background: var(--ob-accent-14);
+  border-color: var(--ob-accent);
+  color: var(--ob-accent-fg);
+}
+.search-meta {
+  padding: 4px 8px;
+  font-size: var(--text-xs);
+  color: var(--ob-fg-3);
+  border-bottom: 1px solid var(--ob-line-1);
+}
+.search-meta.error { color: var(--ob-work); }
+.search-results {
+  flex: 1;
+  overflow-y: auto;
+  padding-bottom: 8px;
+}
+.sr-file {
+  padding: 4px 8px;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--ob-accent-fg);
+  background: var(--ob-accent-14);
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  transition: background var(--dur-1) var(--ease-out);
+}
+.sr-file:hover { background: var(--ob-bg-3); }
+.sr-file-count { color: var(--ob-fg-3); font-weight: 400; }
+.sr-match {
+  padding: 2px 8px 2px 18px;
+  font: var(--text-xs)/1.5 var(--font-mono);
+  color: var(--ob-fg-1);
+  white-space: pre;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  transition: background var(--dur-1) var(--ease-out);
+}
+.sr-match:hover { background: var(--ob-bg-3); }
+.sr-line-no {
+  color: var(--ob-fg-3);
+  margin-right: 8px;
+  user-select: none;
+}
+.sr-empty {
+  padding: 12px 8px;
+  font-size: var(--text-xs);
+  color: var(--ob-fg-3);
+}
+
+/* ── Mini-menú del botón + (subir) ────────────────────────────────────────── */
+.file-tree-header { position: relative; }
+
+.ft-upload-menu {
+  position: absolute;
+  top: 100%;
+  right: 4px;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  min-width: 150px;
+  padding: 4px;
+  backdrop-filter: blur(16px) saturate(150%);
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
+  background: color-mix(in oklch, var(--ob-bg-1) 72%, transparent);
+  border: 1px solid var(--ob-line-2);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 1px 0 oklch(85% 0.02 280 / 0.10) inset, var(--shadow-2);
+  animation: ob-pop-in var(--dur-2) var(--ease-snap);
+}
+.ft-upload-menu[hidden] { display: none; }
+.ft-upload-menu button {
+  display: block;
+  width: 100%;
+  padding: 6px 10px;
+  text-align: left;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: var(--ob-fg-1);
+  font-size: var(--text-base);
+  cursor: pointer;
+  transition: background var(--dur-1) var(--ease-out),
+              color var(--dur-1) var(--ease-out);
+}
+.ft-upload-menu button:hover {
+  background: var(--ob-bg-3);
+  color: var(--ob-accent-fg);
+}
+
+/* ── Git badges en el árbol (Fase 8) ───────────────────────────────── */
+.ft-git-badge {
+  padding-left: 6px;
+  font-weight: 600;
+  font-family: var(--font-mono);
+  opacity: 0.95;
+}
+
+/* M = modificado (work/amber); U/A = nuevo/añadido (run/verde);
+   D/C = borrado/copia conflictiva (err/rojo); R = renombrado (accent). */
+.ft-git-M > .ft-git-badge,
+.ft-git-M  .ft-git-badge { color: var(--ob-work); }
+.ft-git-U > .ft-git-badge,
+.ft-git-U  .ft-git-badge,
+.ft-git-A > .ft-git-badge,
+.ft-git-A  .ft-git-badge { color: var(--ob-run); }
+.ft-git-D > .ft-git-badge,
+.ft-git-D  .ft-git-badge,
+.ft-git-C > .ft-git-badge,
+.ft-git-C  .ft-git-badge { color: var(--ob-err); }
+.ft-git-R > .ft-git-badge,
+.ft-git-R  .ft-git-badge { color: var(--ob-accent-fg); }
+
+/* También tintar el nombre para escaneo rápido (sutil). */
+.ft-git-M > .ft-name,  .ft-git-M  .ft-name  { color: var(--ob-work); }
+.ft-git-U > .ft-name,  .ft-git-U  .ft-name,
+.ft-git-A > .ft-name,  .ft-git-A  .ft-name  { color: var(--ob-run); }
+.ft-git-D > .ft-name,  .ft-git-D  .ft-name,
+.ft-git-C > .ft-name,  .ft-git-C  .ft-name  { color: var(--ob-err); }
+.ft-git-R > .ft-name,  .ft-git-R  .ft-name  { color: var(--ob-accent-fg); }
+
+/* ─── Vista binaria / imagen (spec §7) ──────────────────────────── */
+.editor-binary-view {
+  position:        absolute;
+  inset:           0;
+  display:         flex;
+  align-items:     center;
+  justify-content: center;
+  overflow:        auto;
+  background:      var(--ob-bg-void);
+  padding:         16px;
+  z-index:         2;
+}
+.editor-binary-view[hidden] { display: none; }
+.ebv-img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.ebv-msg { color: var(--ob-fg-2); font-size: var(--text-base); text-align: center; font-family: var(--font-ui); }
+.ebv-sub { color: var(--ob-fg-3); font-size: var(--text-xs); font-family: var(--font-mono); }
+
+/* ─── Botón "Abrir de todos modos" para archivos grandes (spec §7) ── */
+.ebv-force-btn {
+  margin-top:    12px;
+  padding:       6px 14px;
+  background:    var(--ob-accent-14);
+  color:         var(--ob-accent-fg);
+  border:        1px solid var(--ob-accent);
+  border-radius: var(--radius-sm);
+  font-size:     var(--text-sm);
+  cursor:        pointer;
+  font-family:   var(--font-ui);
+  transition: background var(--dur-1) var(--ease-out),
+              color var(--dur-1) var(--ease-out);
+}
+.ebv-force-btn:hover { background: var(--ob-accent); color: var(--ob-on-accent); }
+
+/* ─── Indicador de guardado en la status-bar (spec §7) ──────────── */
+.mf-save-status {
+  display:     inline-flex;
+  align-items: center;
+  gap:         5px;
+  height:      100%;
+  padding:     0 10px;
+  font-size:   var(--text-2xs);
+  font-family: var(--font-mono);
+  transition:  opacity var(--dur-3) var(--ease-out);
+  opacity:     1;
+}
+/* El check SVG del estado "Guardado" hereda el color del estado (currentColor). */
+.mf-save-status svg { display: block; flex: none; }
+.mf-save-status.saving { color: var(--ob-fg-3); }
+.mf-save-status.ok     { color: var(--ob-run); }
+.mf-save-status.err    { color: var(--ob-err); }
+.mf-save-status.fade   { opacity: 0; }
+
+/* ═══════════════════════════════════════════════════════════════
+   Migrado desde base.css (de-duplicación Obsidian Glass).
+   base.css ya no define reglas del editor: este archivo es la
+   única fuente de verdad de la sección.
+═══════════════════════════════════════════════════════════════ */
+
+.ft-empty {
+  padding:    20px 12px;
+  color:      var(--ob-fg-3);
+  font-size:  var(--text-xs);
+  text-align: center;
+}
+.ft-children.oculto { display: none; }
+
+.ft-refresh-btn {
+  display:         inline-flex;
+  align-items:     center;
+  justify-content: center;
+  background:      transparent;
+  border:          none;
+  color:           var(--ob-fg-3);
+  cursor:          pointer;
+  padding:         3px 6px;
+  border-radius:   var(--radius-sm);
+  transition:      background var(--dur-1) var(--ease-out),
+                   color var(--dur-1) var(--ease-out);
+}
+.ft-refresh-btn:hover { background: var(--ob-bg-3); color: var(--ob-accent-fg); }
+
+/* Estructura del host de Monaco (el editor real se monta acá) */
+.monaco-editor-wrap {
+  flex:     1;
+  position: relative;
+  overflow: hidden;
+}
+.monaco-editor-host {
+  position:       absolute;
+  inset:          0;
+  display:        block;
+  opacity:        0;
+  pointer-events: none;
+  transition:     opacity var(--dur-1) var(--ease-out);
+}
+.monaco-editor-host.visible {
+  opacity:        1;
+  pointer-events: auto;
+}

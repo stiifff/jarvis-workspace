@@ -1,0 +1,1612 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   JARVIS — Configuración · rediseño "Liquid Glass · Datasheet" (2026-07-19)
+   Reemplaza al rediseño "Observatorio": aquel cambió el TEMA sobre la misma
+   estructura genérica (nav + filas idénticas con toggle); esto cambia la
+   estructura. El layout lateral se queda (pedido del usuario); lo demás es
+   nuevo. Detalle de las decisiones y de lo que NO hay que reintroducir:
+   frontend/preview-settings/AGENTS.md (el prototipo aprobado).
+
+   Reglas duras que respeta este archivo:
+   · Máximo DOS capas con backdrop-filter (velo + losa). Lo de adentro es
+     faux-glass con gradientes.
+   · El vidrio ELEVA: las superficies salen del escalón de card (--ob-bg-2/3),
+     nunca de --ob-bg-void, o en los temas más oscuros queda un pozo negro.
+   · --ob-fg-4 es SOLO disabled/placeholder: ningún texto de acá baja de fg-3.
+   · Cero color hardcodeado: todo var(--ob-*) (24 temas + tinte).
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CONFIGURACIÓN — rediseño 2026-07 · "Liquid Glass · Datasheet"
+   Material y armazón. Los 7 dominios viven en domains.css.
+
+   Decisiones de fondo (lo que cambia respecto del diseño anterior):
+   · Una SOLA losa de vidrio (rail + cuerpo unidos por una línea de pelo),
+     no dos islas sueltas flotando.
+   · Fuera el serif italic display: la voz nueva es Inter + MONO como
+     instrumento (micro-etiquetas, teclas, valores, rutas).
+   · El cuerpo es una FICHA TÉCNICA: canaleta de etiqueta + contenido,
+     separados por líneas de pelo. Cero tarjetas anidadas, cero grid de
+     tarjetas idénticas.
+   · Vidrio líquido de verdad: refracción en los cantos (rim claro arriba,
+     oscuro abajo), especular que sigue al puntero, profundidad por sombra.
+     Máximo DOS capas con backdrop-filter (velo + losa), como manda el sistema.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ─────────────────────────────────────────────────────────────
+   Escala local del componente
+   ───────────────────────────────────────────────────────────── */
+.jw-settings {
+  position: fixed; inset: 0; z-index: 900;
+  display: grid; place-items: center;
+  padding: clamp(16px, calc(var(--jw-vh, 100vh) * .04), 48px) clamp(16px, calc(var(--jw-vw, 100vw) * .04), 56px);
+
+  --sx-rail: 252px;          /* ancho del rail lateral */
+  --sx-pad: 30px;            /* padding horizontal del cuerpo */
+  --sx-rim-hi: color-mix(in oklch, white 13%, transparent);
+  --sx-rim-lo: color-mix(in oklch, black 42%, transparent);
+  --sx-hair: color-mix(in oklch, var(--ob-line-2) 66%, transparent);
+  --sx-mono: 500 11px/1 var(--font-mono);
+
+  /* ── SUPERFICIES ──────────────────────────────────────────────
+     Un panel de vidrio ELEVA, no hunde. En los temas más oscuros
+     (tinta, neón, medianoche) el fondo ya está en L≈9-11%: si la losa
+     se apoyaba en --ob-bg-void quedaba un pozo negro y leer cansaba.
+     Todo sale ahora del escalón de card (--ob-bg-2 / --ob-bg-3), que en
+     los temas CLAROS se invierte solo. */
+  --sx-slab-hi: color-mix(in oklch, var(--ob-bg-2) 88%, transparent);
+  --sx-slab-lo: color-mix(in oklch, var(--ob-bg-1) 92%, transparent);
+  --sx-rail-bg: color-mix(in oklch, var(--ob-bg-0) 40%, transparent);
+  --sx-well:    color-mix(in oklch, var(--ob-fg-0) 4.5%, transparent);  /* módulo interno */
+  --sx-input:   color-mix(in oklch, var(--ob-bg-0) 55%, transparent);   /* campo hundido */
+
+  background:
+    radial-gradient(120% 90% at 50% 0%, color-mix(in oklch, var(--ob-accent) 9%, transparent), transparent 62%),
+    color-mix(in oklch, var(--ob-bg-void) 58%, transparent);
+  backdrop-filter: blur(26px) saturate(120%);
+  -webkit-backdrop-filter: blur(26px) saturate(120%);
+  animation: sx-veil-in 260ms var(--ease-out);
+}
+.jw-settings[hidden] { display: none; }
+@keyframes sx-veil-in { from { opacity: 0; } }
+
+/* ═══ LOSA — capa de vidrio 2 de 2 ═══════════════════════════
+   El vidrio líquido: fondo translúcido + rim refractivo + especular. */
+.sx-slab {
+  position: relative;
+  display: grid;
+  grid-template-columns: var(--sx-rail) 1fr;
+  width: min(1120px, 100%);
+  /* MARCO ANCLADO: la losa mide siempre lo mismo, cambie la sección que cambie.
+     (Se probó altura por contenido y saltaba entre secciones — mal.) El que
+     scrollea es el cuerpo; el rail y el alféizar quedan fijos. */
+  height: min(790px, 100%);
+  border-radius: 22px;
+  overflow: hidden;
+  isolation: isolate;
+  background:
+    linear-gradient(180deg, color-mix(in oklch, white 5%, transparent), color-mix(in oklch, white 1.5%, transparent)),
+    linear-gradient(180deg, var(--sx-slab-hi) 0%, var(--sx-slab-lo) 100%);
+  backdrop-filter: blur(30px) saturate(180%);
+  -webkit-backdrop-filter: blur(30px) saturate(180%);
+  box-shadow:
+    0 40px 120px -32px oklch(0% 0 0 / .78),
+    0 8px 28px -12px oklch(0% 0 0 / .6);
+  animation: sx-slab-in 320ms var(--ease-out) both;
+}
+@keyframes sx-slab-in {
+  from { opacity: 0; transform: translateY(14px) scale(.985); }
+}
+
+/* Rim refractivo: la luz entra por arriba y se apoya abajo.
+   Va en ::after con máscara para no comerse el contenido. */
+.sx-slab::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(168deg,
+    color-mix(in oklch, white 24%, transparent) 0%,
+    var(--sx-rim-hi) 12%,
+    color-mix(in oklch, white 3%, transparent) 34%,
+    transparent 58%,
+    var(--sx-rim-lo) 100%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 3;
+}
+
+/* Especular: sigue al puntero. --sx-mx/--sx-my los escribe console.js. */
+.sx-slab::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(420px 300px at var(--sx-mx, 30%) var(--sx-my, 0%),
+    color-mix(in oklch, white 7%, transparent), transparent 70%);
+  opacity: 0;
+  transition: opacity 400ms var(--ease-out);
+  pointer-events: none;
+  z-index: 1;
+}
+.sx-slab.sx-lit::before { opacity: 1; }
+
+/* ═══ RAIL LATERAL ══════════════════════════════════════════ */
+.sx-rail {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 22px 14px 14px;
+  background: var(--sx-rail-bg);
+  border-right: 1px solid var(--sx-hair);
+}
+
+.sx-brand {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 0 10px 16px;
+}
+.sx-brand-t {
+  font: 600 15px/1 var(--font-ui);
+  letter-spacing: -.015em;
+  color: var(--ob-fg-0);
+}
+.sx-brand-v { font: var(--sx-mono); color: var(--ob-fg-3); letter-spacing: .02em; }
+
+/* Buscador — campo de comando */
+.sx-find {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  margin: 0 4px 14px;
+  padding: 0 10px;
+  border-radius: 9px;
+  background: var(--sx-input);
+  box-shadow: inset 0 0 0 1px var(--sx-hair), inset 0 1px 0 color-mix(in oklch, white 5%, transparent);
+  transition: box-shadow var(--dur-1) var(--ease-out);
+}
+.sx-find:focus-within {
+  box-shadow: inset 0 0 0 1px var(--ob-accent-24), 0 0 0 3px var(--ob-accent-08);
+}
+.sx-find svg { color: var(--ob-fg-3); flex: none; }
+.sx-find input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: none;
+  color: var(--ob-fg-0);
+  font: 500 12.5px var(--font-ui);
+  outline: none;
+}
+.sx-find input::placeholder { color: var(--ob-fg-3); }
+.sx-find kbd {
+  font: var(--sx-mono);
+  color: var(--ob-fg-3);
+  padding: 3px 5px;
+  border-radius: 5px;
+  background: color-mix(in oklch, var(--ob-fg-4) 12%, transparent);
+}
+.sx-find:focus-within kbd { display: none; }
+
+/* Lista de secciones */
+.sx-nav {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--ob-line-2) transparent;
+}
+.sx-nav[hidden] { display: none; }
+
+.sx-nav-lbl {
+  display: block;
+  padding: 14px 10px 6px;
+  font: var(--sx-mono);
+  letter-spacing: .06em;
+  color: var(--ob-fg-3);
+}
+.sx-nav-lbl:first-child { padding-top: 2px; }
+
+/* El indicador LÍQUIDO: una lozenge de vidrio que se estira al viajar */
+.sx-thumb {
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  top: 0;
+  height: 40px;
+  border-radius: 10px;
+  background: linear-gradient(180deg,
+    color-mix(in oklch, var(--ob-accent) 22%, transparent),
+    color-mix(in oklch, var(--ob-accent) 11%, transparent));
+  box-shadow:
+    inset 0 1px 0 color-mix(in oklch, white 18%, transparent),
+    inset 0 -1px 0 color-mix(in oklch, black 30%, transparent),
+    0 4px 14px -6px var(--ob-accent-glow);
+  opacity: 0;
+  transform-origin: center;
+  transition:
+    transform 340ms var(--ease-snap),
+    height 340ms var(--ease-snap),
+    opacity 160ms linear;
+  pointer-events: none;
+}
+
+.sx-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  height: 40px;
+  padding: 0 10px;
+  border: 0;
+  background: none;
+  border-radius: 10px;
+  color: var(--ob-fg-2);
+  font: 500 13px var(--font-ui);
+  text-align: left;
+  cursor: pointer;
+  transition: color var(--dur-1) var(--ease-out);
+}
+.sx-item:hover { color: var(--ob-fg-0); }
+.sx-item:focus-visible { outline: 2px solid var(--ob-accent); outline-offset: -2px; }
+.sx-item svg { flex: none; color: currentColor; opacity: .8; }
+.sx-item-t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* El valor vivo del dominio: se ve la config sin entrar */
+.sx-item-v {
+  flex: none;
+  max-width: 88px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: var(--sx-mono);
+  color: var(--ob-fg-3);
+  letter-spacing: .01em;
+  transition: color var(--dur-1) var(--ease-out);
+}
+.sx-item.on { color: var(--ob-fg-0); font-weight: 600; }
+.sx-item.on svg { opacity: 1; color: var(--ob-accent-fg); }
+.sx-item.on .sx-item-v { color: var(--ob-accent-fg); }
+
+/* Resultados de la búsqueda profunda */
+.sx-res { flex: 1; min-height: 0; overflow-y: auto; padding: 2px 0; }
+.sx-res[hidden] { display: none; }
+.sx-res-i {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 9px;
+  background: none;
+  color: var(--ob-fg-1);
+  text-align: left;
+  cursor: pointer;
+}
+.sx-res-i:hover, .sx-res-i.sel { background: color-mix(in oklch, var(--ob-accent) 14%, transparent); color: var(--ob-fg-0); }
+.sx-res-i svg { flex: none; color: var(--ob-fg-3); }
+.sx-res-tx { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.sx-res-a { font: 500 12.5px var(--font-ui); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sx-res-b { font: var(--sx-mono); color: var(--ob-fg-3); }
+.sx-res-none { padding: 14px 10px; font: 400 12px var(--font-ui); color: var(--ob-fg-3); }
+
+.sr-only {
+  position: absolute; width: 1px; height: 1px;
+  margin: -1px; padding: 0; overflow: hidden;
+  clip-path: inset(50%); white-space: nowrap;
+}
+
+/* ═══ CUERPO ════════════════════════════════════════════════ */
+.sx-body {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* Alféizar: título + métrica viva del dominio + cerrar */
+.sx-sill {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex: none;
+  height: 58px;
+  padding: 0 18px 0 var(--sx-pad);
+  border-bottom: 1px solid var(--sx-hair);
+}
+.sx-sill h1 {
+  margin: 0;
+  font: 600 16.5px/1 var(--font-ui);
+  letter-spacing: -.018em;
+  color: var(--ob-fg-0);
+}
+.sx-sill-sub {
+  flex: 1;
+  min-width: 0;
+  font: 400 12px var(--font-ui);
+  color: var(--ob-fg-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sx-x {
+  display: grid;
+  place-items: center;
+  width: 30px; height: 30px;
+  flex: none;
+  border: 0;
+  border-radius: 8px;
+  background: color-mix(in oklch, var(--ob-fg-4) 10%, transparent);
+  color: var(--ob-fg-2);
+  cursor: pointer;
+  transition: background var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out);
+}
+.sx-x:hover { background: color-mix(in oklch, var(--ob-err) 20%, transparent); color: var(--ob-fg-0); }
+.sx-x:focus-visible { outline: 2px solid var(--ob-accent); outline-offset: 2px; }
+
+.sx-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--ob-line-2) transparent;
+}
+.sx-scroll::-webkit-scrollbar { width: 10px; }
+.sx-scroll::-webkit-scrollbar-thumb {
+  background: var(--ob-line-2);
+  border-radius: 99px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   FICHA TÉCNICA — la primitiva que reemplaza a la tarjeta.
+   Cada bloque se ANUNCIA con su banda: rótulo mono + pista, y la regla
+   corriendo hasta el canto derecho. Después el contenido ocupa TODO el
+   ancho del cuerpo. La banda se PEGA arriba al scrollear (`.fija`, la
+   marca settings.js): en cualquier punto del scroll sabés en qué parte
+   de la sección estás sin volver a subir.
+
+   Antes había una canaleta de 132px a la izquierda con el rótulo alineado
+   a la derecha: quedaba flotando solo en una columna vacía, lejos de lo
+   que nombra, el contenido perdía 152px de ancho y encima los bloques
+   anchos YA ponían su rótulo arriba — la misma primitiva con dos formas.
+   Unificado 2026-07-22 en la forma que funcionaba.
+   ───────────────────────────────────────────────────────────── */
+/* El respiro de arriba es funcional: en reposo la primera banda arranca por
+   DEBAJO del techo del scrollport, así la repisa aparece solo cuando de verdad
+   hay contenido pasando por atrás. */
+.sx-sheet { padding: 12px var(--sx-pad) 44px; }
+
+.sx-blk { padding: 0 0 26px; scroll-margin-top: 52px; }
+
+/* ═══ BANDA DE BLOQUE ═══════════════════════════════════════
+   Full-bleed (márgenes negativos): la repisa llega a los cantos del
+   cuerpo aunque el texto respete la columna de contenido. */
+.sx-blk-l {
+  position: sticky;
+  top: -1px;                     /* el píxel que deja detectar el pegado */
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 calc(var(--sx-pad) * -1) 15px;
+  padding: 14px var(--sx-pad) 12px;
+  isolation: isolate;
+}
+/* Repisa: SOLO cuando la banda queda pegada arriba. Suelta, el bloque
+   respira; pegada, el contenido no se lee a través del rótulo. */
+.sx-blk-l::before {
+  content: '';
+  position: absolute;
+  /* La repisa se estira 14px POR DEBAJO de la banda: detrás del rótulo el
+     color es macizo y el desvanecido cae fuera, así ninguna fila que pasa
+     por atrás fantasmea sobre el texto. */
+  inset: 0 0 -14px;
+  z-index: -1;
+  background: linear-gradient(180deg,
+    var(--ob-bg-2) 0%,
+    var(--ob-bg-2) 74%,
+    color-mix(in oklch, var(--ob-bg-2) 0%, transparent) 100%);
+  opacity: 0;
+  transition: opacity 200ms var(--ease-out);
+}
+.sx-blk-l.fija::before { opacity: 1; }
+
+.sx-blk-l b {
+  flex: none;
+  font: var(--sx-mono);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: .11em;
+  color: var(--ob-fg-2);
+  transition: color var(--dur-1) var(--ease-out);
+}
+.sx-blk-l.fija b { color: var(--ob-fg-0); }
+.sx-blk-l span {
+  min-width: 0;
+  font: 400 11.5px/1.4 var(--font-ui);
+  color: var(--ob-fg-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Regla guía: arranca donde termina el texto y muere contra el canto. */
+.sx-blk-l::after {
+  content: '';
+  flex: 1 1 auto;
+  min-width: 20px;
+  height: 1px;
+  background: linear-gradient(90deg,
+    var(--sx-hair) 0%,
+    var(--sx-hair) 78%,
+    color-mix(in oklch, var(--sx-hair) 0%, transparent) 100%);
+}
+
+.sx-blk-c { min-width: 0; display: flex; flex-direction: column; gap: 14px; }
+
+/* Fila de ajuste: texto + control. Sin caja, sin ícono decorativo. */
+.sx-set {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-height: 30px;
+}
+.sx-set-t { flex: 1; min-width: 0; }
+.sx-set-t b {
+  display: block;
+  font: 500 13px var(--font-ui);
+  color: var(--ob-fg-1);
+  letter-spacing: -.005em;
+}
+.sx-set-t span {
+  display: block;
+  margin-top: 3px;
+  max-width: 62ch;
+  font: 400 11.5px/1.5 var(--font-ui);
+  color: var(--ob-fg-3);
+}
+.sx-set + .sx-set { padding-top: 14px; border-top: 1px dashed color-mix(in oklch, var(--ob-line-1) 55%, transparent); }
+
+/* Pulso al saltar desde la búsqueda */
+@keyframes sx-hit {
+  0%, 100% { background: transparent; }
+  22% { background: color-mix(in oklch, var(--ob-accent) 16%, transparent); }
+}
+.sx-hit {
+  animation: sx-hit 1500ms var(--ease-out);
+  border-radius: 10px;
+  box-shadow: 0 0 0 12px transparent;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   CONTROLES — vocabulario único para toda la superficie
+   ───────────────────────────────────────────────────────────── */
+
+/* Interruptor */
+.sx-sw { position: relative; flex: none; width: 40px; height: 23px; cursor: pointer; }
+.sx-sw input { position: absolute; opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+.sx-sw i {
+  position: absolute;
+  inset: 0;
+  border-radius: 99px;
+  background: color-mix(in oklch, var(--ob-fg-4) 26%, transparent);
+  box-shadow: inset 0 1px 2px oklch(0% 0 0 / .4);
+  transition: background var(--dur-2) var(--ease-out);
+  pointer-events: none;
+}
+.sx-sw i::after {
+  content: '';
+  position: absolute;
+  top: 3px; left: 3px;
+  width: 17px; height: 17px;
+  border-radius: 99px;
+  background: linear-gradient(180deg, color-mix(in oklch, white 96%, transparent), color-mix(in oklch, white 74%, transparent));
+  box-shadow: 0 1px 3px oklch(0% 0 0 / .5);
+  transition: transform var(--dur-2) var(--ease-snap), width var(--dur-1) var(--ease-out);
+}
+.sx-sw input:checked + i {
+  background: var(--ob-accent);
+  box-shadow: inset 0 1px 2px oklch(0% 0 0 / .25), 0 0 12px -3px var(--ob-accent-glow);
+}
+.sx-sw input:checked + i::after { transform: translateX(17px); }
+.sx-sw input:active + i::after { width: 21px; }
+.sx-sw input:checked:active + i::after { transform: translateX(13px); }
+.sx-sw input:focus-visible + i { outline: 2px solid var(--ob-accent); outline-offset: 3px; }
+
+/* Segmentado */
+.sx-seg {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 9px;
+  background: var(--sx-input);
+  box-shadow: inset 0 0 0 1px var(--sx-hair);
+}
+.sx-seg button {
+  padding: 5px 12px;
+  border: 0;
+  border-radius: 7px;
+  background: none;
+  color: var(--ob-fg-3);
+  font: 500 12px var(--font-ui);
+  cursor: pointer;
+  transition: color var(--dur-1) var(--ease-out), background var(--dur-1) var(--ease-out);
+}
+.sx-seg button:hover { color: var(--ob-fg-1); }
+.sx-seg button.on {
+  color: var(--ob-fg-0);
+  background: color-mix(in oklch, var(--ob-fg-0) 12%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in oklch, white 14%, transparent);
+}
+.sx-seg button:focus-visible { outline: 2px solid var(--ob-accent); outline-offset: -1px; }
+.sx-seg .n { margin-left: 6px; font: var(--sx-mono); color: var(--ob-fg-3); }
+.sx-seg button.on .n { color: var(--ob-accent-fg); }
+
+/* Botón */
+.sx-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 30px;
+  padding: 0 13px;
+  border: 0;
+  border-radius: 8px;
+  background: color-mix(in oklch, var(--ob-fg-0) 9%, transparent);
+  box-shadow: inset 0 0 0 1px var(--sx-hair), inset 0 1px 0 color-mix(in oklch, white 8%, transparent);
+  color: var(--ob-fg-1);
+  font: 500 12px var(--font-ui);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out);
+}
+.sx-btn:hover { background: color-mix(in oklch, var(--ob-fg-0) 15%, transparent); color: var(--ob-fg-0); }
+.sx-btn:focus-visible { outline: 2px solid var(--ob-accent); outline-offset: 2px; }
+.sx-btn[disabled] { opacity: .45; cursor: not-allowed; }
+/* `display: inline-flex` de autor le gana al [hidden]{display:none} del UA: sin
+   esta regla, un .sx-btn con hidden=true se sigue viendo (era el caso del
+   "Restablecer" de Tonalidad, visible incluso con el tinte neutro). */
+.sx-btn[hidden] { display: none; }
+.sx-btn.pri {
+  background: var(--ob-accent);
+  color: var(--ob-on-accent);
+  box-shadow: inset 0 1px 0 var(--ob-bevel-accent), 0 4px 14px -6px var(--ob-accent-glow);
+}
+.sx-btn.pri:hover { background: color-mix(in oklch, var(--ob-accent) 88%, white); color: var(--ob-on-accent); }
+.sx-btn.gho { background: none; box-shadow: inset 0 0 0 1px var(--sx-hair); }
+.sx-btn.sm { height: 26px; padding: 0 10px; font-size: 11.5px; }
+
+/* Valor mono (teclas, rutas, números) */
+.sx-mono { font: 500 12px var(--font-mono); color: var(--ob-fg-1); letter-spacing: .01em; }
+.sx-dim  { color: var(--ob-fg-3); }
+
+/* Pastilla de estado */
+.sx-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 9px;
+  border-radius: 99px;
+  font: 500 10.5px var(--font-mono);
+  letter-spacing: .04em;
+  background: color-mix(in oklch, var(--ob-fg-4) 14%, transparent);
+  color: var(--ob-fg-2);
+}
+.sx-pill::before {
+  content: '';
+  width: 5px; height: 5px;
+  border-radius: 99px;
+  background: currentColor;
+}
+.sx-pill.ok  { background: var(--ob-run-08);  color: var(--ob-run); }
+.sx-pill.wk  { background: var(--ob-work-08); color: var(--ob-work); }
+.sx-pill.er  { background: var(--ob-err-08);  color: var(--ob-err); }
+.sx-pill.ac  { background: var(--ob-accent-14); color: var(--ob-accent-fg); }
+.sx-pill.mute::before { opacity: .5; }
+
+/* Deslizador de precisión */
+.sx-slider { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 12px; }
+.sx-slider input[type=range] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 22px;
+  background: none;
+  cursor: pointer;
+}
+.sx-slider input[type=range]::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 99px;
+  background: color-mix(in oklch, var(--ob-fg-4) 30%, transparent);
+  box-shadow: inset 0 1px 2px oklch(0% 0 0 / .35);
+}
+.sx-slider input[type=range]::-moz-range-track {
+  height: 4px; border-radius: 99px;
+  background: color-mix(in oklch, var(--ob-fg-4) 30%, transparent);
+}
+.sx-slider input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 15px; height: 15px;
+  margin-top: -5.5px;
+  border-radius: 99px;
+  background: linear-gradient(180deg, color-mix(in oklch, white 95%, transparent), color-mix(in oklch, white 72%, transparent));
+  box-shadow: 0 1px 4px oklch(0% 0 0 / .55), 0 0 0 1px oklch(0% 0 0 / .25);
+  transition: transform var(--dur-1) var(--ease-out);
+}
+.sx-slider input[type=range]::-moz-range-thumb {
+  width: 15px; height: 15px; border: 0;
+  border-radius: 99px;
+  background: color-mix(in oklch, white 88%, transparent);
+  box-shadow: 0 1px 4px oklch(0% 0 0 / .55);
+}
+.sx-slider input[type=range]:active::-webkit-slider-thumb { transform: scale(1.18); }
+.sx-slider input[type=range]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 3px var(--ob-accent-24); }
+.sx-slider output {
+  min-width: 52px;
+  text-align: right;
+  font: 500 12px var(--font-mono);
+  color: var(--ob-fg-1);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Vacío honesto */
+.sx-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 26px;
+  border-radius: 12px;
+  background: var(--sx-well);
+  box-shadow: inset 0 0 0 1px var(--sx-hair);
+}
+.sx-empty b { font: 600 13px var(--font-ui); color: var(--ob-fg-1); }
+.sx-empty p { margin: 0; max-width: 58ch; font: 400 12px/1.55 var(--font-ui); color: var(--ob-fg-3); }
+
+/* Entrada del contenido al cambiar de sección */
+/* `backwards`, NO `both`: con fill forwards el bloque se queda con el
+   transform final (matrix identidad) para siempre, y un ancestro con
+   transform le rompe el `position: sticky` a la banda de adentro — la
+   banda pegada dejaba de pegarse. Backwards conserva la entrada escalonada
+   (el estado `from` durante el delay) sin retener nada al terminar. */
+.sx-in > * { animation: sx-rise 260ms var(--ease-out) backwards; }
+.sx-in > *:nth-child(1) { animation-delay: 0ms; }
+.sx-in > *:nth-child(2) { animation-delay: 35ms; }
+.sx-in > *:nth-child(3) { animation-delay: 70ms; }
+.sx-in > *:nth-child(4) { animation-delay: 100ms; }
+.sx-in > *:nth-child(n+5) { animation-delay: 125ms; }
+@keyframes sx-rise { from { opacity: 0; transform: translateY(9px); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .sx-in > *, .sx-veil, .sx-slab { animation: none !important; }
+  .sx-thumb { transition: opacity 120ms linear; }
+  .sx-slab::before { display: none; }
+  * { scroll-behavior: auto !important; }
+}
+
+/* ═══ RESPONSIVE — el rail colapsa a tira de íconos, después a barra ═══ */
+@media (max-width: 980px) {
+  .jw-settings { --sx-rail: 64px; --sx-pad: 20px; }
+  .sx-item-t, .sx-item-v, .sx-nav-lbl, .sx-brand { display: none; }
+  .sx-item { justify-content: center; padding: 0; }
+  .sx-find { justify-content: center; padding: 0; }
+  .sx-find input, .sx-find kbd { display: none; }
+}
+@media (max-width: 720px) {
+  .sx-blk-l { gap: 9px; padding: 12px var(--sx-pad) 10px; }
+  .sx-blk-l::after { display: none; }   /* sin ancho de sobra, la regla es ruido */
+  .sx-veil { padding: 0; }
+  .sx-slab { height: 100%; width: 100%; border-radius: 0; }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LOS 7 DOMINIOS — cada uno con su propia forma.
+   Nada de esto es una tarjeta con ícono + título + texto.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ─────────────────────────────────────────────────────────────
+   1 · VOZ — la tecla como objeto físico
+   ───────────────────────────────────────────────────────────── */
+.vz { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 22px; align-items: start; }
+
+.vz-col { display: flex; flex-direction: column; align-items: center; gap: 9px; }
+.vz-key {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 136px;
+  height: 92px;
+  border-radius: 14px;
+  cursor: pointer;
+  background: linear-gradient(180deg,
+    color-mix(in oklch, var(--ob-fg-0) 13%, transparent),
+    color-mix(in oklch, var(--ob-fg-0) 5%, transparent));
+  box-shadow:
+    inset 0 1.5px 0 color-mix(in oklch, white 22%, transparent),
+    inset 0 -3px 0 color-mix(in oklch, black 34%, transparent),
+    inset 0 0 0 1px color-mix(in oklch, white 8%, transparent),
+    0 8px 20px -10px oklch(0% 0 0 / .7);
+  transition: transform var(--dur-1) var(--ease-out), box-shadow var(--dur-1) var(--ease-out);
+}
+.vz-key:hover { transform: translateY(-1px); }
+.vz-key:active { transform: translateY(2px); box-shadow: inset 0 1px 0 color-mix(in oklch, white 12%, transparent), inset 0 -1px 0 color-mix(in oklch, black 30%, transparent); }
+.vz-key:focus-visible { outline: 2px solid var(--ob-accent); outline-offset: 3px; }
+.vz-key kbd {
+  max-width: 100%;
+  padding: 0 8px;
+  font: 600 26px var(--font-mono);
+  color: var(--ob-fg-0);
+  letter-spacing: -.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: center;
+}
+/* «Mouse →», «Click der.»: el binding puede ser un botón, no una letra. */
+.vz-key.largo kbd { font-size: 15px; letter-spacing: 0; }
+.vz-key.capturando kbd { font-size: 12px; color: var(--ob-accent-fg); }
+.vz-key.capturando { box-shadow: inset 0 0 0 1.5px var(--ob-accent), 0 0 24px -6px var(--ob-accent-glow); }
+.vz-key-h { font: 500 10px var(--font-mono); color: var(--ob-fg-3); letter-spacing: .04em; }
+.vz-col:hover .vz-key-h { color: var(--ob-fg-3); }
+
+.vz-txt p { margin: 0 0 8px; max-width: 64ch; font: 400 12.5px/1.6 var(--font-ui); color: var(--ob-fg-2); }
+.vz-txt p b { color: var(--ob-fg-0); font-weight: 600; }
+.vz-sec { color: var(--ob-fg-3) !important; font-size: 12px !important; }
+
+/* Ruta de la señal: de dónde a dónde va tu voz */
+.vz-ruta { display: flex; align-items: center; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+.vz-nodo {
+  padding: 4px 10px;
+  border-radius: 99px;
+  font: 500 11px var(--font-mono);
+  color: var(--ob-fg-3);
+  background: color-mix(in oklch, var(--ob-fg-4) 12%, transparent);
+}
+.vz-nodo.on { color: var(--ob-accent-fg); background: var(--ob-accent-14); }
+.vz-flecha {
+  width: 16px; height: 1px;
+  background: linear-gradient(90deg, var(--ob-line-2), color-mix(in oklch, var(--ob-line-3) 60%, transparent));
+  position: relative;
+}
+.vz-flecha::after {
+  content: '';
+  position: absolute; right: -1px; top: -2px;
+  border-left: 4px solid var(--ob-line-3);
+  border-top: 2.5px solid transparent;
+  border-bottom: 2.5px solid transparent;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   2 · TECLADO — mapa real
+   ───────────────────────────────────────────────────────────── */
+.kb { display: flex; flex-direction: column; gap: 6px; max-width: 760px; }
+.kb-f { display: grid; grid-template-columns: repeat(30, 1fr); gap: 6px; }
+
+.kb-k {
+  position: relative;
+  display: grid;
+  place-items: center;
+  height: 38px;
+  border: 0;
+  border-radius: 7px;
+  background: linear-gradient(180deg,
+    color-mix(in oklch, var(--ob-fg-0) 5%, transparent),
+    color-mix(in oklch, var(--ob-fg-0) 2%, transparent));
+  box-shadow:
+    inset 0 1px 0 color-mix(in oklch, white 7%, transparent),
+    inset 0 -2px 0 color-mix(in oklch, black 26%, transparent),
+    inset 0 0 0 1px color-mix(in oklch, white 3%, transparent);
+  color: var(--ob-fg-3);
+  font: 500 11px var(--font-mono);
+  cursor: default;
+  transition: color var(--dur-1) var(--ease-out), box-shadow var(--dur-1) var(--ease-out),
+              transform var(--dur-1) var(--ease-out), background var(--dur-1) var(--ease-out);
+}
+.kb-k.bound {
+  cursor: pointer;
+  color: var(--ob-fg-0);
+  background: linear-gradient(180deg,
+    color-mix(in oklch, var(--ob-accent) 26%, transparent),
+    color-mix(in oklch, var(--ob-accent) 12%, transparent));
+  box-shadow:
+    inset 0 1px 0 color-mix(in oklch, white 20%, transparent),
+    inset 0 -2px 0 color-mix(in oklch, black 28%, transparent),
+    inset 0 0 0 1px var(--ob-accent-24),
+    0 3px 12px -6px var(--ob-accent-glow);
+}
+.kb-k.bound:hover { transform: translateY(-1px); box-shadow: inset 0 1px 0 color-mix(in oklch, white 26%, transparent), inset 0 -2px 0 color-mix(in oklch, black 28%, transparent), inset 0 0 0 1px var(--ob-accent), 0 6px 18px -6px var(--ob-accent-glow); }
+.kb-k.bound:active { transform: translateY(1px); }
+.kb-k.bound:focus-visible { outline: 2px solid var(--ob-accent); outline-offset: 2px; }
+.kb-k.cfg { box-shadow: inset 0 1px 0 color-mix(in oklch, white 20%, transparent), inset 0 -2px 0 color-mix(in oklch, black 28%, transparent), inset 0 0 0 1.5px var(--ob-accent-fg), 0 3px 12px -6px var(--ob-accent-glow); }
+/* punto = necesita Ctrl */
+.kb-mod {
+  position: absolute; top: 4px; right: 5px;
+  width: 4px; height: 4px; border-radius: 99px;
+  background: var(--ob-accent-fg);
+}
+
+.kb-cap { margin: 14px 0 0; font: 400 12.5px var(--font-ui); color: var(--ob-fg-2); min-height: 20px; }
+.kb-cap-k {
+  display: inline-block;
+  margin-right: 8px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font: 500 11.5px var(--font-mono);
+  color: var(--ob-fg-0);
+  background: color-mix(in oklch, var(--ob-accent) 20%, transparent);
+}
+
+.kb-bind {
+  display: inline-flex; align-items: center; gap: 8px;
+  height: 32px; padding: 0 12px;
+  border: 0; border-radius: 8px;
+  background: var(--sx-well);
+  box-shadow: inset 0 0 0 1px var(--sx-hair);
+  color: var(--ob-fg-3);
+  font: 500 11.5px var(--font-ui);
+  cursor: pointer;
+  transition: box-shadow var(--dur-1) var(--ease-out);
+}
+.kb-bind kbd { font: 600 12px var(--font-mono); color: var(--ob-fg-0); }
+.kb-bind:hover { box-shadow: inset 0 0 0 1px var(--ob-accent-24); }
+.kb-bind:focus-visible { outline: 2px solid var(--ob-accent); outline-offset: 2px; }
+.kb-bind.capturando { box-shadow: inset 0 0 0 1.5px var(--ob-accent); }
+.kb-bind.capturando kbd { color: var(--ob-accent-fg); font-size: 11px; }
+
+.kb-otros { display: flex; flex-direction: column; gap: 9px; font: 400 12px var(--font-ui); color: var(--ob-fg-3); }
+.kb-chip {
+  display: inline-block; min-width: 92px; margin-right: 10px;
+  padding: 3px 8px; border-radius: 6px;
+  font: 500 11px var(--font-mono); color: var(--ob-fg-2);
+  background: color-mix(in oklch, var(--ob-fg-4) 12%, transparent);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   3 · APARIENCIA — banco de pruebas + espectro
+   ───────────────────────────────────────────────────────────── */
+/* El banco pinta con SUS PROPIAS variables, que por defecto son los tokens
+   reales del tema activo. Al apuntar una muestra del espectro, el JS las pisa
+   inline con los colores de ESE tema: se ve cómo quedaría el workspace sin
+   aplicar nada. El tema recién cambia al hacer click. */
+.ap-banco {
+  --bk-bg: var(--ob-bg-void);
+  --bk-pn: var(--ob-bg-1);
+  --bk-ln: var(--ob-line-2);
+  --bk-ac: var(--ob-accent);
+  --bk-el: color-mix(in oklch, var(--bk-pn) 80%, var(--bk-ln));
+  --bk-el2: color-mix(in oklch, var(--bk-pn) 55%, var(--bk-ln));
+
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr) 54px;
+  gap: 5px;
+  height: 168px;
+  padding: 5px;
+  border-radius: 12px;
+  background: var(--bk-bg);
+  box-shadow: inset 0 0 0 1px var(--bk-ln);
+  overflow: hidden;
+  transition: background var(--dur-2) var(--ease-out), box-shadow var(--dur-2) var(--ease-out);
+}
+.ap-banco.previa { box-shadow: inset 0 0 0 1px var(--bk-ac), 0 0 0 1px color-mix(in oklch, var(--ob-accent) 30%, transparent); }
+.ap-strip { display: flex; flex-direction: column; gap: 4px; padding: 4px; border-radius: 8px; background: var(--bk-pn); }
+.ap-strip i { display: block; height: 20px; border-radius: 5px; background: var(--bk-el); }
+.ap-strip i.on { background: var(--bk-el2); box-shadow: inset 0 0 0 1px var(--bk-ac); }
+.ap-main { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.ap-bar { display: flex; align-items: center; gap: 6px; height: 22px; padding: 0 8px; border-radius: 7px; background: var(--bk-pn); }
+.ap-bar em { display: block; height: 5px; width: 46px; border-radius: 99px; background: var(--bk-ac); }
+.ap-bar em.w { width: 78px; background: var(--bk-ln); }
+.ap-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; flex: 1; min-height: 0; }
+.ap-term {
+  display: flex; flex-direction: column; gap: 6px;
+  padding: 8px; border-radius: 8px;
+  background: var(--bk-bg);
+  box-shadow: inset 0 0 0 1px var(--bk-ln);
+}
+.ap-term.on { box-shadow: inset 0 0 0 1px var(--bk-ac); }
+.ap-term b { display: block; height: 6px; width: 40%; border-radius: 99px; background: var(--ob-run); }
+.ap-term s { display: block; height: 4px; width: 88%; border-radius: 99px; background: var(--bk-ln); }
+.ap-term s.w { width: 62%; }
+.ap-dock { display: flex; flex-direction: column; gap: 4px; padding: 4px; border-radius: 8px; background: var(--bk-pn); }
+.ap-dock i { display: block; height: 12px; border-radius: 4px; background: var(--bk-el); }
+.ap-banco *, .ap-banco { transition: background var(--dur-2) var(--ease-out), box-shadow var(--dur-2) var(--ease-out); }
+
+/* Espectro: 24 muestras ordenadas por rueda de color.
+   HOVER = previsualizar (el banco de arriba se pinta con ese tema).
+   CLICK = elegir, y ahí sí la muestra se DESPLIEGA con su nombre.
+   El despliegue mueve layout (flex-grow), pero ahora ocurre una vez por
+   elección y no mientras barrés: `contain` igual encierra el recálculo. */
+.ap-spec {
+  display: flex;
+  align-items: stretch;
+  gap: 3px;
+  height: 112px;
+  padding: 4px 0;
+  contain: layout paint style;
+}
+.ap-t {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+  border: 0;
+  padding: 0;
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: pointer;
+  /* La losa ES la muestra: fondo del tema arriba, panel al medio y una banda
+     ancha de acento abajo. Las 24 en fila leen como un espectro real. */
+  background: linear-gradient(180deg,
+    var(--t-bg)  0%, var(--t-bg)  46%,
+    var(--t-pn) 46%, var(--t-pn) 57%,
+    var(--t-ac) 57%, var(--t-ac) 100%);
+  box-shadow: inset 0 0 0 1px color-mix(in oklch, white 8%, transparent);
+  transition:
+    flex-grow 280ms var(--ease-snap),
+    box-shadow 150ms var(--ease-out);
+}
+/* El HOVER no despliega: solo marca qué estás apuntando (el banco de arriba se
+   encarga de mostrar cómo se vería). El despliegue es la reacción a ELEGIR. */
+.ap-t:hover, .ap-t:focus-visible {
+  outline: none;
+  z-index: 2;
+  box-shadow:
+    inset 0 0 0 2px color-mix(in oklch, white 55%, transparent),
+    0 0 0 1px oklch(0% 0 0 / .5);
+}
+.ap-t.on {
+  z-index: 1;
+  flex-grow: 4.2;
+  box-shadow: inset 0 0 0 2px var(--t-ac), 0 0 18px -6px var(--t-ac);
+}
+.ap-t-p { position: absolute; left: 0; right: 0; top: 46%; height: 11%; box-shadow: inset 0 1px 0 var(--t-ln), inset 0 -1px 0 var(--t-ln); }
+
+/* El nombre solo en la elegida: es la única que tiene ancho para mostrarlo */
+.ap-t-n {
+  position: absolute;
+  left: 9px; right: 9px; top: 9px;
+  font: 500 11px var(--font-ui);
+  color: color-mix(in oklch, white 90%, transparent);
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0;
+  transform: translateY(-3px);
+  transition: opacity 160ms var(--ease-out) 120ms, transform 160ms var(--ease-out) 120ms;
+}
+.ap-t.claro .ap-t-n { color: color-mix(in oklch, black 82%, transparent); }
+.ap-t.on .ap-t-n { opacity: 1; transform: none; }
+.ap-t.claro::after {
+  content: '';
+  position: absolute; right: 6px; top: 6px;
+  width: 5px; height: 5px; border-radius: 99px;
+  background: color-mix(in oklch, black 55%, transparent);
+}
+/* desplegada, el nombre ocupa ese lugar */
+.ap-t.on.claro::after { display: none; }
+.ap-spec-cap { margin: 10px 0 0; font: 400 12px var(--font-ui); color: var(--ob-fg-3); }
+.ap-spec-cap b { color: var(--ob-fg-0); font-weight: 600; font-size: 12.5px; }
+.ap-previa {
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 99px;
+  font: 500 10.5px var(--font-mono);
+  color: var(--ob-accent-fg);
+  background: var(--ob-accent-14);
+}
+
+.ap-ton { display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
+.ap-ton-r { display: grid; grid-template-columns: 92px minmax(0, 1fr); align-items: center; gap: 14px; width: 100%; max-width: 380px; }
+.ap-ton-l { font: 500 11.5px var(--font-mono); color: var(--ob-fg-3); letter-spacing: .02em; }
+
+/* Escala de la app — la misma regla de la tonalidad, pero graduada: los
+   extremos y el 100% rotulados bajo la pista. --esc-det (inline, lo calcula
+   settings.js) es dónde cae el 100% teniendo en cuenta el ancho del pulgar. */
+.ap-esc { display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
+.ap-esc-r .sx-slider { align-items: start; }
+.ap-esc-r .sx-slider output { padding-top: 4px; }
+.ap-esc-track { position: relative; display: block; min-width: 0; }
+.ap-esc-ends { position: relative; display: block; height: 13px; }
+.ap-esc-ends i {
+  position: absolute; top: 0;
+  font: 500 10px var(--font-mono); font-style: normal;
+  color: var(--ob-fg-4); font-variant-numeric: tabular-nums;
+}
+.ap-esc-ends i:nth-child(1) { left: 0; }
+.ap-esc-ends i:nth-child(2) { left: var(--esc-det, 37.5%); transform: translateX(-50%); }
+.ap-esc-ends i:nth-child(3) { right: 0; }
+.ap-esc-cap { margin: 0; max-width: 52ch; font: 400 11.5px/1.55 var(--font-ui); color: var(--ob-fg-3); }
+
+/* ─────────────────────────────────────────────────────────────
+   4 · CUENTAS — conmutador: un CLI por fila, sus cuentas como
+   botones de un selector. La acción real acá es CAMBIAR de cuenta.
+   ───────────────────────────────────────────────────────────── */
+.ct-wrap {
+  border-radius: 12px;
+  background: var(--sx-well);
+  box-shadow: inset 0 0 0 1px var(--sx-hair);
+  overflow: hidden;
+}
+.ct-cli + .ct-cli { border-top: 1px solid var(--sx-hair); }
+.ct-cli.abierta { background: color-mix(in oklch, var(--ob-accent) 6%, transparent); }
+
+.ct-fila {
+  display: grid;
+  grid-template-columns: 26px minmax(120px, 200px) minmax(0, 1fr);
+  align-items: center;
+  gap: 14px;
+  padding: 13px 16px;
+}
+.ct-logo { display: grid; place-items: center; width: 26px; height: 26px; }
+.ct-logo svg, .ct-logo img { width: 18px; height: 18px; display: block; }
+
+.ct-cli-n { min-width: 0; }
+.ct-cli-n b {
+  display: block;
+  font: 600 13px var(--font-ui);
+  color: var(--ob-fg-0);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ct-cli-s {
+  display: block; margin-top: 3px;
+  font-size: 10.5px; color: var(--ob-fg-3);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* El conmutador */
+.ct-sw { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+.ct-chip {
+  display: inline-flex; align-items: center; gap: 7px;
+  height: 30px; padding: 0 13px;
+  border: 0; border-radius: 99px;
+  background: color-mix(in oklch, var(--ob-fg-0) 7%, transparent);
+  box-shadow: inset 0 0 0 1px var(--sx-hair);
+  color: var(--ob-fg-2);
+  font: 500 12px var(--font-ui);
+  cursor: pointer;
+  max-width: 230px;
+  transition: background var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out),
+              box-shadow var(--dur-1) var(--ease-out);
+}
+.ct-chip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ct-chip:hover { background: color-mix(in oklch, var(--ob-fg-0) 13%, transparent); color: var(--ob-fg-0); }
+.ct-chip:focus-visible { outline: 2px solid var(--ob-accent); outline-offset: 2px; }
+.ct-chip.on {
+  background: var(--ob-accent);
+  color: var(--ob-on-accent);
+  box-shadow: inset 0 1px 0 var(--ob-bevel-accent), 0 3px 12px -5px var(--ob-accent-glow);
+}
+.ct-chip.on:hover { background: color-mix(in oklch, var(--ob-accent) 88%, white); color: var(--ob-on-accent); }
+.ct-dot {
+  width: 6px; height: 6px; border-radius: 99px;
+  background: currentColor;
+  box-shadow: 0 0 0 3px color-mix(in oklch, currentColor 25%, transparent);
+}
+.ct-chip.mas { background: none; color: var(--ob-fg-3); box-shadow: inset 0 0 0 1px var(--sx-hair); }
+.ct-chip.mas svg { color: var(--ob-fg-3); }
+.ct-chip .ct-cli-logo { display: grid; place-items: center; width: 15px; height: 15px; flex: none; }
+.ct-chip .ct-cli-logo svg, .ct-chip .ct-cli-logo img { width: 14px; height: 14px; display: block; }
+.ct-off .ct-logo { color: var(--ob-fg-3); }
+.ct-chip.mas:hover { color: var(--ob-accent-fg); box-shadow: inset 0 0 0 1px var(--ob-accent-24); }
+.ct-chip.mas:hover svg { color: var(--ob-accent-fg); }
+
+/* Detalle de la cuenta en uso */
+.ct-det {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  flex-wrap: wrap; gap: 16px;
+  padding: 0 16px 15px 82px;
+}
+.ct-det dl {
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 5px 14px;
+  margin: 0;
+  align-items: baseline;
+}
+.ct-det dt { font: var(--sx-mono); color: var(--ob-fg-3); letter-spacing: .04em; }
+.ct-det dd { margin: 0; font-size: 11.5px; color: var(--ob-fg-1); }
+.ct-acc { display: flex; gap: 7px; }
+.ct-del:hover { background: var(--ob-err-08); color: var(--ob-err); }
+
+.ct-off .ct-cli-n b { color: var(--ob-fg-2); font-weight: 500; }
+.ct-pie { margin: 12px 2px 0; font: 400 11.5px/1.55 var(--font-ui); color: var(--ob-fg-3); max-width: 70ch; }
+
+/* ─────────────────────────────────────────────────────────────
+   5 · EXTENSIONES — rack
+   ───────────────────────────────────────────────────────────── */
+.pl-rack { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 2px 20px; }
+.pl-i {
+  display: flex; align-items: center; gap: 14px;
+  padding: 11px 12px;
+  border-radius: 9px;
+  cursor: pointer;
+  transition: background var(--dur-1) var(--ease-out);
+}
+.pl-i:hover { background: color-mix(in oklch, var(--ob-fg-0) 5%, transparent); }
+.pl-tx { flex: 1; min-width: 0; }
+.pl-tx b { display: block; font: 500 12.5px var(--font-ui); color: var(--ob-fg-2); }
+.pl-i.on .pl-tx b { color: var(--ob-fg-0); font-weight: 600; }
+.pl-tx span {
+  display: block; margin-top: 2px;
+  font: 400 11px/1.45 var(--font-ui); color: var(--ob-fg-3);
+  overflow: hidden; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical;
+}
+.pl-v { font-size: 10.5px; }
+
+.sk-chips { display: flex; flex-wrap: wrap; gap: 7px; }
+.sk-chip {
+  display: inline-flex; align-items: center; gap: 7px;
+  height: 30px; padding: 0 12px;
+  border: 0; border-radius: 99px;
+  background: color-mix(in oklch, var(--ob-fg-0) 8%, transparent);
+  box-shadow: inset 0 0 0 1px var(--sx-hair);
+  color: var(--ob-fg-1);
+  font: 500 12px var(--font-ui);
+  cursor: pointer;
+  transition: background var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out);
+}
+.sk-chip svg { color: var(--ob-fg-3); }
+.sk-chip:hover { background: color-mix(in oklch, var(--ob-fg-0) 14%, transparent); color: var(--ob-fg-0); }
+.sk-chip.nueva { background: none; color: var(--ob-accent-fg); box-shadow: inset 0 0 0 1px var(--ob-accent-24); }
+.sk-chip.nueva svg { color: var(--ob-accent-fg); }
+
+.mk { display: flex; flex-direction: column; }
+.mk-i { display: flex; align-items: center; gap: 16px; padding: 10px 0; border-bottom: 1px dashed color-mix(in oklch, var(--ob-line-1) 55%, transparent); }
+.mk-i:last-child { border-bottom: 0; }
+
+/* ─────────────────────────────────────────────────────────────
+   6 · MEMORIA — consola
+   ───────────────────────────────────────────────────────────── */
+.mm-pulso {
+  display: grid;
+  grid-template-columns: auto minmax(240px, 1fr);
+  gap: 10px 34px;
+  align-items: center;
+  padding: 18px 20px;
+  border-radius: 12px;
+  background: var(--sx-well);
+  box-shadow: inset 0 0 0 1px var(--sx-hair);
+}
+.mm-big b {
+  display: block;
+  font: 600 40px/1 var(--font-ui);
+  letter-spacing: -.03em;
+  color: var(--ob-fg-0);
+  font-variant-numeric: tabular-nums;
+}
+.mm-big span { display: block; margin-top: 5px; font: 400 11.5px var(--font-ui); color: var(--ob-fg-3); }
+.mm-alt-h { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; font: 400 11.5px var(--font-ui); color: var(--ob-fg-3); }
+.mm-alt-h b { font-size: 13px; color: var(--ob-fg-1); }
+.mm-bar { height: 5px; margin: 7px 0 6px; border-radius: 99px; background: color-mix(in oklch, var(--ob-fg-4) 22%, transparent); overflow: hidden; }
+.mm-bar i { display: block; height: 100%; border-radius: 99px; background: var(--ob-accent); }
+.mm-alt-f { font-size: 10.5px; }
+.mm-sig { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 7px; padding-top: 4px; }
+
+.mm-cats { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2px 28px; }
+.mm-cat { display: grid; grid-template-columns: minmax(0, 1fr) 108px 52px; align-items: center; gap: 12px; padding: 6px 0; }
+.mm-cat-v em {
+  display: inline-block;
+  margin-right: 6px;
+  padding: 1px 5px;
+  border-radius: 99px;
+  font-style: normal;
+  font-size: 10px;
+  color: var(--ob-work);
+  background: var(--ob-work-08);
+}
+.mm-cat-n { font: 400 12px var(--font-ui); color: var(--ob-fg-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mm-cat-b { position: relative; height: 4px; border-radius: 99px; background: color-mix(in oklch, var(--ob-fg-4) 16%, transparent); overflow: hidden; }
+.mm-cat-b i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 99px; background: color-mix(in oklch, var(--ob-accent) 62%, transparent); }
+.mm-cat-b em { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 99px; background: var(--ob-work); }
+.mm-cat-v { justify-self: end; font-size: 11.5px; color: var(--ob-fg-3); font-variant-numeric: tabular-nums; }
+
+.mm-list { display: flex; flex-direction: column; }
+.mm-i {
+  display: flex; align-items: center; gap: 18px;
+  width: 100%; padding: 11px 10px;
+  border: 0; border-radius: 9px;
+  background: none; text-align: left; cursor: pointer;
+  border-bottom: 1px solid color-mix(in oklch, var(--ob-line-1) 55%, transparent);
+  transition: background var(--dur-1) var(--ease-out);
+}
+.mm-i:last-child { border-bottom: 0; }
+.mm-i:hover { background: color-mix(in oklch, var(--ob-fg-0) 5%, transparent); }
+.mm-i-t { flex: 1; min-width: 0; }
+.mm-i-t b { display: block; font: 500 12.5px var(--font-ui); color: var(--ob-fg-1); }
+.mm-i-t span {
+  display: -webkit-box; margin-top: 3px;
+  font: 400 11.5px/1.5 var(--font-ui); color: var(--ob-fg-3);
+  -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden;
+}
+.mm-i-m { display: flex; align-items: center; gap: 10px; flex: none; font-size: 11px; }
+
+.mm-lec { display: flex; flex-direction: column; gap: 8px; }
+.mm-lec-n { font-size: 11px; }
+
+/* ─────────────────────────────────────────────────────────────
+   7 · WORKFLOWS — línea de tiempo
+   ───────────────────────────────────────────────────────────── */
+.wf { display: flex; flex-direction: column; }
+.wf-i { padding: 15px 0; border-bottom: 1px solid color-mix(in oklch, var(--ob-line-1) 60%, transparent); }
+.wf-i:last-child { border-bottom: 0; }
+.wf-h { display: flex; align-items: center; gap: 11px; }
+.wf-h b { font: 500 13px var(--font-ui); color: var(--ob-fg-0); }
+.wf-d { margin-left: auto; font-size: 11px; }
+.wf-o { margin: 7px 0 0; max-width: 72ch; font: 400 12px/1.55 var(--font-ui); color: var(--ob-fg-3); }
+.wf-track { display: flex; align-items: center; gap: 4px; margin-top: 11px; }
+.wf-track i {
+  display: block; width: 22px; height: 4px;
+  border-radius: 99px;
+  background: color-mix(in oklch, var(--ob-fg-4) 22%, transparent);
+}
+.wf-track i.ok { background: var(--ob-run); }
+.wf-track i.now { background: var(--ob-work); animation: wf-now 1.6s var(--ease-in-out) infinite; }
+@keyframes wf-now { 50% { opacity: .35; } }
+.wf-n { margin-left: 8px; font-size: 11px; }
+.wf-demo { opacity: .62; padding-top: 0; }
+.wf-leg { display: flex; flex-wrap: wrap; gap: 18px; margin-top: 14px; font: 400 11.5px var(--font-ui); color: var(--ob-fg-3); }
+.wf-leg span { display: inline-flex; align-items: center; gap: 7px; }
+.wf-leg i { display: block; width: 16px; height: 4px; border-radius: 99px; background: color-mix(in oklch, var(--ob-fg-4) 22%, transparent); }
+.wf-leg i.ok { background: var(--ob-run); }
+.wf-leg i.now { background: var(--ob-work); }
+
+@media (prefers-reduced-motion: reduce) {
+  .wf-track i.now { animation: none; }
+  .ap-t { transition: box-shadow var(--dur-1) var(--ease-out); }
+}
+
+/* ── Angosto: el teclado y el espectro se adaptan ── */
+@media (max-width: 900px) {
+  .vz { grid-template-columns: minmax(0, 1fr); }
+  .kb-k { height: 32px; font-size: 10px; }
+  .ap-spec { height: 84px; }
+  .ct-fila { grid-template-columns: 26px minmax(0, 1fr); row-gap: 10px; }
+  .ct-sw { grid-column: 1 / -1; justify-content: flex-start; }
+  .ct-det { padding-left: 16px; }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MARKUP HEREDADO QUE SE MANTIENE
+   Extensiones reusa el markup .ps-* que cablea window.JarvisSkills.montar()
+   (workspace.js) y el modal de alta de cuenta conserva su DOM: se re-visten,
+   no se reescriben.
+   ═══════════════════════════════════════════════════════════════════════════ */
+@keyframes cta-spin { to { transform: rotate(360deg); } }
+.cta-cargando, .cta-err {
+  display: flex; align-items: center; gap: 8px;
+  font: 500 12.5px var(--font-ui); color: var(--ob-fg-3); padding: 10px 0;
+}
+.cta-err { color: var(--ob-err); }
+.cta-cargando svg { animation: cta-spin .9s linear infinite; }
+
+/* ── Skills: pestañas re-vestidas (markup .ps-* de base.css) + buscador ── */
+.ps-toolbar {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; flex-wrap: wrap; margin: 0 0 4px;
+}
+#jw-settings .ps-tabs {
+  display: inline-flex; padding: 3px; gap: 2px; margin: 0;
+  border-radius: 12px; background: color-mix(in oklch, var(--ob-bg-void) 85%, transparent);
+  border: 1px solid var(--ob-line-1);
+}
+/* buscador de plugins/skills (misma familia que el buscador del nav) */
+.ps-buscar {
+  display: flex; align-items: center; gap: 8px; flex: 1;
+  max-width: 300px; min-width: 180px; height: 34px; padding: 0 11px;
+  border-radius: 11px; background: color-mix(in oklch, var(--ob-bg-void) 85%, transparent);
+  border: 1px solid var(--ob-line-1); color: var(--ob-fg-4);
+  transition: border-color var(--dur-1) var(--ease-out), box-shadow var(--dur-1) var(--ease-out);
+}
+.ps-buscar:focus-within { border-color: var(--ob-accent-24); box-shadow: 0 0 0 3px var(--ob-accent-08); color: var(--ob-fg-3); }
+.ps-buscar svg { flex-shrink: 0; }
+.ps-buscar input {
+  flex: 1; min-width: 0; border: none; background: none; outline: none;
+  color: var(--ob-fg-1); font: 500 12.5px var(--font-ui);
+}
+.ps-buscar input::placeholder { color: var(--ob-fg-4); }
+/* ítems/cards filtrados por el buscador */
+#jw-settings .ps-filtrado { display: none !important; }
+.ps-filtro-vacio {
+  padding: 14px 12px; font: 500 12px var(--font-ui); color: var(--ob-fg-4);
+}
+.ps-filtro-vacio b { color: var(--ob-fg-2); font-weight: 600; }
+#jw-settings .ps-grid .ps-filtro-vacio { grid-column: 1 / -1; }
+#jw-settings .ps-tab {
+  height: 28px; padding: 0 14px; border-radius: 9px; border: 1px solid transparent;
+  background: transparent; color: var(--ob-fg-2); font: 550 12px var(--font-ui); cursor: pointer;
+  transition: background var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out);
+}
+#jw-settings .ps-tab:hover { color: var(--ob-fg-0); }
+#jw-settings .ps-tab.activo {
+  color: var(--ob-fg-0);
+  background: linear-gradient(180deg,
+    color-mix(in oklch, var(--ob-accent) 22%, transparent),
+    color-mix(in oklch, var(--ob-accent) 11%, transparent));
+  border-color: var(--ob-accent-24);
+}
+#jw-settings .modal-body-ps { max-height: none; overflow: visible; }
+#jw-settings .ps-panel { padding: 16px 0 0; }
+
+
+.cta-alta-overlay {
+  position: fixed; inset: 0; z-index: 960;
+  display: flex; align-items: center; justify-content: center; padding: 24px;
+  background: color-mix(in oklch, var(--ob-bg-void) 72%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  animation: set-velo-in 0.15s var(--ease-out, ease);
+}
+.cta-alta {
+  width: 100%; max-width: 440px;
+  background: linear-gradient(180deg, var(--ob-bg-1), var(--ob-bg-0));
+  border: 1px solid color-mix(in oklch, var(--ob-fg-1) 14%, transparent);
+  border-radius: 16px; padding: 20px 22px;
+  box-shadow: inset 0 1px 0 color-mix(in oklch, var(--ob-fg-0) 8%, transparent),
+              0 24px 80px oklch(0% 0 0 / .6);
+  animation: set-alta-in 0.2s var(--ease-out, ease);
+}
+@keyframes set-alta-in {
+  from { opacity: 0; transform: scale(.97) translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+.cta-alta-head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.cta-alta-head .cta-cli-logo { width: 34px; height: 34px; border-radius: 10px; }
+.cta-alta-head h3 { flex: 1; margin: 0; font: 600 15px var(--font-ui); color: var(--ob-fg-0); }
+.cta-alta-x {
+  display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+  width: 28px; height: 28px; border-radius: var(--radius-btn);
+  background: transparent; border: none; color: var(--ob-fg-3); cursor: pointer;
+  transition: background var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out);
+}
+.cta-alta-x:hover { background: var(--ob-bg-2); color: var(--ob-fg-0); }
+.cta-alta-intro { font: 500 12.5px var(--font-ui); color: var(--ob-fg-3); line-height: 1.55; margin: 0 0 16px; }
+.cta-alta-intro b { color: var(--ob-fg-1); }
+.cta-alta-intro a { color: var(--ob-accent-fg); text-decoration: none; }
+.cta-alta-intro a:hover { text-decoration: underline; }
+.cta-alta-lbl { display: block; font: 600 12px var(--font-ui); color: var(--ob-fg-1); margin-bottom: 8px; }
+.cta-alta-row { display: flex; gap: 8px; }
+.cta-alta-input {
+  flex: 1; min-width: 0; background: var(--ob-bg-void); color: var(--ob-fg-0);
+  border: 1px solid var(--ob-line-2); border-radius: 9px;
+  padding: 9px 12px; font: 500 13px var(--font-mono);
+  transition: border-color var(--dur-1) var(--ease-out), box-shadow var(--dur-1) var(--ease-out);
+}
+.cta-alta-input:focus { outline: none; border-color: var(--ob-accent-24); box-shadow: 0 0 0 3px var(--ob-accent-08); }
+.cta-alta-wait { display: flex; align-items: center; gap: 8px; font: 500 12.5px var(--font-ui); color: var(--ob-fg-3); }
+.cta-alta-wait svg { animation: cta-spin 0.9s linear infinite; }
+/* Flujo device-code (codex --device-auth): link a la página + código a copiar. */
+.cta-alta-link {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 9px 13px; margin-bottom: 12px; border-radius: 10px;
+  border: 1px solid var(--ob-accent-24);
+  background: var(--ob-accent-14);
+  color: var(--ob-accent-fg); font: 600 12.5px var(--font-ui); text-decoration: none;
+  transition: background var(--dur-1) var(--ease-out);
+}
+.cta-alta-link:hover { background: var(--ob-accent-24); }
+.cta-alta-codigo { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+.cta-alta-codigo-lbl {
+  font: 600 11px var(--font-ui); letter-spacing: .04em; text-transform: uppercase;
+  color: var(--ob-fg-3);
+}
+.cta-alta-codigo-val {
+  display: inline-flex; align-items: center; gap: 10px; align-self: flex-start;
+  padding: 10px 16px; border-radius: 10px;
+  border: 1px solid var(--ob-line-2); background: var(--ob-bg-void); color: var(--ob-fg-0);
+  font: 700 19px/1 var(--font-mono); letter-spacing: .12em; cursor: pointer;
+  transition: border-color var(--dur-1) var(--ease-out);
+}
+.cta-alta-codigo-val:hover { border-color: var(--ob-accent-24); }
+.cta-alta-codigo-val.copiado { border-color: var(--ob-accent); color: var(--ob-accent-fg); }
+.cta-alta-codigo-val svg { opacity: .6; }
+/* comando del login manual (qwen/opencode): mono legible, sin tracking de código */
+.cta-alta-codigo-val.cta-alta-cmd { font: 600 14px/1.3 var(--font-mono); letter-spacing: 0; }
+/* botón "Abrir una terminal con el login" (reusa el look de .cta-alta-link en un <button>) */
+.cta-alta-term { cursor: pointer; }
+.cta-alta-term:disabled { opacity: .55; cursor: default; }
+.cta-alta-estado { margin-top: 12px; font: 500 12px var(--font-ui); color: var(--ob-fg-3); min-height: 16px; }
+.cta-alta-estado svg { vertical-align: -2px; animation: cta-spin 0.9s linear infinite; }
+.cta-alta-ok { display: inline-flex; align-items: center; gap: 6px; color: var(--ob-accent-fg); font-weight: 700; }
+.cta-alta-ok svg { animation: none; }
+
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PUENTES CON EL MOTOR REAL
+   El keycap de Voz y los botones de reasignar SON .set-keybind: el motor de
+   captura de workspace.js los busca por esa clase y les reescribe el innerHTML
+   mientras captura (`.settings-keybind-listening` / `-hint`). Por eso el valor
+   va en .settings-kbd y no en un <kbd> propio.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.vz-key { border: 0; font-family: inherit; }
+.vz-key .settings-kbd {
+  display: block;
+  max-width: 100%;
+  padding: 0 8px;
+  font: 600 26px var(--font-mono);
+  color: var(--ob-fg-0);
+  letter-spacing: -.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.vz-key.largo .settings-kbd { font-size: 15px; letter-spacing: 0; }
+.vz-key .settings-keybind-listening {
+  font: 600 12px var(--font-ui); color: var(--ob-accent-fg); text-align: center; padding: 0 10px;
+}
+.vz-key .settings-keybind-hint { display: block; margin-top: 5px; font: 500 10px var(--font-mono); color: var(--ob-fg-3); }
+.vz-key.capturando {
+  box-shadow: inset 0 0 0 1.5px var(--ob-accent), 0 0 24px -6px var(--ob-accent-glow);
+}
+
+.kb-bind .settings-kbd { font: 600 12px var(--font-mono); color: var(--ob-fg-0); }
+.kb-bind .settings-keybind-listening { font: 600 11px var(--font-ui); color: var(--ob-accent-fg); }
+.kb-bind .settings-keybind-hint { font: 500 10px var(--font-mono); color: var(--ob-fg-3); margin-left: 6px; }
+.kb-bind.capturando { box-shadow: inset 0 0 0 1.5px var(--ob-accent); }
+.kb-reset {
+  display: grid; place-items: center;
+  width: 30px; height: 30px; flex: none;
+  border: 0; border-radius: 8px;
+  background: none; color: var(--ob-fg-3);
+  cursor: pointer;
+  transition: background var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out);
+}
+.kb-reset:hover { background: color-mix(in oklch, var(--ob-fg-0) 10%, transparent); color: var(--ob-fg-0); }
+.kb-reset:focus-visible { outline: 2px solid var(--ob-accent); outline-offset: 2px; }
+
+/* Cuentas: copiar el correo desde el detalle + guardar una sesión suelta */
+.ct-copy {
+  border: 0; background: none; padding: 0;
+  font: inherit; color: var(--ob-fg-1); cursor: pointer;
+  border-bottom: 1px dashed var(--ob-line-3);
+}
+.ct-copy:hover { color: var(--ob-accent-fg); border-bottom-color: var(--ob-accent-24); }
+.ct-chip.guardar { color: var(--ob-work); box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--ob-work) 35%, transparent); background: var(--ob-work-08); }
+.ct-chip.guardar svg { color: var(--ob-work); }
+
+/* Extensiones: el rack heredado adentro de la ficha técnica */
+#jw-settings .ps-toolbar { margin-bottom: 4px; }
+#jw-settings .ps-section + .ps-section { margin-top: 22px; }
+#jw-settings .ps-mini-btn { margin-left: auto; }
+
+/* ── Extensiones: el markup .ps-* heredado, re-vestido como RACK ────────────
+   (lo renderiza workspace.js; acá solo cambia la piel: filas densas a dos
+   columnas, sin la caja gorda por ítem ni la insignia de bloque). ── */
+#jw-settings .ps-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(330px, 1fr));
+  gap: 0 22px;
+}
+#jw-settings .ps-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 10px;
+  border: 0; border-radius: 9px;
+  background: none; box-shadow: none;
+  transition: background var(--dur-1) var(--ease-out);
+}
+#jw-settings .ps-item:hover { background: color-mix(in oklch, var(--ob-fg-0) 5%, transparent); }
+
+/* ── Los iconos del rack ───────────────────────────────────────────────────
+   Bug reportado (2026-07-22): al pasar el mouse por CUALQUIER icono de acá
+   salía el cursor de ayuda (`?`) que heredaban de base.css. El de la cabecera
+   ni `title` tiene — prometía una explicación que no existe —, y sobre una
+   fila entera clickeable (las skills) el `?` encima del icono contradecía al
+   puntero del resto de la fila. Son MARCADORES, no una ayuda: el cursor lo
+   hereda de su fila (default arriba, pointer en las clickeables).
+   Además el glifo era ilegible: 13px de trazo 1.5 sobre 24 de viewBox da
+   0.8px de línea en un gris apagado (--ob-fg-3). Sube a 15px con el trazo
+   compensado, y el chip a 26px para que respire. El glifo de cada plugin lo
+   elige sections/settings/plugin-icons.js (antes: 10 enchufes idénticos). ── */
+#jw-settings .ps-section-icon,
+#jw-settings .ps-item-badge { cursor: inherit; }
+
+#jw-settings .ps-item-badge {
+  flex: none; width: 26px; height: 26px; padding: 0;
+  display: grid; place-items: center;
+  border-radius: 8px; font-size: 0;
+  background: color-mix(in oklch, var(--ob-fg-0) 8%, transparent);
+  box-shadow: inset 0 0 0 1px var(--sx-hair);
+  color: var(--ob-fg-2);
+  transition: color var(--dur-1) var(--ease-out),
+              background var(--dur-1) var(--ease-out);
+}
+#jw-settings .ps-item-badge svg {
+  width: 15px; height: 15px;
+  stroke-width: 1.6;   /* compensa la reducción 24→15 del viewBox */
+}
+#jw-settings .ps-badge-skill { color: var(--ob-accent-fg); }
+/* Al recorrer la lista, el icono de la fila apuntada se enciende. */
+#jw-settings .ps-item:hover .ps-item-badge {
+  color: var(--ob-fg-0);
+  background: color-mix(in oklch, var(--ob-fg-0) 13%, transparent);
+}
+#jw-settings .ps-item:hover .ps-badge-skill { color: var(--ob-accent-fg); }
+#jw-settings .ps-item-body { flex: 1; min-width: 0; }
+#jw-settings .ps-item-name { font: 500 12.5px var(--font-ui); color: var(--ob-fg-1); }
+#jw-settings .ps-item.activo .ps-item-name, #jw-settings .ps-item-name:only-child { color: var(--ob-fg-0); }
+#jw-settings .ps-item-version { font: 500 10.5px var(--font-mono); color: var(--ob-fg-3); }
+#jw-settings .ps-item-desc {
+  display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden;
+  margin-top: 2px; font: 400 11px/1.45 var(--font-ui); color: var(--ob-fg-3);
+}
+#jw-settings .ps-section-head { display: flex; align-items: center; gap: 9px; margin-bottom: 6px; }
+#jw-settings .ps-section-head h3 { font: 600 12.5px var(--font-ui); color: var(--ob-fg-1); margin: 0; }
+/* Cabecera: glifo PLANO. Con las filas ya en chips de 26px, un segundo chip
+   de 22px acá (el borde + fondo que traía de base.css) sonaba a card anidada;
+   el h3 que va al lado es el que manda. */
+#jw-settings .ps-section-icon {
+  display: grid; place-items: center;
+  width: 18px; height: 18px;
+  border: 0; background: none;
+  color: var(--ob-fg-3);
+}
+#jw-settings .ps-section-icon svg { width: 15px; height: 15px; stroke-width: 1.6; }
+#jw-settings .ps-section-sub {
+  padding: 1px 7px; border-radius: 99px;
+  font: 500 10.5px var(--font-mono); color: var(--ob-fg-3);
+  background: color-mix(in oklch, var(--ob-fg-4) 14%, transparent);
+}
+#jw-settings .ps-skill-path { font: 500 10.5px var(--font-mono); color: var(--ob-fg-3); margin: 0 0 8px 2px; }
+#jw-settings .ps-empty { padding: 14px 10px; font: 400 12px var(--font-ui); color: var(--ob-fg-3); }
+#jw-settings .ps-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 10px; }
+#jw-settings .ps-card {
+  padding: 12px 14px; border-radius: 10px;
+  background: var(--sx-well); box-shadow: inset 0 0 0 1px var(--sx-hair);
+}
+#jw-settings .ps-card:hover .ps-item-badge {
+  color: var(--ob-fg-0);
+  background: color-mix(in oklch, var(--ob-fg-0) 13%, transparent);
+}
+/* El ✓/↗ de la fila «official · marketplace» venía a 16px al lado de un mono
+   de 9.5px: el glifo era casi el doble de alto que su propia etiqueta y
+   flotaba fuera de la línea base. Se achica y se centra con el texto. */
+#jw-settings .ps-card-meta { align-items: center; }
+#jw-settings .ps-card-meta > span { display: inline-flex; align-items: center; gap: 4px; }
+#jw-settings .ps-card-meta svg { flex: none; width: 12px; height: 12px; stroke-width: 1.9; }
+
+/* Lápiz de una skill: botón fantasma alineado con el rack (base.css lo dejaba
+   en una caja de 28px con borde que competía con el chip de la izquierda). */
+#jw-settings .ps-item-edit {
+  flex: none; display: grid; place-items: center;
+  width: 26px; height: 26px;
+  border: 0; border-radius: 8px;
+  background: none; color: var(--ob-fg-3);
+  transition: background var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out);
+}
+#jw-settings .ps-item-edit svg { width: 14px; height: 14px; stroke-width: 1.6; }
+#jw-settings .ps-item-edit:hover {
+  color: var(--ob-fg-0);
+  background: color-mix(in oklch, var(--ob-fg-0) 13%, transparent);
+  border: 0;
+}
+#jw-settings .ps-item-edit:focus-visible { outline: 2px solid var(--ob-accent); outline-offset: 2px; }
+
+/* El correo de una cuenta arranca enmascarado; el ojo lo revela (y lo vuelve a
+   tapar). El valor sigue siendo click-para-copiar, enmascarado o no. */
+.ct-mail-dd { display: inline-flex; align-items: center; gap: 8px; }
+.ct-ojo {
+  display: grid; place-items: center;
+  width: 24px; height: 24px; flex: none;
+  border: 0; border-radius: 6px;
+  background: none; color: var(--ob-fg-3);
+  cursor: pointer;
+  transition: background var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out);
+}
+.ct-ojo:hover { background: color-mix(in oklch, var(--ob-fg-0) 10%, transparent); color: var(--ob-fg-0); }
+.ct-ojo:focus-visible { outline: 2px solid var(--ob-accent); outline-offset: 2px; }
+.ct-ojo[aria-pressed="true"] { color: var(--ob-accent-fg); }

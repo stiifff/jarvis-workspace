@@ -1,0 +1,244 @@
+/* JARVIS — modal "Agregar proyecto" (rediseño completo 2026-07-05, tal cual el
+   prototipo frontend/preview-workspaces). Scopeado a #modal-new-terminal; los
+   tokens cortos del prototipo se aliasan a los --ob-* reales acá arriba. */
+
+#modal-new-terminal {
+  --bg0: var(--ob-bg-0);   --bg1: var(--ob-bg-1);   --bg2: var(--ob-bg-2);
+  --bg3: var(--ob-bg-3);   --bg4: var(--ob-bg-4);   --void: var(--ob-bg-void);
+  --line1: var(--ob-line-1); --line2: var(--ob-line-2); --line3: var(--ob-line-3);
+  --fg0: var(--ob-fg-0);   --fg1: var(--ob-fg-1);   --fg2: var(--ob-fg-2);
+  --fg3: var(--ob-fg-3);   --fg4: var(--ob-fg-4);
+  --acc: var(--ob-accent); --acc-fg: var(--ob-accent-fg); --acc-dim: var(--ob-accent-dim);
+  --acc-08: var(--ob-accent-08); --acc-14: var(--ob-accent-14); --acc-24: var(--ob-accent-24);
+  --acc-glow: var(--ob-accent-glow);
+  --run: var(--ob-run); --work: var(--ob-work); --err: var(--ob-err);
+  --mono: var(--font-mono); --ui: 'Inter', system-ui, sans-serif;
+  --dur1: 120ms; --dur2: 190ms; --dur3: 280ms; --ease-out: var(--ease-out, cubic-bezier(.2,.8,.2,1));
+}
+
+/* backdrop + centrado (el JS togglea display flex/none) */
+#modal-new-terminal.modal-overlay {
+  position: fixed; inset: 0; z-index: var(--z-modal, 1000); display: none;
+  align-items: center; justify-content: center; padding: 20px;
+  background: oklch(6% .01 300 / .62); backdrop-filter: blur(6px);
+}
+#modal-new-terminal .tl2-modal {
+  position: relative; width: min(calc(var(--jw-vw, 100vw) * .94), 460px); max-height: calc(var(--jw-vh, 100vh) * .92);
+  display: flex; flex-direction: column; overflow: hidden;
+  background: linear-gradient(180deg, var(--bg2), var(--bg1));
+  border: 1px solid var(--line2); border-radius: 18px;
+  box-shadow: 0 24px 60px -12px oklch(4% 0 0 / .7), inset 0 1px 0 rgb(255 255 255 / .06);
+  animation: tl2in var(--dur3) var(--ease-out);
+}
+@keyframes tl2in { from { opacity: 0; transform: translateY(10px) scale(.985); } to { opacity: 1; transform: none; } }
+
+#modal-new-terminal .tl2-x {
+  position: absolute; top: 15px; right: 15px; width: 28px; height: 28px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center; color: var(--fg3);
+  background: none; border: 0; cursor: pointer; z-index: 4;
+}
+#modal-new-terminal .tl2-x::after { content: ''; position: absolute; inset: -4px; }  /* hit area 36px */
+#modal-new-terminal .tl2-x:hover { background: var(--bg3); color: var(--fg0); }
+#modal-new-terminal .tl2-x svg { width: 16px; height: 16px; }
+
+#modal-new-terminal .tl2-head { padding: 20px 22px 4px; }
+#modal-new-terminal .tl2-eyebrow { font: 600 10px var(--mono); letter-spacing: .16em; text-transform: uppercase; color: var(--acc-fg); margin-bottom: 7px; }
+#modal-new-terminal .tl2-head h2 { font: 600 19px var(--ui); letter-spacing: -.01em; color: var(--fg0); margin: 0; }
+
+#modal-new-terminal .tl2-body { padding: 14px 22px 4px; display: flex; flex-direction: column; gap: 14px; overflow-y: auto; }
+
+/* segmentado de modos */
+#modal-new-terminal .tl2-seg { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; background: var(--bg0); border: 1px solid var(--line1); border-radius: 11px; }
+#modal-new-terminal .tl2-seg button { display: flex; align-items: center; justify-content: center; gap: 7px; height: 38px; border-radius: 8px; font: 600 12.5px var(--ui); color: var(--fg3); background: none; border: 0; cursor: pointer; transition: background var(--dur1), color var(--dur1), box-shadow var(--dur1); }
+#modal-new-terminal .tl2-seg button svg { width: 15px; height: 15px; }
+#modal-new-terminal .tl2-seg button:hover { color: var(--fg1); }
+#modal-new-terminal .tl2-seg button[aria-selected="true"] { background: linear-gradient(180deg, var(--bg3), var(--bg2)); color: var(--fg0); box-shadow: inset 0 0 0 1px var(--line2), inset 0 1px 0 rgb(255 255 255 / .06); }
+#modal-new-terminal .tl2-seg button[aria-selected="true"] svg { color: var(--acc-fg); }
+
+/* modos */
+#modal-new-terminal .tl2-mode { display: none; flex-direction: column; gap: 13px; }
+#modal-new-terminal .tl2-mode.on { display: flex; }
+#modal-new-terminal .tl2-note { font: 500 12px var(--ui); color: var(--fg3); margin: -2px 0 0; }
+
+/* campos */
+#modal-new-terminal .tl2-field { display: flex; flex-direction: column; }
+#modal-new-terminal .tl2-field > label { display: block; font: 600 11px var(--ui); color: var(--fg2); margin-bottom: 6px; }
+/* Texto informativo SIEMPRE en --fg3 (AA 4.5:1 hasta bg-2) — --fg4 es solo
+   para disabled (medido: 2.2-2.6:1 acá, ilegible). */
+#modal-new-terminal .tl2-field .opt { color: var(--fg3); font-weight: 500; }
+/* Borde NEUTRO (white-alpha, no --line2): los tokens de línea están tintados por
+   tema (verde en el tema verde) y se veían como un recuadro verde alrededor del
+   campo. Blanco-alpha = mismo sutil en todos los temas, sin color. */
+#modal-new-terminal .tl2-in { display: flex; align-items: center; gap: 8px; height: 42px; padding: 0 8px 0 12px; background: var(--bg0); border: 1px solid oklch(100% 0 0 / .08); border-radius: 10px; transition: border-color var(--dur1), box-shadow var(--dur1); }
+/* Foco SIN rectángulo (regla [[sin-rectangulo-de-foco]]): el borde del campo NO
+   cambia al enfocar (mismo --line2 que sin foco) y CERO glow. Antes usaba
+   --line3, pero ese token está TINTADO por tema (en el tema verde es hue 145 y
+   más brillante) → pintaba un rectángulo verde. El foco lo indica el caret; el
+   campo no "saca" ningún recuadro al seleccionarlo, en ningún tema. */
+#modal-new-terminal .tl2-in:focus-within { border-color: oklch(100% 0 0 / .08); box-shadow: none; }
+#modal-new-terminal .tl2-in > svg { width: 15px; height: 15px; color: var(--fg4); flex: none; }
+#modal-new-terminal .tl2-in input { flex: 1; min-width: 0; background: none; border: 0; outline: none; color: var(--fg0); font: 500 13px var(--mono); caret-color: var(--acc); }
+#modal-new-terminal .tl2-in input::placeholder { color: var(--fg3); }
+#modal-new-terminal .tl2-browse { flex: none; font: 600 11px var(--ui); color: var(--acc-fg); background: var(--acc-08); border: 1px solid var(--acc-14); border-radius: 7px; padding: 6px 10px; cursor: pointer; transition: background var(--dur1); }
+#modal-new-terminal .tl2-browse:hover { background: var(--acc-14); }
+
+/* Crear nuevo: campo compuesto  [~/base ▾] / [nombre]  en una sola línea */
+#modal-new-terminal .tl2-proj { padding: 0 12px 0 6px; gap: 8px; }
+#modal-new-terminal .tl2-path { position: relative; display: inline-flex; align-items: center; gap: 7px; height: 31px; padding: 0 9px; border-radius: 9px; flex: 0 0 auto; max-width: 52%; min-width: 0; cursor: pointer; background: linear-gradient(180deg, oklch(100% 0 0 / .07), oklch(100% 0 0 / .03)); border: 1px solid oklch(100% 0 0 / .1); box-shadow: inset 0 1px 0 oklch(100% 0 0 / .1); transition: background var(--dur1) var(--ease-out), border-color var(--dur1) var(--ease-out); }
+#modal-new-terminal .tl2-path::after { content: ''; position: absolute; inset: -6px -2px; }  /* hit area vertical dentro del campo de 42px */
+#modal-new-terminal .tl2-path:hover { background: oklch(100% 0 0 / .09); border-color: oklch(100% 0 0 / .16); }
+#modal-new-terminal .tl2-path > svg { width: 13px; height: 13px; color: var(--acc-fg); flex: 0 0 auto; }
+#modal-new-terminal .tl2-path .chv { width: 11px; height: 11px; color: var(--fg3); }
+#modal-new-terminal .tl2-path b { font: 600 11.5px var(--mono); color: var(--fg1); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#modal-new-terminal .tl2-sl { color: var(--fg3); font: 600 14px var(--mono); flex: 0 0 auto; }
+
+/* Abrir de la PC: tarjeta de selección (vacía / elegida) + pegar ruta */
+#modal-new-terminal .tl2-pick { border-radius: 13px; padding: 4px; background: linear-gradient(180deg, oklch(100% 0 0 / .05), oklch(100% 0 0 / .025)); border: 1px solid oklch(100% 0 0 / .09); box-shadow: inset 0 1px 0 oklch(100% 0 0 / .09); }
+#modal-new-terminal .tl2-pick-empty, #modal-new-terminal .tl2-pick-sel { display: flex; align-items: center; gap: 11px; padding: 11px 10px 11px 13px; border-radius: 10px; }
+#modal-new-terminal .tl2-pick-empty[hidden], #modal-new-terminal .tl2-pick-sel[hidden] { display: none; }
+#modal-new-terminal .tl2-pick-empty > svg { width: 22px; height: 22px; color: var(--fg3); flex: 0 0 auto; }
+#modal-new-terminal .tl2-pick-empty > span { flex: 1; min-width: 0; font: 500 12px var(--ui); color: var(--fg2); }
+#modal-new-terminal .tl2-pick-sel > svg { width: 20px; height: 20px; color: var(--acc-fg); flex: 0 0 auto; }
+#modal-new-terminal .tl2-pick-sel .t { flex: 1; min-width: 0; }
+#modal-new-terminal .tl2-pick-sel .t b { display: block; font: 600 13px var(--ui); color: var(--fg0); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#modal-new-terminal .tl2-pick-sel .t span { display: block; margin-top: 1px; font: 500 11px var(--mono); color: var(--fg3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#modal-new-terminal .tl2-paste { height: 36px; margin-top: 8px; border-radius: 10px; opacity: .85; }
+#modal-new-terminal .tl2-paste:focus-within { opacity: 1; }
+
+/* preview de creación */
+#modal-new-terminal .tl2-prev { display: flex; align-items: center; gap: 9px; padding: 10px 12px; background: var(--acc-08); border: 1px solid var(--acc-14); border-radius: 10px; }
+#modal-new-terminal .tl2-prev > svg { width: 16px; height: 16px; color: var(--acc-fg); flex: none; }
+#modal-new-terminal .tl2-prev .t { min-width: 0; }
+#modal-new-terminal .tl2-prev .t b { display: block; font: 700 9px var(--mono); color: var(--fg3); text-transform: uppercase; letter-spacing: .1em; }
+#modal-new-terminal .tl2-prev .t span { display: block; font: 600 12px var(--mono); color: var(--acc-fg); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+
+/* recientes + ubicaciones */
+#modal-new-terminal .tl2-recents { display: flex; flex-direction: column; gap: 6px; }
+#modal-new-terminal .tl2-rlabel { font: 700 10px var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--fg3); }
+#modal-new-terminal .tl2-recents[hidden] { display: none; }  /* sin rutas se oculta el bloque entero (label incluido) */
+#modal-new-terminal #tl-rutas-recientes { display: flex; flex-direction: column; gap: 6px; }
+#modal-new-terminal #tl-rutas-recientes[hidden] { display: none; }
+#modal-new-terminal .tl-ruta-chip { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 9px; background: var(--bg0); border: 1px solid var(--line1); cursor: pointer; text-align: left; width: 100%; color: var(--fg1); font: 600 12px var(--ui); transition: background var(--dur1), border-color var(--dur1); }
+#modal-new-terminal .tl-ruta-chip:hover { background: var(--bg2); border-color: var(--line2); }
+#modal-new-terminal .tl-ruta-chip svg { width: 15px; height: 15px; color: var(--acc-fg); flex: none; }
+#modal-new-terminal .tl-ruta-badge { margin-left: auto; flex: none; font: 700 8.5px var(--mono); text-transform: uppercase; letter-spacing: .06em; padding: 2px 7px; border-radius: 999px; color: var(--fg3); background: var(--bg3); }
+#modal-new-terminal .tl-ruta-badge.on { color: var(--run); background: color-mix(in oklch, var(--run) 14%, transparent); }
+
+/* capacidad (barra de 12 segmentos) */
+#modal-new-terminal .tl-capacidad { display: inline-flex; align-items: center; gap: 8px; margin-left: 6px; font-weight: 500; }
+#modal-new-terminal .tl-cap-segs { display: inline-flex; gap: 2px; }
+#modal-new-terminal .tl-cap-segs i { width: 8px; height: 5px; border-radius: 2px; background: var(--bg3); }
+#modal-new-terminal .tl-cap-segs i.u { background: var(--fg3); }
+#modal-new-terminal .tl-cap-segs i.s { background: var(--acc); }
+#modal-new-terminal .tl-cap-n { font: 700 10.5px var(--mono); color: var(--acc-fg); }
+#modal-new-terminal .tl-cap-lleno { font: 600 10px var(--ui); color: var(--work); text-transform: lowercase; letter-spacing: 0; }
+
+/* grid de CLIs compacto */
+#modal-new-terminal .tl2-cli-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+#modal-new-terminal .tl2-cli-card { display: flex; align-items: center; gap: 9px; padding: 7px 8px 7px 9px; border-radius: 11px; background: var(--bg0); border: 1px solid var(--line1); transition: background var(--dur1), border-color var(--dur1); }
+#modal-new-terminal .tl2-cli-card.active { background: var(--acc-08); border-color: var(--acc-24); }
+#modal-new-terminal .tl2-cli-badge { width: 28px; height: 28px; flex: none; border-radius: 8px; display: grid; place-items: center; background: var(--bg2); border: 1px solid var(--line2); box-shadow: inset 0 1px 0 rgb(255 255 255 / .05); }
+#modal-new-terminal .tl2-cli-badge .cli-logo, #modal-new-terminal .tl2-cli-badge img { display: block; border-radius: 3px; }
+#modal-new-terminal .cli-logo-inv { filter: invert(1) brightness(.9); }
+#modal-new-terminal .cli-logo-shell { display: inline-flex; align-items: center; justify-content: center; font-family: var(--mono); font-weight: 700; color: var(--fg2); }
+#modal-new-terminal .tl2-cli-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+#modal-new-terminal .tl2-cli-name { font: 600 12px var(--ui); color: var(--fg1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#modal-new-terminal .tl2-cli-sub { font: 500 10px var(--mono); color: var(--fg3); text-transform: uppercase; letter-spacing: .06em; }
+#modal-new-terminal .tl2-cli-step { display: flex; align-items: center; gap: 1px; flex: none; background: var(--bg2); border: 1px solid var(--line2); border-radius: 8px; padding: 2px; }
+#modal-new-terminal .tl2-cli-step button { position: relative; width: 22px; height: 22px; border-radius: 6px; display: grid; place-items: center; color: var(--fg2); background: none; border: 0; font: 600 15px var(--ui); line-height: 1; cursor: pointer; transition: background var(--dur1), color var(--dur1); }
+/* Hit area ampliada sin cambiar el visual (los ± de 22px eran difíciles de acertar) */
+#modal-new-terminal .tl2-cli-step button::after { content: ''; position: absolute; inset: -5px; }
+#modal-new-terminal .tl2-cli-step button:hover:not(:disabled) { background: var(--bg4); color: var(--fg0); }
+#modal-new-terminal .tl2-cli-step button:disabled { opacity: .3; cursor: not-allowed; }
+#modal-new-terminal .tl2-cli-step .cnt { min-width: 17px; text-align: center; font: 700 12px var(--mono); color: var(--fg0); }
+#modal-new-terminal .tl2-cli-card:not(.active) .tl2-cli-step .cnt { color: var(--fg3); }
+/* 7 cards en 2 columnas: la impar del final ocupa el ancho completo (sin hueco) */
+#modal-new-terminal .tl2-cli-card:last-child:nth-child(odd) { grid-column: 1 / -1; }
+
+/* distribución (selector + preview animado) */
+#modal-new-terminal #tl-dist-n { color: var(--acc-fg); font-weight: 700; }
+#modal-new-terminal .tl2-dist-modes { display: flex; gap: 6px; margin-bottom: 8px; }
+#modal-new-terminal .tl2-dist-modes button { flex: 1; display: flex; align-items: center; justify-content: center; gap: 7px; height: 34px; border-radius: 9px; font: 600 12px var(--ui); color: var(--fg3); background: var(--bg0); border: 1px solid var(--line1); cursor: pointer; transition: background var(--dur1), color var(--dur1), border-color var(--dur1), box-shadow var(--dur1); }
+#modal-new-terminal .tl2-dist-modes button svg { width: 15px; height: 15px; }
+#modal-new-terminal .tl2-dist-modes button:hover { color: var(--fg1); }
+#modal-new-terminal .tl2-dist-modes button[aria-checked="true"] { color: var(--acc-fg); background: var(--acc-08); border-color: var(--acc-24); box-shadow: inset 0 1px 0 rgb(255 255 255 / .05); }
+#modal-new-terminal .tl2-dist-modes button[aria-checked="true"] svg { color: var(--acc-fg); }
+#modal-new-terminal .tl2-dist { position: relative; height: 130px; background: var(--void); background-image: radial-gradient(oklch(100% 0 0 / .05) 1px, transparent 1.5px); background-size: 14px 14px; border: 1px solid var(--line1); border-radius: 10px; overflow: hidden; box-shadow: inset 0 2px 10px rgb(0 0 0 / .35); }
+#modal-new-terminal .tl2-cell { position: absolute; padding: 3px; box-sizing: border-box; opacity: 0; transition: left .42s var(--ease-out), top .42s var(--ease-out), width .42s var(--ease-out), height .42s var(--ease-out), opacity .3s; }
+#modal-new-terminal .tl2-cell.in { opacity: 1; }
+#modal-new-terminal .tl2-cell .p { width: 100%; height: 100%; border-radius: 6px; background: linear-gradient(180deg, var(--bg2), var(--bg1)); border: 1px solid var(--line2); display: grid; place-items: center; box-shadow: inset 0 1px 0 rgb(255 255 255 / .06); }
+#modal-new-terminal .tl2-cell .p img { width: 16px; height: 16px; opacity: .95; }
+#modal-new-terminal .tl2-cell .p .cli-logo-shell { font-size: 12px; color: var(--fg3); }
+#modal-new-terminal .tl2-dist-empty { position: absolute; inset: 0; display: grid; place-items: center; padding: 0 16px; text-align: center; color: var(--fg3); font: 500 11px var(--ui); }
+
+/* footer */
+/* Footer simétrico: Cancelar y Crear al 50/50, sin hints de atajos. */
+#modal-new-terminal .tl2-foot { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 14px 22px 20px; }
+#modal-new-terminal .tl2-cancel, #modal-new-terminal .tl2-create { display: inline-flex; align-items: center; justify-content: center; gap: 7px; height: 40px; padding: 0 12px; border-radius: 10px; font: 600 12.5px var(--ui); white-space: nowrap; cursor: pointer; transition: transform var(--dur1) var(--ease-out), background var(--dur1), box-shadow var(--dur1); }
+#modal-new-terminal .tl2-cancel { border: 1px solid var(--line2); color: var(--fg1); background: var(--bg2); }
+#modal-new-terminal .tl2-cancel:hover { background: var(--bg3); }
+/* El stop claro del gradiente se oscurece un toque (medido: blanco sobre --acc
+   puro daba 4.16:1, borderline AA) — mismo look, texto legible en todo tema. */
+#modal-new-terminal .tl2-create { border: 1px solid transparent; color: var(--ob-on-accent, #fff); background: linear-gradient(135deg, color-mix(in oklch, var(--acc) 86%, black), var(--acc-dim)); box-shadow: 0 3px 14px var(--acc-24), inset 0 1px 0 rgb(255 255 255 / .2); }
+#modal-new-terminal .tl2-create svg { width: 15px; height: 15px; }
+#modal-new-terminal .tl2-create:hover { box-shadow: 0 5px 20px var(--acc-24), inset 0 1px 0 rgb(255 255 255 / .24); }
+#modal-new-terminal .tl2-cancel:active, #modal-new-terminal .tl2-create:active { transform: translateY(1px) scale(.98); }
+#modal-new-terminal .tl2-create:disabled { opacity: .6; cursor: progress; }
+
+/* explorador de carpetas (overlay sobre el modal) */
+#modal-new-terminal .tl2-fs { position: absolute; inset: 0; z-index: 3; display: flex; flex-direction: column; background: linear-gradient(180deg, var(--bg2), var(--bg1)); border-radius: inherit; }
+#modal-new-terminal .tl2-fs[hidden] { display: none; }
+#modal-new-terminal .tl2-fs-bar { display: flex; align-items: center; gap: 8px; padding: 16px 20px 10px; }
+#modal-new-terminal .tl2-fs-up { width: 32px; height: 32px; flex: none; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--fg2); background: var(--bg0); border: 1px solid var(--line2); cursor: pointer; }
+#modal-new-terminal .tl2-fs-up svg { width: 15px; height: 15px; }
+#modal-new-terminal .tl2-fs-up:hover:not(:disabled) { background: var(--bg3); color: var(--fg0); }
+#modal-new-terminal .tl2-fs-up:disabled { opacity: .4; cursor: not-allowed; }
+#modal-new-terminal .tl2-fs-crumb { flex: 1; min-width: 0; font: 600 12px var(--mono); color: var(--fg2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#modal-new-terminal .tl2-fs-list { flex: 1; min-height: 0; overflow-y: auto; padding: 0 14px; display: flex; flex-direction: column; gap: 2px; }
+#modal-new-terminal .tl2-fs-row { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 9px; color: var(--fg1); cursor: pointer; width: 100%; text-align: left; border: 0; background: none; transition: background var(--dur1); }
+#modal-new-terminal .tl2-fs-row:hover { background: var(--bg2); }
+#modal-new-terminal .tl2-fs-row .ic { width: 16px; height: 16px; color: var(--acc-fg); flex: none; display: inline-flex; }
+#modal-new-terminal .tl2-fs-row .nm { flex: 1; min-width: 0; font: 500 12.5px var(--ui); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#modal-new-terminal .tl2-fs-row .git { flex: none; font: 700 8px var(--mono); text-transform: uppercase; letter-spacing: .05em; color: var(--acc-fg); background: var(--acc-08); border-radius: 999px; padding: 2px 6px; }
+#modal-new-terminal .tl2-fs-row .chev { width: 13px; height: 13px; color: var(--fg4); flex: none; display: inline-flex; }
+#modal-new-terminal .tl2-fs-empty, #modal-new-terminal .tl2-fs-load { padding: 26px; text-align: center; color: var(--fg3); font: 500 12px var(--ui); }
+#modal-new-terminal .tl2-fs-retry { margin-top: 10px; }
+#modal-new-terminal .tl2-fs-foot { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 12px 20px 18px; border-top: 1px solid var(--line1); }
+#modal-new-terminal .tl2-fs-here { min-width: 0; font: 500 11px var(--mono); color: var(--fg3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#modal-new-terminal .tl2-fs-btns { display: flex; gap: 8px; flex: none; }
+#modal-new-terminal .tl2-fs-back, #modal-new-terminal .tl2-fs-pick { height: 36px; padding: 0 16px; border-radius: 9px; font: 600 12.5px var(--ui); cursor: pointer; }
+#modal-new-terminal .tl2-fs-back { color: var(--fg1); background: var(--bg2); border: 1px solid var(--line2); }
+#modal-new-terminal .tl2-fs-back:hover { background: var(--bg3); }
+#modal-new-terminal .tl2-fs-pick { color: var(--ob-on-accent, #fff); border: 1px solid transparent; background: linear-gradient(135deg, color-mix(in oklch, var(--acc) 86%, black), var(--acc-dim)); box-shadow: 0 3px 14px var(--acc-24); }
+#modal-new-terminal .tl2-fs-pick:hover { box-shadow: 0 5px 20px var(--acc-24); }
+
+/* Affordance de scroll: fade abajo del body mientras quede contenido por ver
+   (clase .tl2-more, la sincroniza el JS). Sticky = no altera el layout. */
+#modal-new-terminal .tl2-body::after { content: ''; position: sticky; bottom: 0; flex: none; height: 26px; margin-top: -26px; background: linear-gradient(180deg, transparent, var(--bg1)); opacity: 0; transition: opacity var(--dur2); pointer-events: none; }
+#modal-new-terminal .tl2-body.tl2-more::after { opacity: 1; }
+
+/* Foco de teclado SIN anillo (regla [[sin-rectangulo-de-foco]]): cada control
+   espeja su hover con :focus-visible — integrado al diseño, cero rectángulo.
+   Solo aparece navegando con Tab (focus-visible), nunca con el mouse. */
+#modal-new-terminal .tl2-x:focus-visible, #modal-new-terminal .tl2-fs-up:focus-visible,
+#modal-new-terminal .tl2-cancel:focus-visible, #modal-new-terminal .tl2-fs-back:focus-visible { background: var(--bg3); color: var(--fg0); }
+#modal-new-terminal .tl2-seg button:focus-visible, #modal-new-terminal .tl2-dist-modes button:focus-visible { color: var(--fg1); }
+#modal-new-terminal .tl2-cli-step button:focus-visible:not(:disabled) { background: var(--bg4); color: var(--fg0); }
+#modal-new-terminal .tl2-browse:focus-visible { background: var(--acc-14); }
+#modal-new-terminal .tl2-path:focus-visible { background: oklch(100% 0 0 / .09); border-color: oklch(100% 0 0 / .16); }
+#modal-new-terminal .tl-ruta-chip:focus-visible, #modal-new-terminal .tl2-fs-row:focus-visible { background: var(--bg2); }
+#modal-new-terminal .tl2-create:focus-visible, #modal-new-terminal .tl2-fs-pick:focus-visible { box-shadow: 0 5px 20px var(--acc-24), inset 0 1px 0 rgb(255 255 255 / .24); }
+
+/* Angosto (acceso móvil / ventana mínima): el grid de CLIs colapsa a 1 columna
+   — a 2 columnas clipeaba la derecha bajo ~460px de viewport. */
+@media (max-width: 480px) {
+  #modal-new-terminal.modal-overlay { padding: 10px; }
+  #modal-new-terminal .tl2-cli-grid { grid-template-columns: 1fr; }
+  #modal-new-terminal .tl2-cli-card:last-child:nth-child(odd) { grid-column: auto; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #modal-new-terminal .tl2-cell { transition: opacity .2s; }
+  #modal-new-terminal .tl2-modal { animation: none; }
+  #modal-new-terminal .tl2-body::after { transition: none; }
+}

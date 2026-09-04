@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install Python deps
+        run: pip install -r plotspace/requirements.txt
+      - name: Backend tests
+        run: python -m pytest plotspace/tests/ -q
+      - name: Frontend tests
+        run: |
+          set -e
+          for t in $(find frontend -path '*__tests__*' -name '*.test.js' | sort); do
+            node "$t"
+          done
+      - name: Brand leak grep
+        run: |
+          if grep -RInE 'Complot|PlotSpace|BridgeMind' \
+            --exclude-dir=vendor --exclude-dir=__pycache__ --exclude-dir=.github \
+            --exclude='*.png' --exclude='*.ico' .; then
+            echo "brand leak found" >&2
+            exit 1
+          fi

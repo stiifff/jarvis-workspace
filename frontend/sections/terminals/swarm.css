@@ -1,0 +1,410 @@
+/* ══ Vínculo del enjambre ═══════════════════════════════════════════════════
+   Dos o tres agentes convergieron sobre la misma superficie. El ícono en la
+   card lo anuncia; el overlay lo muestra como lo que es: presencias CONECTADAS,
+   con los mensajes viajando de una a otra.
+
+   Reglas del sistema que se respetan acá:
+   · Cero color hardcodeado — 24 temas (2 claros) + filtro de tinte.
+   · El color es SEÑAL: info = enlace y mensajes · warning = sobrescritura ·
+     error = colisión · acento = actividad reciente. Nada decorativo.
+   · Sin `backdrop-filter` en el velo: cubre las terminales y el vidrio sobre
+     el canvas de xterm cuesta frames.
+   · `prefers-reduced-motion` apaga el movimiento, no la información.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── El ícono en el chrome de la card ─────────────────────────────────────── */
+/* Dos nodos unidos por un hilo, con un pulso que lo recorre: es una miniatura
+   exacta de lo que vas a ver al abrirlo. Aparece SOLO cuando hay vínculo, así
+   que no compite por atención el 99% del tiempo. */
+
+.t-btn-vinculo { color: var(--ob-info); }
+.terminal-card:hover .t-btn-vinculo { color: var(--ob-info); }
+
+.t-btn-vinculo:hover,
+.t-btn-vinculo:focus-visible {
+  background: color-mix(in oklch, var(--ob-info) 14%, transparent);
+  color: var(--ob-info);
+}
+
+.t-btn-vinculo .v-nodo { fill: currentColor; stroke: none; }
+.t-btn-vinculo .v-hilo { opacity: .5; }
+.t-btn-vinculo .v-pulso {
+  fill: currentColor;
+  stroke: none;
+  animation: sw-ic-pulso 2.4s var(--ease-in-out) infinite;
+}
+/* El pulso sale de un nodo, cruza y se apaga al llegar al otro. */
+@keyframes sw-ic-pulso {
+  0%       { transform: translateX(-4px); opacity: 0; }
+  18%      { opacity: 1; }
+  72%      { opacity: 1; }
+  85%,100% { transform: translateX(4px);  opacity: 0; }
+}
+
+/* Colisión: deja de ser informativo y pide atención. */
+.t-btn-vinculo.es-colision { color: var(--ob-err); }
+.t-btn-vinculo.es-colision:hover,
+.t-btn-vinculo.es-colision:focus-visible {
+  background: var(--ob-err-08);
+  color: var(--ob-err);
+}
+.t-btn-vinculo.es-colision .v-pulso { animation-duration: 1.1s; }
+
+/* Filo de la card: la señal sigue estando aunque el ícono quede fuera de vista
+   en una card muy angosta. Es un borde completo, no una franja lateral. */
+.terminal-card.con-vinculo .terminal-chrome {
+  box-shadow: inset 0 -1px 0 color-mix(in oklch, var(--ob-info) 34%, transparent);
+}
+.terminal-card.con-vinculo-colision .terminal-chrome {
+  box-shadow: inset 0 -1px 0 color-mix(in oklch, var(--ob-err) 46%, transparent);
+}
+
+/* Golpe RECIÉN llegado a la VÍCTIMA: un pulso de atención de una sola vez (lo
+   saca el JS), distinto del rojo ESTÁTICO de arriba —que es fácil de no ver—. Es
+   la señal para la víctima, por la animación del Swarm y no por su pane. */
+.terminal-card.t-colision-hit .terminal-chrome {
+  animation: sw-hit-victima 1.2s var(--ease-out) 3;
+}
+@keyframes sw-hit-victima {
+  0%, 100% { box-shadow: inset 0 -1px 0 color-mix(in oklch, var(--ob-err) 46%, transparent); }
+  35%      { box-shadow: inset 0 0 0 2px var(--ob-err),
+                         0 0 16px color-mix(in oklch, var(--ob-err) 50%, transparent); }
+}
+
+/* ── Overlay ──────────────────────────────────────────────────────────────── */
+
+.sw-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+}
+.sw-overlay.visible { display: flex; }
+
+.sw-fondo {
+  position: absolute;
+  inset: 0;
+  /* Velo sólido, sin blur: detrás hay canvases de xterm y el vidrio ahí cuesta
+     frames. El degradado da profundidad sin costo. */
+  background:
+    radial-gradient(120% 90% at 50% 0%,
+      color-mix(in oklch, var(--ob-bg-void) 74%, transparent) 0%,
+      color-mix(in oklch, var(--ob-bg-void) 93%, transparent) 100%);
+  animation: sw-velo var(--dur-3) var(--ease-out);
+}
+@keyframes sw-velo { from { opacity: 0; } }
+
+.sw-panel {
+  position: relative;
+  width: min(1020px, 100%);
+  max-height: min(calc(var(--jw-vh, 100vh) * .88), 820px);
+  display: flex;
+  flex-direction: column;
+  background: var(--ob-bg-1);
+  border: 1px solid var(--ob-line-2);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-3);
+  overflow: hidden;
+  animation: sw-entra var(--dur-3) var(--ease-out);
+}
+@keyframes sw-entra {
+  from { opacity: 0; transform: translateY(10px) scale(.985); }
+}
+
+/* ── Encabezado ──────────────────────────────────────────────────────────── */
+
+.sw-cab {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 20px 20px 16px;
+  border-bottom: 1px solid var(--ob-line-1);
+}
+.sw-quienes { flex: 1; min-width: 0; }
+
+.sw-cab h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  color: var(--ob-fg-0);
+  text-wrap: balance;
+}
+.sw-sep { color: var(--ob-fg-3); margin: 0 8px; font-weight: 400; }
+.sw-donde {
+  margin: 6px 0 0;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--ob-fg-2);
+  word-break: break-word;
+}
+
+.sw-chip {
+  flex-shrink: 0;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.sw-chip-err {
+  color: var(--ob-err);
+  background: var(--ob-err-08);
+  border: 1px solid color-mix(in oklch, var(--ob-err) 30%, transparent);
+}
+
+.sw-cerrar {
+  flex-shrink: 0;
+  width: 28px; height: 28px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: transparent; border: 0;
+  border-radius: var(--radius-btn);
+  color: var(--ob-fg-3);
+  cursor: pointer;
+  transition: background var(--dur-1) var(--ease-out),
+              color var(--dur-1) var(--ease-out);
+}
+.sw-cerrar:hover { background: var(--ob-bg-3); color: var(--ob-fg-0); }
+.sw-cerrar:focus-visible { outline: 2px solid var(--ob-accent); outline-offset: 2px; }
+
+/* ── El teatro: agentes conectados ───────────────────────────────────────── */
+
+/* El escenario CEDE altura antes que la lectura. Con el panel alto se dimensiona
+   solo por el aspecto del SVG (nada cambia); cuando el panel es bajo —1366×768 al
+   150% de Escala son 451px de panel— se encoge hasta su piso en vez de dejar a la
+   línea de tiempo en 24px, que es menos de UN evento. El `meet` del viewBox hace
+   que el dibujo se achique y se centre, sin recortarse. */
+/* El alto del teatro es EXPLÍCITO, no algo que el flex deduzca. Dejárselo al
+   flex-basis de un SVG inline no funciona: su alto intrínseco no es un tamaño de
+   contenido estable, y el escenario terminaba midiendo 443px adentro de una caja
+   de 287 — recortado, sin que nada lo cantara.
+     · aspect-ratio  → el alto natural del viewBox (a 1020px de panel, los 444 de
+                       siempre: en pantallas altas no cambia NADA).
+     · max-height    → techo por alto de pantalla: es lo que le devuelve el lugar
+                       a la línea de tiempo, que en 1366×768 al 150% de Escala
+                       quedaba en 24px (menos de UN evento) contra 368 del dibujo.
+     · min-height    → piso: más abajo el escenario deja de leerse.
+   El SVG llena la caja y el `meet` del viewBox achica y centra el dibujo entero
+   cuando el techo aprieta — ceder altura no es recortarse. */
+.sw-teatro {
+  flex: 0 0 auto;
+  aspect-ratio: 920 / 400;
+  max-height: calc(var(--jw-vh, 100vh) * .44);
+  min-height: 190px;
+  overflow: hidden;
+  border-bottom: 1px solid var(--ob-line-1);
+  background: var(--ob-bg-0);
+}
+.sw-escena { display: block; width: 100%; height: 100%; }
+
+.sw-fondo-escena { fill: url(#sw-vineta); }
+.sw-vin-0 { stop-color: var(--ob-bg-1); stop-opacity: .9; }
+.sw-vin-1 { stop-color: var(--ob-bg-void); stop-opacity: .55; }
+
+/* Enlaces: la línea base es la atadura; el flujo encima es la señal de que
+   están vivos. Se ve que están conectados sin que pase nada. */
+.sw-enlace-base {
+  fill: none;
+  stroke: color-mix(in oklch, var(--ob-info) 22%, transparent);
+  stroke-width: 1.25;
+}
+.sw-enlace-flujo {
+  fill: none;
+  stroke: color-mix(in oklch, var(--ob-info) 62%, transparent);
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  stroke-dasharray: 3 15;
+  animation: sw-flujo 3.4s linear infinite;
+}
+@keyframes sw-flujo { to { stroke-dashoffset: -36; } }
+
+.sw-enlace.es-roto .sw-enlace-base {
+  stroke: color-mix(in oklch, var(--ob-err) 34%, transparent);
+  stroke-dasharray: 5 6;
+}
+.sw-enlace.es-roto .sw-enlace-flujo {
+  stroke: color-mix(in oklch, var(--ob-err) 72%, transparent);
+  animation-duration: 1.7s;
+}
+
+/* Nodos: anillos concéntricos. Cuerpo oscuro con canto brillante — material,
+   no ilustración. */
+.sw-nodo-halo {
+  fill: color-mix(in oklch, var(--ob-info) 7%, transparent);
+  stroke: none;
+}
+.sw-nodo-anillo {
+  fill: none;
+  stroke: color-mix(in oklch, var(--ob-info) 30%, transparent);
+  stroke-width: 1;
+}
+.sw-nodo-cuerpo {
+  fill: var(--ob-bg-2);
+  stroke: color-mix(in oklch, var(--ob-info) 55%, transparent);
+  stroke-width: 1.4;
+}
+.sw-nodo-ini {
+  fill: var(--ob-fg-1);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+}
+.sw-nodo-nom {
+  fill: var(--ob-fg-1);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 600;
+}
+.sw-nodo-sub {
+  fill: var(--ob-fg-3);
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+
+/* Trabajando ahora: el halo respira en acento. */
+.sw-nodo.es-activo .sw-nodo-halo {
+  fill: color-mix(in oklch, var(--ob-accent) 11%, transparent);
+  animation: sw-respira 3s var(--ease-in-out) infinite;
+}
+.sw-nodo.es-activo .sw-nodo-cuerpo {
+  stroke: color-mix(in oklch, var(--ob-accent) 70%, transparent);
+}
+@keyframes sw-respira {
+  0%, 100% { opacity: .55; transform: scale(.94); }
+  50%      { opacity: 1;   transform: scale(1.04); }
+}
+.sw-nodo.es-activo .sw-nodo-halo { transform-origin: center; transform-box: fill-box; }
+
+/* Metido en una colisión. */
+.sw-nodo.es-roto .sw-nodo-cuerpo {
+  stroke: color-mix(in oklch, var(--ob-err) 78%, transparent);
+}
+.sw-nodo.es-roto .sw-nodo-anillo {
+  stroke: color-mix(in oklch, var(--ob-err) 40%, transparent);
+}
+
+/* Pulsos: el mensaje viajando del que habla al que escucha. */
+.sw-pulso {
+  fill: var(--ob-info);
+  filter: drop-shadow(0 0 6px color-mix(in oklch, var(--ob-info) 75%, transparent));
+}
+.sw-pulso-estela {
+  fill: color-mix(in oklch, var(--ob-info) 26%, transparent);
+}
+/* La flor: llegó. */
+.sw-pulso-flor {
+  fill: none;
+  stroke: color-mix(in oklch, var(--ob-info) 65%, transparent);
+  stroke-width: 1.4;
+}
+
+/* ── Lectura cronológica ─────────────────────────────────────────────────── */
+
+.sw-lectura {
+  flex: 1;
+  /* Piso de ~3 eventos: es la mitad de la información del panel (quién escribió
+     qué, los mensajes, las colisiones) y sin esto el escenario se la comía
+     entera en pantallas bajas. Lo que sobra se scrollea, como siempre. */
+  min-height: 132px;
+  overflow-y: auto;
+  padding: 8px 4px 16px;
+}
+.sw-eventos { list-style: none; margin: 0; padding: 0; }
+
+.sw-ev {
+  display: grid;
+  grid-template-columns: 48px 1fr;
+  gap: 4px 12px;
+  align-items: baseline;
+  padding: 7px 20px 7px 16px;
+  border-bottom: 1px solid color-mix(in oklch, var(--ob-line-1) 55%, transparent);
+}
+.sw-ev:last-child { border-bottom: 0; }
+
+/* El tipo se marca con un punto —el mismo vocabulario de la escena—, no con
+   una franja lateral de color. */
+.sw-ev-t {
+  position: relative;
+  padding-left: 14px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ob-fg-3);
+  text-align: right;
+}
+.sw-ev-t::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 50%;
+  width: 6px; height: 6px;
+  margin-top: -3px;
+  border-radius: var(--radius-pill);
+  background: var(--ob-fg-3);
+}
+.sw-ev-mensaje       .sw-ev-t::before { background: var(--ob-info); }
+.sw-ev-sobrescritura .sw-ev-t::before { background: var(--ob-work); }
+.sw-ev-colision      .sw-ev-t::before { background: var(--ob-err); }
+
+.sw-ev-quien {
+  grid-column: 2;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ob-fg-1);
+}
+.sw-ev-txt {
+  grid-column: 2;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ob-fg-2);
+  overflow-wrap: anywhere;
+  text-wrap: pretty;
+}
+/* Los MENSAJES son lo que nunca se vio en ningún lado: se leen como contenido,
+   no como telemetría. */
+.sw-ev-mensaje { background: color-mix(in oklch, var(--ob-info) 5%, transparent); }
+.sw-ev-mensaje .sw-ev-txt { color: var(--ob-fg-1); max-width: 72ch; font-size: 13px; }
+.sw-ev-colision { background: var(--ob-err-08); }
+.sw-ev-colision .sw-ev-txt { color: var(--ob-fg-1); }
+.sw-ev-edicion .sw-ev-txt,
+.sw-ev-sobrescritura .sw-ev-txt { font-family: var(--font-mono); font-size: 12px; }
+
+.sw-ev-extra {
+  grid-column: 2;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ob-fg-3);
+  overflow-wrap: anywhere;
+}
+
+.sw-vacio { margin: 24px 20px; font-size: 13px; color: var(--ob-fg-3); }
+
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+
+@media (max-width: 720px) {
+  .sw-overlay { padding: 12px; }
+  .sw-panel   { max-height: calc(var(--jw-vh, 100vh) * .92); border-radius: var(--radius-lg); }
+  .sw-cab     { padding: 16px 14px 12px; }
+  .sw-cab h2  { font-size: 15px; }
+  .sw-ev      { grid-template-columns: 40px 1fr; padding-left: 10px; padding-right: 12px; }
+}
+
+/* ── Movimiento reducido: se apaga el movimiento, no la información ──────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .sw-fondo, .sw-panel,
+  .t-btn-vinculo .v-pulso,
+  .sw-enlace-flujo,
+  .sw-nodo.es-activo .sw-nodo-halo { animation: none; }
+  .t-btn-vinculo .v-pulso { opacity: 1; transform: none; }
+  .sw-enlace-flujo { stroke-dasharray: none; opacity: .75; }
+  .sw-nodo.es-activo .sw-nodo-halo { opacity: .9; transform: none; }
+  /* La info NO se apaga: sin el pulso, la víctima queda con un canto rojo fijo. */
+  .terminal-card.t-colision-hit .terminal-chrome {
+    animation: none;
+    box-shadow: inset 0 0 0 2px color-mix(in oklch, var(--ob-err) 60%, transparent);
+  }
+}

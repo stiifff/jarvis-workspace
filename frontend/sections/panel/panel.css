@@ -1,0 +1,938 @@
+/* ═══════════════════════════════════════════════════════════════
+   ARMAZÓN del workspace — franja (185px) + barra mínima (44px)
+   + contenido (mosaico + panel único). Sin backdrop-filter:
+   este árbol envuelve terminales xterm (regla de performance).
+═══════════════════════════════════════════════════════════════ */
+
+:root {
+  --jw-strip-w: 224px;   /* ancho del mockup (rediseño 2026-07-10) */
+  --jw-bar-h:   36px;   /* altura del mockup (rediseño 2026-07-10) */
+}
+
+/* Canvas más profundo detrás de los paneles */
+body { background: var(--ob-bg-void); } /* override intencional del body bg de base.css — panel.css debe cargar después */
+
+/* ── Franja de proyectos ──────────────────────────────────────── */
+.jw-strip {
+  position: fixed;
+  left: 0; top: 0;
+  width: var(--jw-strip-w);
+  height: var(--jw-vh, 100vh);
+  /* Obsidian Glass (2026-07-02): aurora de acento arriba, sobre el gradiente.
+     Sigue al tema vía --ob-accent-14; estático (sin animación — regla xterm). */
+  background:
+    radial-gradient(150% 130px at 18% -30px, color-mix(in oklch, var(--ob-accent) 17%, transparent), transparent 72%),
+    radial-gradient(120% 90px at 95% -20px, color-mix(in oklch, var(--ob-info) 10%, transparent), transparent 70%),
+    linear-gradient(180deg, var(--ob-bg-1), var(--ob-bg-0) 46%);
+  display: flex;
+  flex-direction: column;
+  z-index: 100;
+  padding: 8px;
+  font-family: 'Inter', system-ui, sans-serif;
+  color: var(--sb-fg-1);
+  /* El ancho cambia INSTANTÁNEO (riel ⇄ lleno): animar el width forzaba el
+     reflow continuo del mosaico xterm → lag y parpadeos. Un solo relayout, sin
+     transición. Lo que SÍ transiciona son cosas baratas (la puerta, el crumb). */
+}
+/* Hairline luminosa: reemplaza al border-right — brillo de acento que decae */
+.jw-strip::after {
+  content: '';
+  position: absolute; right: 0; top: 0; bottom: 0; width: 1px;
+  background: linear-gradient(180deg,
+    color-mix(in oklch, var(--ob-accent) 45%, var(--ob-line-2)) 0%,
+    var(--ob-line-1) 30%, var(--ob-line-1) 100%);
+  pointer-events: none;
+}
+/* ── Modo riel (franja colapsada a 58px de cuadraditos) ──────────
+   Reemplaza al viejo body.jw-strip-off (display:none). La puerta del
+   header togglea esta clase (workspace.js). */
+body.jw-rail .jw-strip { width: 58px; padding: 8px 6px; }
+body.jw-rail .jw-main { margin-left: 58px; }
+/* pill fuera, cabecera centrada (queda solo el aire de la puerta del header) */
+body.jw-rail .jw-seg { display: none; }
+body.jw-rail .jw-strip-head { justify-content: center; padding: 0; margin: 0; min-height: 0; }
+body.jw-rail .sb-search { display: none; }
+/* En riel SIEMPRE se ven los tiles: el pane Editor no entra en 58px. Al
+   expandir, la vista Editor vuelve tal como estaba. */
+body.jw-rail #jw-panes[data-view="editor"] .jws-pane-spaces { transform: none; opacity: 1; pointer-events: auto; }
+body.jw-rail #jw-panes[data-view="editor"] .jws-pane-editor { transform: translateX(14px); opacity: 0; pointer-events: none; }
+
+/* La puerta del header: relleno visible (franja llena) → se desvanece en riel. */
+.jw-door .jw-door-fill { opacity: .55; transition: opacity 300ms cubic-bezier(.22,1,.36,1); }
+body.jw-rail .jw-door .jw-door-fill { opacity: 0; }
+
+.jw-strip-head {
+  display: flex;
+  align-items: center;
+  justify-content: center;   /* la píldora es fit-content y va centrada (mock) */
+  gap: 6px;
+  padding: 2px 0 8px;
+  margin-bottom: 4px;
+}
+.jw-strip-home {
+  flex: 1;
+  text-align: left;
+  background: transparent;
+  border: none;
+  padding: 2px 4px;
+  border-radius: 5px;
+  color: var(--sb-fg-3);
+  font: 600 10px var(--sb-mono);
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color 120ms ease, background 120ms ease;
+}
+.jw-strip-home:hover { color: var(--sb-fg-0); background: var(--sb-bg-2); }
+.jw-strip-new {
+  width: 22px; height: 22px;
+  border: 0;
+  border-radius: var(--radius-btn);
+  cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  color: #fff;
+  background: linear-gradient(135deg, var(--ob-accent), var(--ob-accent-dim));
+  box-shadow: 0 2px 8px var(--ob-accent-24);
+  flex: none;
+  transition: filter var(--dur-1) var(--ease-out);
+}
+.jw-strip-new:hover { filter: brightness(1.15); }
+
+/* ── Conmutador píldora Workspaces ⇄ Editor ⇄ Builder ─────────
+   Segmentos que "respiran": el activo se expande y muestra su NOMBRE, los
+   inactivos colapsan a solo ícono. El morph anima grid-template-columns —
+   tracks TODOS en fr (fr↔px no interpola: Chrome saltaría discreto).
+   One-shot al click (no viola la regla xterm de animaciones infinitas). */
+.jw-seg {
+  position: relative; flex: none; align-self: center; width: fit-content;
+  display: flex; align-items: center; gap: 2px; padding: 3px; border-radius: 99px; overflow: hidden;
+  background: linear-gradient(180deg, rgb(255 255 255 / .085), rgb(255 255 255 / .03));
+  border: 1px solid rgb(255 255 255 / .15);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .16), inset 0 -1px 0 rgb(0 0 0 / .22), 0 10px 30px rgb(0 0 0 / .42);
+}
+/* brillo especular fijo */
+.jw-seg::before { content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(115deg, transparent 40%, rgb(255 255 255 / .09) 50%, transparent 62%); }
+.jw-seg button {
+  position: relative; z-index: 1; display: flex; align-items: center; gap: 7px; height: 28px; padding: 0 9px;
+  border: 0; background: none; cursor: pointer; border-radius: 99px; color: var(--sb-fg-3);
+  font: 600 12px 'Inter', sans-serif; letter-spacing: .01em; white-space: nowrap; min-width: 0;
+  transition: color .2s, padding .32s cubic-bezier(.32,1.18,.35,1), transform .15s var(--ease-out);
+}
+.jw-seg button:hover { color: var(--sb-fg-1); }
+.jw-seg button:active { transform: scale(.95); }
+.jw-seg .sg-ic { flex: none; width: 14px; height: 14px; }
+.jw-seg .sg-lbl { max-width: 0; opacity: 0; overflow: hidden;
+  transition: max-width .34s cubic-bezier(.32,1.18,.35,1), opacity .22s; }
+/* activo = ícono + texto (el resto solo ícono; se estira por padding, como el mock) */
+.jw-seg button.on { color: var(--sb-fg-0); padding: 0 13px; }
+.jw-seg button.on .sg-lbl { max-width: 92px; opacity: 1; transition-delay: 0s, .08s; }
+/* Gota de vidrio que se desliza al segmento activo (la posiciona el JS _sbLayoutPill) */
+.jw-seg-thumb {
+  position: absolute; top: 3px; bottom: 3px; left: 0; width: 40px; border-radius: 99px; z-index: 0;
+  background: linear-gradient(180deg, rgb(255 255 255 / .17), rgb(255 255 255 / .06));
+  border: 1px solid rgb(255 255 255 / .24);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .28), 0 4px 14px rgb(0 0 0 / .35), 0 0 18px color-mix(in oklch, var(--ob-accent) 22%, transparent);
+  transition: transform .38s cubic-bezier(.32,1.18,.35,1), width .38s cubic-bezier(.32,1.18,.35,1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .jw-seg button, .jw-seg .sg-lbl, .jw-seg-thumb { transition: none; }
+}
+
+/* ── Panes deslizantes (Workspaces / Editor) ─────────────────── */
+#jw-panes { flex: 1; min-height: 0; position: relative; overflow: hidden; }
+.jws-pane {
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; min-height: 0;
+  transition: transform 280ms cubic-bezier(.22,1,.36,1), opacity 280ms cubic-bezier(.22,1,.36,1);
+}
+.jws-pane-editor { transform: translateX(14px); opacity: 0; pointer-events: none; }
+#jw-panes[data-view="editor"] .jws-pane-spaces { transform: translateX(-14px); opacity: 0; pointer-events: none; }
+#jw-panes[data-view="editor"] .jws-pane-editor { transform: none; opacity: 1; pointer-events: auto; }
+@media (prefers-reduced-motion: reduce) { .jws-pane { transition: none; } }
+
+/* ── Pane Editor: acordeón de proyectos → árbol de archivos ───── */
+.fx-list { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 2px 8px 8px;
+  scrollbar-width: thin; scrollbar-color: var(--sb-line-2) transparent; }
+.fx-list::-webkit-scrollbar { width: 8px; }
+.fx-list::-webkit-scrollbar-thumb { background: var(--sb-line-2); border-radius: 4px; }
+.fx-ws { margin: 2px 0; border-radius: 11px; border: 1px solid transparent;
+  transition: background 180ms var(--ease-out), border-color 180ms var(--ease-out); }
+.fx-ws:not(.on):hover { background: rgb(255 255 255 / .03); }
+.fx-ws.on { background: linear-gradient(180deg, var(--ob-accent-14), color-mix(in oklch, var(--ob-accent) 3%, transparent) 70px);
+  border-color: var(--ob-accent-24); box-shadow: inset 0 1px 0 rgb(255 255 255 / .1); }
+.fx-ws-head { position: relative; display: flex; align-items: center; gap: 7px; width: 100%;
+  height: 40px; padding: 0 6px; border: 0; background: none; cursor: pointer; text-align: left; border-radius: 10px; }
+/* Marcador propio del mockup (mismo que el roster): VETA de color (idle) → figura
+   de grilla animada cuando el proyecto trabaja. Color del tono (--ic-fg en .fx-ws). */
+.fx-ws-head .emark { position: relative; flex: none; width: 22px; height: 26px; display: flex; align-items: center; justify-content: center; }
+.emk-veta { width: 3px; height: 20px; border-radius: 2px; background: var(--ic-fg, var(--sb-fg-2));
+  box-shadow: 0 0 10px -1px color-mix(in oklch, var(--ic-fg, var(--sb-fg-2)) 62%, transparent); }
+.fx-ws.working .emk-veta { visibility: hidden; }
+.emark .sb-snake { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 26px; height: 26px; }
+.fx-ws-head b { flex: 1; min-width: 0; font: 600 13px/1.3 'Inter', sans-serif; letter-spacing: .002em; color: var(--ob-fg-1);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fx-ws-head b::first-letter { text-transform: uppercase; }   /* el nombre nunca arranca en minúscula */
+.fx-ws-head:hover b { color: var(--sb-fg-0); }
+/* Proyecto SELECCIONADO: nombre + marcador más grandes + header más alto (como el activo del roster) */
+.fx-ws.on .fx-ws-head { height: 44px; }
+.fx-ws.on .fx-ws-head b { color: var(--sb-fg-0); font-weight: 650; font-size: 14.5px; letter-spacing: -.005em; }
+.fx-ws.on .emark { width: 26px; height: 30px; }
+.fx-ws.on .emk-veta { height: 26px; }
+.fx-ws.on .emark .sb-snake { width: 30px; height: 30px; }
+.fx-ws-head .chv { width: 10px; height: 11px; color: var(--sb-fg-3); flex: none; transition: transform 180ms var(--ease-out); margin-left: -1px; }
+.fx-ws:not(.on) .fx-ws-head .chv, .fx-ws.on.plegado .fx-ws-head .chv { transform: rotate(-90deg); }
+.fx-body { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 280ms var(--ease-out); }
+.fx-ws.on:not(.plegado) .fx-body { grid-template-rows: 1fr; }
+.fx-clip { overflow: hidden; min-height: 0; }
+.fx-tools { display: flex; align-items: center; gap: 2px; padding: 2px 10px 0; }
+.fx-act { width: 21px; height: 21px; border-radius: 6px; border: 0; background: none; cursor: pointer;
+  display: grid; place-items: center; color: var(--sb-fg-3);
+  transition: color 120ms ease, background 120ms ease; }
+.fx-act:hover { color: var(--ob-accent-fg); background: var(--ob-accent-08); }
+.fx-act svg { width: 12px; height: 12px; }
+@media (prefers-reduced-motion: reduce) { .fx-body { transition: none; } }
+
+/* ── Área principal (a la derecha de la franja) ───────────────── */
+.jw-main {
+  margin-left: var(--jw-strip-w);
+  height: var(--jw-vh, 100vh);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  /* margin instantáneo: la franja entra/sale sin animar width (regla xterm) */
+}
+
+/* ── Barra superior mínima ────────────────────────────────────── */
+.jw-bar {
+  height: var(--jw-bar-h);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 6px 0 12px;
+  border-bottom: 1px solid color-mix(in oklch, var(--ob-line-1) 60%, transparent);
+  background: var(--ob-bg-void);
+}
+.jw-bar-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.jw-bar-right .jw-icon-btn { height: 26px; }
+
+.jw-bar { position: relative; }   /* ancla del breadcrumb centrado */
+
+/* Costura de vida (portada del mockup preview-shell-chrome, pedido del usuario):
+   un pulso de acento recorre la hairline inferior de la barra cada 13s — quieto
+   más de la mitad del ciclo, después barre todo el ancho. Solo transform
+   (compositor, regla xterm); sigue al tema vía --ob-accent-*. */
+.jw-seam {
+  position: absolute; left: 0; right: 0; bottom: -1px;
+  height: 1px; overflow: hidden; pointer-events: none;
+}
+.jw-seam i {
+  position: absolute; top: 0; bottom: 0; width: 220px; left: -220px;
+  background: linear-gradient(90deg, transparent,
+    var(--ob-accent-glow) 40%,
+    color-mix(in oklch, var(--ob-accent-fg) 55%, transparent) 50%,
+    var(--ob-accent-glow) 60%, transparent);
+  animation: jw-seam 13s var(--ease-in-out) infinite;
+}
+@keyframes jw-seam {
+  0%, 55%   { transform: translateX(0); }
+  85%, 100% { transform: translateX(calc(100vw + 220px)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .jw-seam { display: none; }
+}
+
+/* ── Breadcrumb centrado ──────────────────────────────────────── */
+/* left: 50% es relativo al .jw-bar (que empieza en --jw-strip-w).
+   Para centrar en el VIEWPORT restamos la mitad del ancho de la franja. */
+.gh-crumb-center {
+  position: absolute;
+  left: calc(50% - var(--jw-strip-w) / 2);
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: flex; align-items: center; gap: 8px;
+  /* Dos topes, gana el más chico: el histórico (36% del ancho útil) y el que
+     mide la CANCHA REAL — el breadcrumb está centrado en el viewport, así que
+     no puede pasarse del cluster de la marca (franja + ~206px). Sin el segundo,
+     con la Escala de la app al 150% el ancho útil cae a ~1067px y el nombre del
+     proyecto se montaba encima de la marca y del chip de versión. */
+  max-width: min(calc(var(--jw-vw, 100vw) * .36),
+                 calc(var(--jw-vw, 100vw) - var(--jw-strip-w) * 2 - 412px));
+  white-space: nowrap; overflow: hidden;
+  pointer-events: none;
+}
+/* Con la franja oculta (.jw-main empieza en 0), no hay offset a compensar */
+/* En riel la franja mide 58px → el offset a compensar es su mitad (29px). */
+body.jw-rail .gh-crumb-center { left: calc(50% - 29px); }
+/* min-width:0 + ellipsis: cuando el tope de arriba muerde, el nombre se recorta
+   con puntos suspensivos en vez de desbordar (o de cortarse a cuchillo). */
+.gh-crumb-ws { color: var(--ob-fg-1); font: 600 11.5px var(--font-ui); min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.gh-crumb-center .gh-crumb-sep { color: var(--ob-fg-4); font-size: 10px; }
+.gh-crumb-center .gh-project {
+  font: 500 10px var(--font-mono);
+  color: var(--ob-fg-3);
+  min-width: 0;          /* la ruta es lo primero que cede al angostarse */
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Icon button genérico de la barra/panel ───────────────────── */
+.jw-icon-btn {
+  position: relative;
+  width: 28px; height: 28px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-btn);
+  color: var(--sb-fg-2);
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+  flex-shrink: 0;
+}
+.jw-icon-btn:hover { background: var(--sb-bg-2); color: var(--sb-fg-0); border-color: var(--sb-line-2); }
+.jw-icon-btn.activo { background: var(--sb-bg-3); color: var(--sb-fg-0); border-color: var(--sb-line-3); }
+.jw-icon-btn svg { flex-shrink: 0; }
+
+/* ── Badge rojo de actividad ──────────────────────────────────── */
+.jw-badge {
+  position: absolute;
+  top: -3px; right: -3px;
+  min-width: 14px; height: 14px;
+  padding: 0 3px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--ob-err);
+  color: #fff;
+  font: 600 9px var(--sb-mono);
+  line-height: 1;
+  border-radius: var(--radius-btn);
+  pointer-events: none;
+}
+.jw-badge[hidden] { display: none; }
+
+/* ── Breadcrumb del proyecto activo (movido del header global) ── */
+.gh-crumb-sep {
+  color: var(--sb-fg-4);
+  font: 300 14px 'Inter', sans-serif;
+  user-select: none;
+  flex-shrink: 0;
+}
+.gh-project {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size:   12.5px;
+  font-weight: 500;
+  color:       var(--sb-fg-1);
+  white-space: nowrap;
+  overflow:    hidden;
+  text-overflow: ellipsis;
+  letter-spacing: -0.01em;
+  max-width:   240px;
+  user-select: none;
+}
+
+/* ── Sprint 3: semáforo de agentes + dot de estado del WS (en #jw-bar) ── */
+#jw-semaphore {
+  display:        inline-flex;
+  align-items:    center;
+  gap:            9px;
+  margin-left:    10px;
+  font-family:    'JetBrains Mono', ui-monospace, monospace;
+  font-size:      11px;
+  font-weight:    600;
+  line-height:    1;
+  user-select:    none;
+}
+#jw-semaphore[hidden] { display: none; }
+.jw-sem-it   { display: inline-flex; align-items: center; }
+.jw-sem-work { color: var(--ob-run); }
+.jw-sem-wait { color: var(--ob-work); }
+.jw-sem-err  { color: var(--ob-err); }
+
+#jw-ws-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  margin-left: 8px; flex-shrink: 0;
+  background: var(--ob-work);
+}
+#jw-ws-dot[hidden] { display: none; }
+#jw-ws-dot[data-estado="caido"] { background: var(--ob-err); }
+@media (prefers-reduced-motion: no-preference) {
+  #jw-ws-dot[data-estado="reconectando"] { animation: jw-ws-pulse 1s ease-in-out infinite; }
+}
+@keyframes jw-ws-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+/* ── Cluster arriba-izquierda: chip de versión ──
+   Vive al lado de WORKSPACES. El chip lo puebla updater.js. El viejo pill de
+   preview se eliminó: los localhost vivos viven en el menú #jw-localhosts-btn
+   de la barra (pedido del usuario 2026-06-20). */
+.jw-bar-cluster { display: inline-flex; align-items: center; gap: 8px; }
+.jw-brand-word { font: 600 12.5px var(--font-ui); color: var(--ob-fg-0); letter-spacing: .005em; }
+
+/* Chip de versión "Halo cónico": píldora con un anillo cónico que gira (mismo
+   lenguaje que el halo del composer del Web Builder). El chip ES el anillo
+   (padding = grosor del aro); el contenido vive en .jw-vc-inner. Informativo
+   (cursor default) — la acción de actualizar vive en la franja. */
+/* ── Marca Jarvis en el header (colores de marca fijos, no tema) ── */
+.jw-brand-mark { display: inline-flex; width: 21px; height: 21px; flex: none; }
+.jw-brand-mark svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.jw-brand-chispa { transform-box: fill-box; transform-origin: center; }
+.jw-bar-cluster:hover .jw-brand-chispa { animation: jw-brand-twinkle .55s var(--ease-out, cubic-bezier(.22,1,.36,1)); }
+@keyframes jw-brand-twinkle {
+  0%   { transform: scale(1); }
+  38%  { transform: scale(1.45); }
+  100% { transform: scale(1); }
+}
+@media (prefers-reduced-motion: reduce) { .jw-bar-cluster:hover .jw-brand-chispa { animation: none; } }
+
+/* Chip de versión — HALO SEMÁNTICO: quieto al día (borde fino), gira SOLO con
+   update disponible (el movimiento comunica estado, no adorno). */
+@property --jw-vc-ang { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
+.jw-version-chip {
+  display: inline-flex;
+  padding: 1.5px;                   /* grosor del aro */
+  border: 0;
+  border-radius: var(--radius-pill, 999px);
+  background: rgb(255 255 255 / .1);   /* al día: aro quieto */
+  cursor: default; user-select: none;
+}
+.jw-version-chip[hidden] { display: none; }
+.jw-vc-inner {
+  display: inline-flex; align-items: center;
+  height: 17px; padding: 0 8px;
+  border-radius: var(--radius-pill, 999px);
+  background: var(--ob-bg-3);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  /* line-height:1 colapsa el line-box asimétrico del mono → el número queda
+     ópticamente centrado en la píldora (no "muy arriba"). */
+  line-height: 1;
+}
+.jw-vc-spark {                      /* destello facetado (4 puntas) en acento */
+  flex: none; width: 8px; height: 8px;
+  background: var(--ob-accent);
+  clip-path: polygon(50% 0, 61% 39%, 100% 50%, 61% 61%, 50% 100%, 39% 61%, 0 50%, 39% 39%);
+}
+.jw-vc-lbl { font-size: 10px; color: var(--ob-fg-3); }
+.jw-vc-ver {
+  font-size: 9.5px; color: var(--ob-fg-2); font-weight: 500;
+  font-variant-numeric: tabular-nums; letter-spacing: .01em;
+}
+.jw-vc-next { font-size: 11px; color: var(--ob-accent); font-weight: 700; }
+@keyframes jw-vc-spin { to { --jw-vc-ang: 360deg; } }
+/* Estado update: el aro se enciende y GIRA (antes estaba quieto) + versión en acento */
+.jw-version-chip.jw-vc-upd {
+  background: conic-gradient(from var(--jw-vc-ang),
+    transparent 0deg, var(--ob-accent) 90deg, var(--ob-accent-fg) 130deg, transparent 200deg, transparent 360deg);
+  animation: jw-vc-spin 2s linear infinite;
+}
+.jw-version-chip.jw-vc-upd .jw-vc-ver { color: var(--ob-accent-fg); }
+@media (prefers-reduced-motion: reduce) {
+  .jw-version-chip.jw-vc-upd {
+    animation: none;
+    background: conic-gradient(from 120deg, transparent, var(--ob-accent) 90deg, transparent 200deg);
+  }
+}
+
+/* ── Contenido: mosaico + splitter + panel único ──────────────── */
+.jw-content {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  overflow: hidden;
+}
+/* El mosaico ocupa todo el resto (regla heredada de .panel-terminales) */
+.jw-content .panel-terminales { flex: 1; min-width: 0; }
+
+/* ═══════════════════════════════════════════════════════════════
+   JARVIS — JarvisDock: el Panel Único (dock) a la derecha del mosaico.
+   El ancho lo fija JS por style inline (NUNCA transición de width — xterm).
+   Prefijo: jw-  ·  tokens --ob-* (shared/tokens.css)
+═══════════════════════════════════════════════════════════════ */
+
+/* ── Dock root ───────────────────────────────────────────────────── */
+.jw-dock {
+  flex: 0 0 auto;            /* el ancho lo manda style.width inline desde JS */
+  width: 340px;             /* default; JS lo sobrescribe */
+  min-width: 300px;
+  display: flex;
+  flex-direction: column;
+  background: var(--ob-bg-1);
+  border-left: 1px solid var(--ob-line-1);
+  box-shadow: -8px 0 24px -16px oklch(0% 0 0 / 0.5);
+  overflow: hidden;
+  /* sin transition de width: la salida es instantánea (hidden) y el resize
+     mueve px directos. La aparición puede animar opacity (no width). */
+}
+.jw-dock[hidden] { display: none; }
+
+/* Maximizado: cubre todo el contenido por encima del mosaico (editor/preview). */
+.jw-dock--max {
+  position: fixed;
+  inset: 0;
+  z-index: 6000;
+  width: 100% !important;   /* pisa el inline de JS mientras está max */
+  border-left: none;
+}
+
+/* ── Header de pestañas (36px, iconos 18px) ──────────────────────────
+   Pestaña ACTIVA = pill con ícono + nombre; inactivas = solo ícono (el
+   nombre colapsa con max-width/opacity — NO es el ancho del dock, así que
+   la regla xterm "nunca animar width" no aplica). El nombre visible da a
+   la activa su etiqueta; las inactivas conservan title/aria-label (tooltip
+   + lectores de pantalla). ── */
+.jw-dock-tabs {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  height: 36px;
+  padding: 0 6px;
+  border-bottom: 1px solid var(--ob-line-2);
+  background: var(--ob-bg-2);
+  flex-shrink: 0;
+}
+.jw-tab {
+  position: relative;
+  height: 28px;
+  min-width: 30px;                 /* solo-ícono: cuadrado-ish; crece con el label */
+  padding: 0 6px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--ob-fg-3);
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition);
+}
+.jw-tab[hidden] { display: none; }
+.jw-tab svg { width: 18px; height: 18px; flex-shrink: 0; }
+.jw-tab:hover  { background: var(--ob-accent-08); color: var(--ob-fg-1); }
+.jw-tab.activa { background: var(--ob-accent-14); color: var(--ob-accent-fg); }
+.jw-tab:focus-visible {
+  outline: 2px solid var(--ob-accent);
+  outline-offset: 1px;
+}
+
+/* Nombre de la pestaña: colapsado por defecto, se despliega en la activa. */
+.jw-tab-lbl {
+  display: inline-block;
+  max-width: 0;
+  margin-left: 0;
+  overflow: hidden;
+  opacity: 0;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.01em;
+  transition: max-width 260ms cubic-bezier(.22, 1, .36, 1),
+              margin-left 260ms cubic-bezier(.22, 1, .36, 1),
+              opacity 170ms ease;
+}
+.jw-tab.activa .jw-tab-lbl {
+  max-width: 96px;
+  margin-left: 6px;
+  opacity: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .jw-tab-lbl { transition: none; }
+}
+
+.jw-dock-actions { margin-left: auto; display: inline-flex; gap: 2px; }
+
+/* Iconos de acción del header (⤢ / ✕) reusan .jw-icon-btn del bar (base.css);
+   acá solo el ajuste de tamaño dentro del header del dock. */
+.jw-dock-tabs .jw-icon-btn { width: 24px; height: 24px; }
+.jw-dock-tabs .jw-icon-btn svg { width: 15px; height: 15px; }
+.jw-dock-tabs .jw-icon-btn[hidden] { display: none; }
+
+/* La regla `.jw-badge` (badge rojo en pestaña y en el toggle ▣) ya está
+   definida en panel.css por la Fase 1 — NO se redeclara acá. */
+
+/* ── Body + panes ────────────────────────────────────────────────── */
+.jw-dock-body {
+  flex: 1 1 0;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+}
+.jw-pane {
+  position: absolute;
+  inset: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.jw-pane[hidden] { display: none; }
+/* El pane del editor es contenedor de consulta: en el dock angosto, cuando no hay
+   archivo abierto, el árbol se apila ARRIBA del placeholder (ver editor.css @container)
+   en vez de comprimirlo a ~100px. */
+.jw-pane[data-pane="editor"] { container-type: inline-size; }
+/* Aparición suave del pane activo (opacity/transform — NUNCA width). */
+.jw-pane:not([hidden]) {
+  animation: jw-pane-in var(--dur-2, 160ms) var(--ease-out, ease);
+}
+@keyframes jw-pane-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ── Splitter (4px, hover violeta) — vive entre mosaico y dock ────── */
+.jw-dock-splitter {
+  flex: 0 0 4px;
+  width: 4px;
+  cursor: col-resize;
+  background: transparent;
+  position: relative;
+  z-index: 5;
+  transition: background var(--transition);
+}
+.jw-dock-splitter[hidden] { display: none; }
+.jw-dock-splitter:hover,
+body.jw-resizing .jw-dock-splitter {
+  background: var(--ob-accent);
+}
+
+/* Mientras se arrastra el splitter: cursor global + sin selección. */
+body.jw-resizing { cursor: col-resize; user-select: none; }
+
+/* ── Botón base del rework (dock / settings / preview) ──────────────
+   Reemplaza la repetición de estilos en los elementos NUEVOS del rework.
+   Los botones legacy (t-btn, sb-*, etc.) NO migran (YAGNI).
+   Tokens: siempre --ob-* (compartidos), nada hardcodeado. */
+.jw-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid var(--ob-line-2);
+  border-radius: var(--radius);
+  background: var(--ob-bg-2);
+  color: var(--ob-fg-1);
+  font: 500 13px/1 var(--font-ui);
+  cursor: pointer;
+  user-select: none;
+  transition: background 130ms ease, border-color 130ms ease, color 130ms ease;
+}
+.jw-btn:hover    { background: var(--ob-bg-3); border-color: var(--ob-line-3); }
+.jw-btn:active   { background: var(--ob-bg-4); }
+.jw-btn:disabled { opacity: .5; cursor: default; }
+.jw-btn svg      { color: var(--ob-fg-2); flex-shrink: 0; }
+
+/* Variante de acento (CTA primario del dock/settings) */
+.jw-btn.primario {
+  background: var(--ob-accent-14);
+  border-color: var(--ob-accent-24);
+  color: var(--ob-accent-fg);
+}
+.jw-btn.primario:hover { background: var(--ob-accent-24); }
+
+/* Variante icon-only cuadrado (sin label) */
+.jw-btn.icon { width: 30px; padding: 0; }
+
+/* ═══════════════════════════════════════════════════════════════
+   Sprint 3+ — In-app updater: banner "nueva versión" (abajo de la
+   franja) + modal con novedades + overlay de "actualizando". Lo crea
+   updater.js. Theme-aware (var(--ob-*)), con prefers-reduced-motion.
+═══════════════════════════════════════════════════════════════ */
+/* Botón "Actualizar ahora" = HALO CÓNICO (C1, elegido 2026-06-19): mismo aro
+   giratorio que el chip de versión (identidad de familia) + flecha animada que
+   sube, SALE del botón y vuelve (A2 "suave", ascenso lento). El chip ES el aro
+   (padding = grosor); el contenido vive en .jw-up-in (overflow:hidden = clipea
+   la flecha al salir). Solo aparece con update. updater.js lo crea y lo ancla
+   abajo de la franja. Theme-aware (var(--ob-*)). */
+@property --jw-up-ang { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
+#jw-update-banner {
+  position: relative;
+  margin-top: auto;                 /* ancla abajo de todo en la franja flex-column */
+  margin-bottom: 4px;
+  width: 100%;
+  height: 40px;
+  padding: 1.5px;                   /* grosor del aro */
+  border: 0;
+  border-radius: 13px;
+  cursor: pointer;
+  background: conic-gradient(from var(--jw-up-ang),
+    transparent 0deg, var(--ob-accent) 80deg, var(--ob-accent-fg) 120deg, transparent 215deg, transparent 360deg);
+  /* aro que gira + glow que respira sincronizado al mismo reloj */
+  animation: jw-up-halo 3s linear infinite, jw-up-glow 3s linear infinite;
+  transition: filter 200ms ease, box-shadow 280ms ease;
+}
+#jw-update-banner[hidden] { display: none; }
+#jw-update-banner:focus-visible { outline: 2px solid var(--ob-accent); outline-offset: 2px; }
+#jw-update-banner:hover {
+  filter: brightness(1.06);
+  animation: jw-up-halo 3s linear infinite;   /* el pulso cede al glow fijo del hover */
+  box-shadow: 0 0 26px -4px var(--ob-accent-glow), 0 10px 36px -10px var(--ob-accent-glow);
+}
+#jw-update-banner:active { filter: brightness(.97); }
+@keyframes jw-up-halo { to { --jw-up-ang: 360deg; } }
+@keyframes jw-up-glow {          /* el glow acompaña cada vuelta del arco (sutil) */
+  0%, 100% { box-shadow: 0 0 10px -6px var(--ob-accent-glow); }
+  50%      { box-shadow: 0 0 20px -5px var(--ob-accent-glow); }
+}
+
+/* Banner de RENDIMIENTO (server en uvloop → cortes de tipeo). Pill plana,
+   theme-aware (tokens --ob-*), distinta del halo animado del de update. */
+#jw-loop-banner {
+  margin-top: 4px;
+  margin-bottom: 4px;
+  width: 100%;
+  border: 0;
+  padding: 0;
+  border-radius: 12px;
+  cursor: pointer;
+  background: transparent;
+}
+#jw-loop-banner[hidden] { display: none; }
+#jw-loop-banner:focus-visible { outline: 2px solid var(--ob-accent); outline-offset: 2px; }
+.jw-lb-in {
+  display: flex; align-items: center; justify-content: center; gap: 7px;
+  border-radius: 12px;
+  padding: 8px 10px;
+  font: 700 12px 'Inter', system-ui, sans-serif;
+  color: var(--ob-fg-0);
+  background: linear-gradient(180deg, var(--ob-accent-14), var(--ob-bg-2));
+  border: 1px solid var(--ob-accent-08);
+  transition: background 140ms ease;
+}
+#jw-loop-banner:hover .jw-lb-in { background: linear-gradient(180deg, var(--ob-accent-08), var(--ob-bg-2)); }
+.jw-lb-ic { font-size: 13px; line-height: 1; }
+
+/* La cara interna (clipper): recorta las dos caras que se deslizan en hover. */
+.jw-up-in {
+  position: absolute; inset: 1.5px; overflow: hidden;
+  border-radius: 11.5px;
+  background: linear-gradient(180deg, var(--ob-accent-14), transparent 60%), var(--ob-bg-2);
+  transition: background 140ms ease;
+}
+#jw-update-banner:hover .jw-up-in { background: linear-gradient(180deg, var(--ob-accent-24), transparent 60%), var(--ob-bg-2); }
+/* Dos caras superpuestas: idle (marca + CTA) ⇄ hover (salto de versión), giro lento. */
+.jw-up-face {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 8px;
+  font-family: 'Inter', system-ui, sans-serif;
+  transition: transform .55s cubic-bezier(.22,1,.36,1), opacity .55s cubic-bezier(.22,1,.36,1);
+}
+.jw-up-face b { font: 700 12.5px 'Inter', system-ui, sans-serif; color: var(--ob-fg-0); letter-spacing: .01em; }
+.jw-up-hover { transform: translateY(110%); opacity: 0; }
+.jw-up-hover b { font: 600 11px 'JetBrains Mono', ui-monospace, monospace; letter-spacing: 0; font-variant-numeric: tabular-nums; }
+.jw-up-hover b s { text-decoration: none; color: var(--ob-fg-3); }
+#jw-update-banner:hover .jw-up-idle, #jw-update-banner:focus-visible .jw-up-idle { transform: translateY(-110%); opacity: 0; }
+#jw-update-banner:hover .jw-up-hover, #jw-update-banner:focus-visible .jw-up-hover { transform: none; opacity: 1; }
+/* La marca Jarvis SE PLOTEA: la cinta se dibuja y la chispa estalla en la cúspide. */
+.jw-up-mark { width: 16px; height: 16px; display: block; color: var(--ob-accent-fg); }
+.jw-up-trazo { stroke-dasharray: 100 100; stroke-dashoffset: 100; animation: jw-up-draw 3.4s cubic-bezier(.65,0,.35,1) infinite; }
+@keyframes jw-up-draw {
+  0%, 8%    { stroke-dashoffset: 100; opacity: 1; }
+  46%       { stroke-dashoffset: 0;   opacity: 1; }
+  82%       { stroke-dashoffset: 0;   opacity: 1; }
+  94%, 100% { stroke-dashoffset: 0;   opacity: 0; }
+}
+.jw-up-chispa { transform-box: fill-box; transform-origin: center; animation: jw-up-pop 3.4s cubic-bezier(.22,1,.36,1) infinite; }
+@keyframes jw-up-pop {
+  0%, 40%   { transform: scale(0);    opacity: 0; }
+  50%       { transform: scale(1.45); opacity: 1; }
+  58%       { transform: scale(1); }
+  82%       { transform: scale(1);    opacity: 1; }
+  94%, 100% { transform: scale(1);    opacity: 0; }
+}
+/* Riel: el botón de update se vuelve un cuadrado (solo la marca ploteándose). */
+body.jw-rail #jw-update-banner { width: 40px; height: 40px; margin-left: auto; margin-right: auto; border-radius: 12px; }
+body.jw-rail .jw-up-idle b { display: none; }
+body.jw-rail .jw-up-hover { display: none; }
+
+/* ── Tooltip flotante del riel (fixed → nunca lo recorta la franja) ── */
+.jw-railtip {
+  position: fixed; z-index: var(--z-tooltip, 900); pointer-events: none;
+  transform: translate(-4px, -50%); opacity: 0;
+  background: var(--ob-bg-3); border: 1px solid var(--ob-line-2); border-radius: 7px;
+  padding: 4px 10px; font: 500 11px 'Inter', system-ui, sans-serif; color: var(--ob-fg-0);
+  white-space: nowrap; box-shadow: 0 8px 24px -8px oklch(0% 0 0 / .6);
+  transition: opacity 140ms cubic-bezier(.22,1,.36,1), transform 140ms cubic-bezier(.22,1,.36,1);
+}
+.jw-railtip.on { opacity: 1; transform: translate(0, -50%); }
+
+@media (prefers-reduced-motion: reduce) {
+  #jw-update-banner { animation: none; background: conic-gradient(from 120deg, transparent, var(--ob-accent) 90deg, transparent 210deg); }
+  .jw-up-trazo, .jw-up-chispa { animation: none; }
+  .jw-up-trazo { stroke-dashoffset: 0; }
+  .jw-up-chispa { opacity: 1; }
+}
+
+/* Overlay + card del modal */
+.jw-up-overlay {
+  position: fixed; inset: 0; z-index: 950;
+  display: flex; align-items: center; justify-content: center;
+  background: color-mix(in oklch, var(--ob-bg-0) 62%, transparent);
+  backdrop-filter: blur(4px);
+  animation: jw-up-fade 160ms ease;
+}
+.jw-up-card {
+  position: relative;
+  width: min(440px, calc(var(--jw-vw, 100vw) * .92));
+  max-height: calc(var(--jw-vh, 100vh) * .84); overflow: auto;
+  background:
+    radial-gradient(420px 150px at 50% -40%, var(--ob-accent-14), transparent 70%),
+    linear-gradient(180deg, var(--ob-bg-2), var(--ob-bg-1) 38%);
+  border: 1px solid var(--ob-line-1);
+  border-radius: 20px;
+  box-shadow: 0 40px 90px -28px rgba(0,0,0,.6), 0 0 0 1px var(--ob-accent-14);
+  padding: 24px 24px 20px;
+  font-family: 'Inter', system-ui, sans-serif;
+  color: var(--ob-fg-1);
+  text-align: left;
+  animation: jw-up-rise 360ms cubic-bezier(.2,.8,.2,1) both;
+}
+.jw-up-card::before {                /* hairline de luz en el borde superior */
+  content: ""; position: absolute; top: 0; left: 24px; right: 24px; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--ob-accent-glow), transparent);
+}
+.jw-up-card.actualizando { text-align: center; }
+.jw-up-card.actualizando::before { display: none; }
+
+/* Header: medallón + eyebrow/título + badge de versión */
+.jw-up-head-row { display: flex; align-items: center; gap: 13px; margin-bottom: 14px; }
+.jw-up-medal {
+  width: 44px; height: 44px; flex-shrink: 0; border-radius: 13px;
+  display: grid; place-items: center; font-size: 21px;
+  background: radial-gradient(120% 120% at 30% 20%, var(--ob-accent-24), var(--ob-accent-08));
+  border: 1px solid var(--ob-accent-24);
+  box-shadow: 0 6px 18px -8px var(--ob-accent-glow), inset 0 1px 0 color-mix(in oklch, #fff 14%, transparent);
+}
+.jw-up-meta { flex: 1; min-width: 0; }
+.jw-up-eyebrow { font-size: 9.5px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--ob-accent-fg); margin-bottom: 3px; }
+.jw-up-title { font-size: 19px; font-weight: 800; color: var(--ob-fg-0); letter-spacing: -.02em; line-height: 1; }
+.jw-up-badge {
+  align-self: flex-start; font-size: 11px; font-weight: 800; color: var(--ob-accent-fg);
+  background: var(--ob-accent-14); border: 1px solid var(--ob-accent-24);
+  padding: 3px 10px; border-radius: var(--radius-pill); font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.jw-up-head { font-size: 16px; font-weight: 700; color: var(--ob-fg-0); margin-bottom: 6px; }
+.jw-up-sub  {
+  font-size: 12px; color: var(--ob-fg-3); line-height: 1.5; margin: 0;
+  padding-bottom: 15px; border-bottom: 1px solid color-mix(in oklch, var(--ob-line-1) 70%, transparent);
+}
+.jw-up-card.actualizando .jw-up-sub { border-bottom: 0; padding-bottom: 0; }
+
+/* Novedades agrupadas por área */
+.jw-up-cats { margin: 15px 0 2px; }
+.jw-up-cat { display: grid; grid-template-columns: 34px 1fr; gap: 13px; padding: 9px 0; }
+.jw-up-cat + .jw-up-cat { border-top: 1px solid color-mix(in oklch, var(--ob-line-1) 45%, transparent); }
+.jw-up-cat-ic {
+  width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; font-size: 16px;
+  background: var(--ob-accent-08); border: 1px solid var(--ob-accent-14);
+}
+.jw-up-cat-name { font-size: 10.5px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--ob-fg-2); margin: 2px 0 6px; }
+.jw-up-cat ul { list-style: none; margin: 0; padding: 0; }
+.jw-up-cat li { position: relative; font-size: 13px; color: var(--ob-fg-1); line-height: 1.5; padding-left: 16px; margin: 5px 0; }
+.jw-up-cat li::before {
+  content: ""; position: absolute; left: 1px; top: 8px; width: 5px; height: 5px; border-radius: 50%;
+  background: var(--ob-accent); box-shadow: 0 0 8px var(--ob-accent-glow);
+}
+.jw-up-empty { font-size: 13px; color: var(--ob-fg-2); line-height: 1.5; margin: 14px 0 0; }
+.jw-up-err {                          /* cola del traceback cuando el canary rechaza */
+  margin: 12px 0 0; padding: 10px 12px; max-height: 180px; overflow: auto;
+  font: 11px/1.6 ui-monospace, 'Cascadia Code', monospace;
+  color: var(--ob-err); background: var(--ob-bg-3);
+  border: 1px solid var(--ob-line-1); border-radius: 9px;
+  white-space: pre-wrap; word-break: break-word; text-align: left;
+}
+
+.jw-up-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+/* Caída del server: aviso NO-bloqueante (nadie lo pidió, así que no puede
+   secuestrar la pantalla). El fondo deja pasar el mouse y no oscurece nada;
+   la card queda flotando abajo del centro de la barra, compacta. El botón de
+   escape "Seguir usando Jarvis" se eliminó: sin secuestro no hace falta salida. */
+.jw-up-overlay.jw-up-caida {
+  pointer-events: none;
+  background: transparent;
+  backdrop-filter: none;
+  align-items: flex-start;
+  padding-top: 58px;
+}
+.jw-up-caida .jw-up-card {
+  pointer-events: auto;
+  width: min(340px, calc(var(--jw-vw, 100vw) * .86));
+  padding: 14px 20px 13px;
+  box-shadow: 0 22px 55px -22px rgba(0,0,0,.55), 0 0 0 1px var(--ob-accent-14);
+}
+.jw-up-caida .jw-up-head { font-size: 14px; }
+.jw-up-btn-ghost, .jw-up-btn-go {
+  padding: 11px 17px; border-radius: 11px; font: 750 13px 'Inter', system-ui, sans-serif;
+  cursor: pointer; border: 1px solid transparent; transition: background 120ms ease, filter 120ms ease, transform 120ms ease;
+}
+.jw-up-btn-ghost { background: transparent; color: var(--ob-fg-2); border-color: var(--ob-line-1); }
+.jw-up-btn-ghost:hover { background: var(--ob-bg-3); color: var(--ob-fg-0); }
+.jw-up-btn-go {
+  color: var(--ob-accent-fg, #fff);
+  background: linear-gradient(180deg, var(--ob-accent), var(--ob-accent-dim));
+  box-shadow: 0 10px 26px -10px var(--ob-accent-glow), inset 0 1px 0 color-mix(in oklch, #fff 22%, transparent);
+}
+.jw-up-btn-go:hover { filter: brightness(1.07); transform: translateY(-1px); }
+
+/* Spinner del estado "actualizando" */
+.jw-up-spinner {
+  width: 34px; height: 34px; margin: 4px auto 14px;
+  border-radius: 50%;
+  border: 3px solid var(--ob-accent-24);
+  border-top-color: var(--ob-accent);
+  animation: jw-up-spin 0.8s linear infinite;
+}
+@keyframes jw-up-spin { to { transform: rotate(360deg); } }
+@keyframes jw-up-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes jw-up-rise { from { opacity: 0; transform: translateY(10px) scale(.985); } to { opacity: 1; transform: none; } }
+
+/* ── Mini-terminales del overlay post-reload ("Reconectando las terminales…") ──
+   Un tile por attach; se van ENCENDIENDO con el progreso real de la cola
+   (attach-queue): pendiente (tenue) → .run conectando (pulso de acento, el
+   lenguaje "trabajando" del producto) → .on lista (encendida). El ::before es
+   la barrita de título del mini-terminal. Tokens --ob-* (jamás hex). */
+.jw-up-terms {
+  display: flex; justify-content: center; flex-wrap: wrap;
+  gap: 7px; margin: 12px auto 2px; min-height: 18px;
+}
+.jw-up-terms .jw-t {
+  width: 26px; height: 18px; border-radius: 5px;
+  position: relative;
+  border: 1px solid var(--ob-line-1);
+  background: color-mix(in oklch, var(--ob-bg-2) 70%, transparent);
+  transition: background .3s cubic-bezier(.19,1,.22,1), border-color .3s ease-out,
+              box-shadow .3s ease-out;
+}
+.jw-up-terms .jw-t::before {
+  content: ""; position: absolute; top: 3px; left: 4px; right: 4px; height: 2px;
+  border-radius: 1px; background: var(--ob-line-1);
+  transition: background .3s ease-out;
+}
+.jw-up-terms .jw-t.run {
+  border-color: var(--ob-accent-24);
+  animation: jw-t-pulso 1.1s ease-in-out infinite alternate;
+}
+.jw-up-terms .jw-t.run::before { background: var(--ob-accent-fg); }
+.jw-up-terms .jw-t.on {
+  background: var(--ob-accent-14);
+  border-color: var(--ob-accent-24);
+  box-shadow: 0 0 12px -4px var(--ob-accent-glow);
+}
+.jw-up-terms .jw-t.on::before { background: var(--ob-accent-fg); }
+@keyframes jw-t-pulso {
+  from { box-shadow: 0 0 0 0 transparent; }
+  to   { box-shadow: 0 0 14px -2px var(--ob-accent-glow); }
+}
+.jw-up-terms-n { font-variant-numeric: tabular-nums; color: var(--ob-fg-3); }
+
+@media (prefers-reduced-motion: reduce) {
+  .jw-up-overlay { animation: none; }
+  .jw-up-card    { animation: none; }
+  .jw-up-spinner { animation: none; border-top-color: var(--ob-accent); }
+  /* los estados de los mini-terminales siguen cambiando (info real): sin pulso ni transición */
+  .jw-up-terms .jw-t { transition: none; animation: none; }
+  .jw-up-terms .jw-t.run { animation: none; box-shadow: 0 0 10px -4px var(--ob-accent-glow); }
+}

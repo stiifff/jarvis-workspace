@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+# JARVIS CLI — `jarvis .` desde cualquier carpeta: registra el proyecto
+# (si no existe) y abre el workspace en el browser.
+#
+# Instalación (una vez):
+#   sudo ln -sf "$(pwd)/bin/jarvis" /usr/local/bin/jarvis
+#   # o agregá <repo>/bin al PATH en tu .bashrc
+set -euo pipefail
+
+JARVIS_URL="${JARVIS_URL:-http://localhost:3000}"
+
+# ── Carpeta objetivo (default: cwd) ──────────────────────────────────
+RUTA="$(realpath "${1:-.}")"
+NOMBRE="$(basename "$RUTA")"
+
+# ── Token (mismo archivo que usa el server) ──────────────────────────
+SCRIPT_DIR="$(cd "$(dirname "$(realpath "${BASH_SOURCE[0]}")")" && pwd)"
+TOKEN_FILE="$SCRIPT_DIR/../data/jarvis_token.txt"
+if [[ ! -f "$TOKEN_FILE" ]]; then
+  echo "✗ No encuentro el token ($TOKEN_FILE). ¿El server corrió al menos una vez?" >&2
+  exit 1
+fi
+TOKEN="$(cat "$TOKEN_FILE")"
+AUTH=(-H "Cookie: jarvis_token=$TOKEN")
+
+# ── Server vivo? ─────────────────────────────────────────────────────
+if ! curl -s -o /dev/null --max-time 3 "$JARVIS_URL/"; then
+  echo "✗ Jarvis no responde en $JARVIS_URL — arrancalo primero." >&2
+  exit 1
+fi
+
+# ── Buscar el proyecto por ruta; crearlo si no existe ────────────────
+ID="$(curl -s "${AUTH[@]}" "$JARVIS_URL/api/projects" \
+  | python3 -c "
+import json, sys
+ruta = '''$RUTA'''
+for p in json.load(sys.stdin):
+    r = p['ruta'].rstrip('/')
+    if r == ruta or ruta.startswith(r + '/'):
+        print(p['id']); break
+")"
+
+if [[ -z "$ID" ]]; then
+  echo "→ Registrando workspace nuevo: $NOMBRE ($RUTA)"
+  ID="$(curl -s "${AUTH[@]}" -X POST "$JARVIS_URL/api/projects" \
+    -H 'Content-Type: application/json' \
+    -d "{\"nombre\": \"$NOMBRE\", \"ruta\": \"$RUTA\"}" \
+    | python3 -c "import json,sys; print(json.load(sys.stdin)['id'])")"
+fi
+
+URL="$JARVIS_URL/workspace?id=$ID"
+echo "✓ Workspace #$ID — $URL"
+
+# ── Abrir el browser (WSL → Windows; Linux nativo como fallback) ─────
+if command -v wslview >/dev/null 2>&1; then
+  wslview "$URL"
+elif command -v cmd.exe >/dev/null 2>&1; then
+  cmd.exe /c start "$URL" 2>/dev/null
+elif command -v xdg-open >/dev/null 2>&1; then
+  xdg-open "$URL"
+else
+  echo "  (abrilo a mano — no encontré un opener de browser)"
+fi

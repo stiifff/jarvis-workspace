@@ -1,0 +1,80 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+venv/
+.venv/
+
+# Entorno / secretos
+.env
+plotspace/.env
+backend/.env
+
+# Estado local de la app — data/ ENTERA (DB + WAL, token, perfil del browser
+# remoto, adjuntos de Jarvis AI, scrollbacks de terminales, config de Telegram).
+# Nada de acá se versiona: ya hubo un incidente de token commiteado
+# (ver .jarvis/memory/incidente-token-en-git.md — rotar PRIMERO si pasa).
+data/
+jarvis.db
+
+# Artefacto per-proyecto generado por jarvis (logs de terminales + STATE.md)
+.workspace/
+
+# Estado en vivo de agentes (efímero, lo regenera agent_live)
+.jarvis/LIVE.md
+# Chatter de coordinación entre agentes + docs de handoff internos (no público)
+.jarvis/MAILBOX.md
+.jarvis/MAILBOX-archivo.md
+.jarvis/design-elevaciones.md
+# Diario local del enjambre (cada clone tiene el suyo; no se versiona)
+.jarvis/memory/*.md
+
+# Config LOCAL del CLI: tiene rutas de la máquina de cada uno.
+.claude/settings.local.json
+
+# OS / editor
+.DS_Store
+Thumbs.db
+
+# Visual companion (brainstorming)
+.superpowers/
+
+# Labs / scratch — no son el producto
+frontend/complot-*/
+frontend/preview-*/
+frontend/*-studio/
+frontend/*-redesign/
+frontend/radio-studio/
+frontend/radio-sintonia/
+
+# Artefactos de análisis estático / review (output de herramientas, no se versiona)
+static_analysis_semgrep_*/
+.full-review/
+
+# Nota de brainstorming local (no es parte del producto)
+frase.txt
+.pytest_cache/
+
+# Rust (shell de escritorio)
+desktop/core/target/
+desktop/src-tauri/target/
+desktop/termhost/target/
+# El bundle del instalador: lo arma packaging/armar_bundle.py en cada build.
+desktop/src-tauri/motor/*
+!desktop/src-tauri/motor/LEEME.md
+dist/bundle/
+desktop/src-tauri/gen/
+
+# Salida de build del shell de escritorio y
+# capturas de QA (480 PNGs, 212 MB). Nunca se versionaron, pero al no estar
+# ignoradas se las comía `git add -A` — y eso MATÓ el paracaídas del WIP
+# (core/wip_snapshots.py): su snapshot cada 30 min pasó a tardar ~60s de CPU
+# contra un timeout de 120s, y con el box cargado lo reventaba en silencio.
+# Cinco días sin una sola foto del árbol sucio, y 1.1 GB de .git hasheando
+# instaladores. Ver la memoria del deep work de coordinación del enjambre.
+desktop/dist/
+.jarvis/qa-shots/
+server.pid
+.jarvis/mailbox-pendientes.json
+.jarvis/jv
+desktop/engine/target/

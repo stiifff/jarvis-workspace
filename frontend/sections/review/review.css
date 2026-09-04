@@ -1,0 +1,140 @@
+/* ═══════════════════════════════════════════════════════════════
+   SECTION — Review Room (diff visual + decisión de ship)
+   Prefijo: rv-  ·  tokens --ob-* (shared/tokens.css)
+═══════════════════════════════════════════════════════════════ */
+
+/* .rv-overlay — removido en Task 26: el dock controla la visibilidad del pane */
+
+.rv-modal {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  border-radius: 0;
+  background: var(--ob-bg-1);
+  overflow: hidden;
+  container-type: inline-size;   /* el dock cambia de ancho → media queries por contenedor */
+}
+
+/* Dock angosto (~320px default): la lista de 290px ahogaba al diff (~30px, 1 char
+   por línea). Apilamos: archivos arriba (acordeón con scroll) y diff a todo el ancho. */
+@container (max-width: 540px) {
+  .rv-body { flex-direction: column; }
+  .rv-archivos {
+    width: auto; flex-shrink: 0; max-height: 38%;
+    border-right: none; border-bottom: 1px solid var(--ob-line-1);
+  }
+}
+
+/* ── Topbar ── */
+.rv-top {
+  display: flex; align-items: center; gap: 10px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--ob-line-1);
+  flex-shrink: 0;
+}
+.rv-titulo { font: italic 400 var(--text-xl) var(--font-display); color: var(--ob-fg-0); }
+.rv-branch {
+  font: 500 var(--text-2xs) var(--font-mono);
+  letter-spacing: var(--ls-wide);
+  color: var(--ob-fg-3);
+}
+.rv-branch b { color: var(--ob-accent-fg); font-weight: 600; }
+.rv-spacer { flex: 1; }
+.rv-refresh {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px;
+  background: none; border: 1px solid var(--ob-line-1); border-radius: var(--radius-sm);
+  color: var(--ob-fg-2); cursor: pointer;
+  transition: color var(--dur-1), border-color var(--dur-1), background var(--dur-1);
+}
+.rv-refresh:hover { color: var(--ob-fg-0); border-color: var(--ob-line-3); background: var(--ob-bg-3); }
+
+/* ── Cuerpo ── */
+.rv-body { flex: 1; display: flex; min-height: 0; }
+
+.rv-archivos {
+  width: 290px; flex-shrink: 0;
+  border-right: 1px solid var(--ob-line-1);
+  overflow-y: auto;
+  padding: 8px;
+  display: flex; flex-direction: column; gap: 3px;
+}
+.rv-archivo {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 9px;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  text-align: left;
+  transition: background var(--dur-1) var(--ease-out);
+  animation: ob-pop-in var(--dur-2) var(--ease-out) calc(var(--i, 0) * 15ms) both;
+}
+.rv-archivo:hover  { background: var(--ob-bg-3); }
+.rv-archivo.activo { background: var(--ob-accent-08); border-color: var(--ob-accent-14); }
+.rv-estado {
+  width: 16px; height: 16px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 4px;
+  font: 700 9px var(--font-mono);
+  flex-shrink: 0;
+}
+.rv-estado.M { color: var(--ob-work); background: var(--ob-work-08); }
+.rv-estado.A { color: var(--ob-run);  background: var(--ob-run-08); }
+.rv-estado.D { color: var(--ob-err);  background: var(--ob-err-08); }
+.rv-estado.R { color: var(--ob-info); background: color-mix(in oklch, var(--ob-info) 10%, transparent); }
+.rv-path {
+  flex: 1; min-width: 0;
+  font: 400 var(--text-xs) var(--font-mono);
+  color: var(--ob-fg-1);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  direction: rtl; text-align: left; /* recorta el inicio, no el archivo */
+}
+.rv-stat { font: 500 var(--text-2xs) var(--font-mono); flex-shrink: 0; }
+.rv-stat .mas   { color: var(--ob-run); }
+.rv-stat .menos { color: var(--ob-err); }
+
+.rv-vacio {
+  margin: auto;
+  text-align: center;
+  color: var(--ob-fg-3);
+  font: 400 var(--text-base) var(--font-ui);
+  line-height: var(--lh-base);
+}
+.rv-vacio svg { color: var(--ob-run); margin-bottom: 8px; }
+
+/* ── Diff ── */
+.rv-diff {
+  flex: 1; min-width: 0;
+  overflow: auto;
+  font: 400 var(--text-sm)/1.5 var(--font-mono);
+  padding: 10px 0 30px;
+  background: var(--ob-bg-void);
+}
+.rv-linea {
+  padding: 0 14px;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+.rv-linea.add  { background: color-mix(in oklch, var(--ob-run) 9%,  transparent); color: color-mix(in oklch, var(--ob-run) 70%, var(--ob-fg-1)); }
+.rv-linea.del  { background: color-mix(in oklch, var(--ob-err) 9%,  transparent); color: color-mix(in oklch, var(--ob-err) 70%, var(--ob-fg-1)); }
+.rv-linea.hunk {
+  color: var(--ob-info);
+  background: color-mix(in oklch, var(--ob-info) 6%, transparent);
+  padding-top: 2px; padding-bottom: 2px;
+}
+.rv-linea.meta { color: var(--ob-fg-4); }
+.rv-file-head {
+  position: sticky; top: 0;
+  display: flex; align-items: center; gap: 8px;
+  margin-top: 14px;
+  padding: 7px 14px;
+  background: color-mix(in oklch, var(--ob-bg-1) 92%, var(--ob-accent));
+  border-top: 1px solid var(--ob-line-1);
+  border-bottom: 1px solid var(--ob-line-1);
+  font: 600 var(--text-xs) var(--font-mono);
+  color: var(--ob-fg-0);
+}
+.rv-file-head svg { color: var(--ob-fg-3); flex-shrink: 0; }
+.rv-contexto { color: var(--ob-fg-2); }
