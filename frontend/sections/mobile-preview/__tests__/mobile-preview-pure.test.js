@@ -4,6 +4,7 @@
 const assert = require('assert');
 const {
   dimsOrientadas, escalaFrame, transformFrame, debeAutoAbrir, debeAutoAgregarTelefono,
+  lienzoMuestraVacio, viewportListo,
   clampZoom, fitAll, zoomAt, transformBoard, webNueva, normalizarUrlWeb, webSaneada,
   urlSamplerVuelta, notaNueva, notaSaneada, tituloNota,
 } = require('../mobile-preview-pure.js');
@@ -106,6 +107,22 @@ assert.strictEqual(debeAutoAgregarTelefono(0, true), false);
 assert.strictEqual(debeAutoAgregarTelefono(1, false), false);
 assert.strictEqual(debeAutoAgregarTelefono(3, true), false);
 console.log('debeAutoAgregarTelefono: OK');
+
+// ── lienzoMuestraVacio: el empty NO tapa teléfonos agregados sin Metro ──
+assert.strictEqual(lienzoMuestraVacio(0, 0, 0, false), true, 'lienzo virgen sin app → empty');
+assert.strictEqual(lienzoMuestraVacio(1, 0, 0, false), false, 'un teléfono a mano, sin Metro → se ve el teléfono');
+assert.strictEqual(lienzoMuestraVacio(4, 0, 0, false), false, '4 teléfonos fantasma no: ya están en el board');
+assert.strictEqual(lienzoMuestraVacio(0, 1, 0, false), false, 'una card web ocupa el lienzo');
+assert.strictEqual(lienzoMuestraVacio(0, 0, 1, false), false, 'una nota ocupa el lienzo');
+assert.strictEqual(lienzoMuestraVacio(0, 0, 0, true), false, 'app detectada, 0 teléfonos → empty off (lienzo vivo)');
+console.log('lienzoMuestraVacio: OK');
+
+// ── viewportListo: no encuadrar con el stage en 0×0 (dock hidden / max) ──
+assert.strictEqual(viewportListo(0, 0), false);
+assert.strictEqual(viewportListo(1, 800), false, 'ancho degenerado');
+assert.strictEqual(viewportListo(800, 0), false);
+assert.strictEqual(viewportListo(320, 240), true);
+console.log('viewportListo: OK');
 
 // ── clampZoom: rango [min,max], nunca ≤0 ──
 assert.strictEqual(clampZoom(1), 1);

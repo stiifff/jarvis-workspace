@@ -65,6 +65,20 @@
     return numTelefonos === 0 && !sinTelefono;
   }
 
+  // Overlay "Esperando la señal" SOLO si el lienzo está de verdad vacío.
+  // Un teléfono agregado a mano (aunque Metro aún no corra) tiene que verse:
+  // si el empty tapa el board, el usuario suma 4 fantasma y ve "Máximo 4".
+  function lienzoMuestraVacio(numTelefonos, numWebs, numNotas, hayApp) {
+    return !hayApp && !(numTelefonos > 0) && !(numWebs > 0) && !(numNotas > 0);
+  }
+
+  // getBoundingClientRect del stage puede ser 0 mientras el dock está hidden
+  // o acaba de maximizar. Encuadrar con vw/vh 0 deja zoom/pan identidad y el
+  // teléfono nace en (0,0) — esquina, invisible en un lienzo enorme.
+  function viewportListo(vw, vh) {
+    return vw > 2 && vh > 2;
+  }
+
   // (chromeFrame se ELIMINÓ: encogía el iframe al "área segura", que es lo
   // CONTRARIO al device real — las apps son edge-to-edge y el hardware las
   // tapa por encima. La geometría real vive en device-catalog.js y el panel
@@ -176,7 +190,7 @@
     return 'translate(' + (panX || 0) + 'px, ' + (panY || 0) + 'px) scale(' + (zoom || 1) + ')';
   }
 
-  // ── Cards de NAVEGADOR en el lienzo (browse nativo) ────────────
+  // ── Cards de NAVEGADOR en el lienzo (browse nativo de Complot) ────────────
   // Una card web = { id, url, x, y, w, h } en unidades del board, conviviendo
   // con los teléfonos. Geometría default: tamaño desktop cómodo, ubicada a la
   // derecha del elemento existente más a la derecha (phones y webs por igual).
@@ -305,6 +319,8 @@
     esGradienteSeguro: esGradienteSeguro,
     debeAutoAbrir: debeAutoAbrir,
     debeAutoAgregarTelefono: debeAutoAgregarTelefono,
+    lienzoMuestraVacio: lienzoMuestraVacio,
+    viewportListo: viewportListo,
     clampZoom: clampZoom,
     fitAll: fitAll,
     zoomAt: zoomAt,

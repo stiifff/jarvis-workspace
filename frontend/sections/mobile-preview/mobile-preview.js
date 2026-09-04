@@ -38,6 +38,9 @@
   const _logs = [];            // buffer de la consola de actividad
   const B = { zoom: 1, panX: 0, panY: 0 };
   const S = { phones: [], sel: null, webs: [], notas: [], guias: false, encaje: true };
+  // Encuadrar se pidió con el stage en 0×0 (dock hidden / acaba de maximizar):
+  // el ResizeObserver lo reintenta cuando el panel tenga tamaño real.
+  let _fitAlVer = false;
   // Notas SECRETAS destapadas en esta sesión (ids). A propósito NO se persiste:
   // recargar la página vuelve a taparlas.
   const _notasAbiertas = new Set();
@@ -244,6 +247,9 @@
     $('mps-addweb').addEventListener('click', () => _addWeb());
     $('mps-addnote').addEventListener('click', () => _addNota());
     $('mps-fit').addEventListener('click', _fit);
+    if (stage && typeof ResizeObserver !== 'undefined') {
+      new ResizeObserver(() => { if (_fitAlVer) _fit(); }).observe(stage);
+    }
     $('mps-zin').addEventListener('click', () => _zoomStep(1.2));
     $('mps-zout').addEventListener('click', () => _zoomStep(1 / 1.2));
     $('mps-zval').addEventListener('click', () => { B.zoom = 1; _applyBoard(); });
@@ -338,9 +344,15 @@
   function _fit() {
     const stage = $('mps-stage'); if (!stage) return;
     const r = stage.getBoundingClientRect();
+    if (!P().viewportListo(r.width, r.height)) {
+      _fitAlVer = true;
+      return;
+    }
+    _fitAlVer = false;
     const boxes = S.phones.map((p) => { const o = _outer(p); return { x: p.x, y: p.y, w: o.w, h: o.h }; })
       .concat(S.webs.map((w) => ({ x: w.x, y: w.y, w: w.w, h: w.h })))
       .concat(S.notas.map((n) => ({ x: n.x, y: n.y, w: n.w, h: n.h })));
+    if (!boxes.length) return;
     const f = P().fitAll(boxes, r.width, r.height, 56, 1);
     B.zoom = f.zoom; B.panX = f.panX; B.panY = f.panY; _applyBoard();
   }
@@ -370,9 +382,10 @@
     const board = $('mps-board'); if (!board) return;
     const empty = $('mps-empty');
     const hayApp = !!_url;
-    // Con cards web el lienzo YA se está usando: el empty (que tapa el board)
-    // solo aparece sin app Y sin webs.
-    if (empty) empty.style.display = (hayApp || S.webs.length || S.notas.length) ? 'none' : '';
+    // El empty tapa el board entero (z-index 12). Si el usuario ya puso un
+    // teléfono a mano (sin Metro), tiene que verse: si no, suma 4 fantasmas
+    // y solo ve "Máximo 4 teléfonos".
+    if (empty) empty.style.display = P().lienzoMuestraVacio(S.phones.length, S.webs.length, S.notas.length, hayApp) ? '' : 'none';
     // Limpieza SOLO de nodos del proyecto actual; los de otros proyectos están
     // ESTACIONADOS (pool): quedan en el DOM, ocultos, con sus iframes vivos.
     // Los ids de las notas vienen del SERVER (otra secuencia que la de phones/webs):
@@ -385,12 +398,10 @@
       if (n.dataset.pid !== pidStr) { n.hidden = true; return; }
       if (!vivos.has(n.dataset.id)) n.remove();
     });
-    // Las cards web viven aunque no haya app Expo (claude.ai/design mientras
-    // trabajás en cualquier proyecto); los teléfonos siguen atados a la app.
+    // Cards web y notas viven con o sin Metro. Los teléfonos también: sin
+    // app el marco se pinta vacío (pantalla oscura) y se llena al detectar.
     S.webs.forEach((w) => _layoutWeb(w, _ensureWeb(w)));
-    // Las notas son del PROYECTO, no de la app: viven en el lienzo con o sin Metro.
     S.notas.forEach((n) => _layoutNota(n, _ensureNota(n)));
-    if (!hayApp) return;
     S.phones.forEach((p) => _layoutPhone(p, _ensurePhone(p)));
   }
 
@@ -1543,17 +1554,20 @@
     if (P().debeAutoAgregarTelefono(S.phones.length, _sinTel())) _addPhone('ip15p');
     else if (S.phones.length && cambio) _refreshFrames(true);
     _renderPhones();
+    if (S.phones.length) _fit();
     _setConn('ok');
     const st = $('mps-step2'); if (st) st.classList.add('done');
     if (cambio) _chequearBackend();
   }
   function _estadoEspera() {
-    _url = null; S.phones = [];
+    // No borrar teléfonos que el usuario agregó: Metro todavía no está, el
+    // marco tiene que seguir en el lienzo. Solo se suelta la URL del iframe.
+    _url = null;
     _renderPhones(); _setConn('wait');
     if (_pane === 'net') _renderNet();
   }
   function _estadoNativo() {
-    _url = null; S.phones = [];
+    _url = null;
     _renderPhones(); _setConn('wait');
     const p = $('mps-empty') && $('mps-empty').querySelector('p');
     if (p) p.textContent = 'Hay un Metro corriendo, pero sin --web. Arrancalo con expo start --web para verlo acá, o escaneá el QR de Expo Go.';
