@@ -1,8 +1,7 @@
-"""Tests del comando `plotspace` (`plotspace/cli.py`).
+"""Tests del comando `jarvis` (`plotspace/cli.py`).
 
-Es la puerta de entrada para quien instala con `uvx plotspace` o
-`pipx install plotspace` — el camino más corto que existe hasta tener la app
-andando, sin instalador ni firma.
+Es la puerta de entrada para quien instala con `pipx install .` —
+el camino más corto hasta tener la app andando, sin instalador ni firma.
 
 Lo que protegen estos tests es una decisión de SEGURIDAD y una de percepción:
 el default no puede exponer a la red una app que ejecuta comandos arbitrarios,
@@ -14,6 +13,10 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from plotspace import cli
+
+
+def test_el_comando_se_llama_jarvis():
+    assert cli.construir_parser().prog == 'jarvis'
 
 
 def test_el_default_escucha_SOLO_en_la_maquina():

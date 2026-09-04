@@ -1,24 +1,63 @@
-# Instalar en macOS
+# Install on macOS
 
-Bajá `Jarvis Workspace_x.y.z_universal.dmg` de
-[Releases](https://github.com/stiifff/jarvis-workspace/releases) y arrastralo a
-Aplicaciones. Sirve igual para Intel y Apple Silicon.
+There is no DMG / notarized app yet. Install the same way as Linux: clone the
+repo, create a venv, run `jarvis` (or uvicorn). Terminals are **tmux** sessions.
 
-Si macOS dice que la app está dañada, el build no está notarizado: bajalo de un
-Release oficial, no de un artefacto de CI.
+## Native (from source)
 
-## Qué vas a necesitar además
+```bash
+# Xcode CLT if you don't have them yet (git, clang, …)
+xcode-select --install
 
-**Tus propios agentes** (Claude Code, Codex, opencode…). Al primer arranque la
-app te dice cuáles tenés y te ofrece instalar los que faltan.
+brew install python@3.12 tmux git
 
-## Shells
+git clone https://github.com/stiifff/jarvis-workspace
+cd jarvis-workspace
 
-Las terminales nacen con **tu** shell — el que tenés configurado. En el
-selector están también bash y fish si los tenés.
+python3 -m venv venv
+source venv/bin/activate
+pip install -r plotspace/requirements.txt
+pip install -e .                 # registers the `jarvis` command
 
-## Dónde queda tu cosa
+bash scripts/setup-hooks.sh      # optional: anti-secret pre-commit/pre-push
+```
+
+### Run
+
+```bash
+source venv/bin/activate
+jarvis
+# until `pip install -e .`:
+# python3 -m uvicorn plotspace.main:app --host 127.0.0.1 --port 3000 --loop asyncio
+```
+
+Open `http://127.0.0.1:3000` and paste the access token from the first-boot
+logs (also in the data dir as `jarvis_token.txt`).
+
+## What you need besides the app
+
+**Your own agent CLIs** (Claude Code, Codex, opencode, …). Link them in
+⚙ → **Cuentas** (BYOK). Jarvis does not redistribute those products.
+
+**tmux** and **git** are required.
+
+Optional: `ANTHROPIC_API_KEY` / `GROQ_API_KEY` in `plotspace/.env` for
+orchestrator-chat extras and cloud STT.
+
+## Where data lives
 
 | | |
 |---|---|
-| Datos de la app | `~/Library/Application Support/Jarvis Workspace` |
+| Default (dev checkout) | `<repo>/data` |
+| Relocated | `JARVIS_DATA_DIR` (e.g. `~/.local/share/jarvis`) |
+
+```bash
+mkdir -p ~/.local/share/jarvis
+jarvis --datos ~/.local/share/jarvis
+```
+
+## Docker (optional)
+
+Install Docker Desktop for Mac, then the same compose flow as the README /
+[`windows.md`](windows.md) Path B. First build is slow/large; full e2e build
+verification is not claimed here.

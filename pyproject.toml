@@ -3,9 +3,9 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "plotspace"
+name = "jarvis-workspace"
 version = "1.8.52"
-description = "Tu flota de agentes de código, en una app"
+description = "Jarvis Workspace — tu flota de agentes de código, en una app"
 readme = "README.md"
 requires-python = ">=3.11"
 license = { file = "LICENSE" }
@@ -23,7 +23,7 @@ classifiers = [
 ]
 
 # Lo MÍNIMO para arrancar y trabajar. Todo lo pesado va en extras: sin eso, un
-# `pip install plotspace` se baja 1,3 GB para alguien que quizá nunca use el
+# `pip install .` se baja 1,3 GB para alguien que quizá nunca use el
 # dictado local ni el browser remoto. Espejo de packaging/requirements-base.txt,
 # que es lo que viaja en el instalador.
 dependencies = [
@@ -54,7 +54,7 @@ whisper = ["faster-whisper>=1.1.0", "numpy>=1.24.0"]
 # Browser remoto del Web Preview: para los sitios que bloquean el iframe.
 # Además del paquete hay que bajar el navegador: `playwright install chromium`.
 browser = ["playwright>=1.50.0", "Pillow>=10.0.0"]
-all = ["plotspace[voice,browser]"]
+all = ["jarvis-workspace[voice,browser]"]
 
 [project.urls]
 Homepage = "https://github.com/stiifff/jarvis-workspace"
@@ -62,7 +62,6 @@ Issues = "https://github.com/stiifff/jarvis-workspace/issues"
 
 [project.scripts]
 jarvis = "plotspace.cli:main"
-plotspace = "plotspace.cli:main"
 
 [tool.setuptools]
 # El paquete se llama como el producto. `frontend/` queda como hermano y no

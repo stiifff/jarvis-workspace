@@ -1,13 +1,8 @@
-"""El comando `plotspace`: levanta el motor y abre la app.
+"""El comando `jarvis`: levanta el motor y abre la app.
 
-Es la forma en que la gente instala herramientas de desarrollo —`uvx plotspace`
-o `pipx install plotspace`— y no necesita instalador, ni firma, ni notarización.
-Para el público que ya tiene Claude Code o Codex, es el camino más corto que
-existe hasta tener la app andando.
-
-    plotspace                  # levanta y abre el browser
-    plotspace --puerto 3100    # otro puerto
-    plotspace --sin-browser    # para correrlo en un servidor
+    jarvis                  # levanta y abre el browser
+    jarvis --puerto 3100    # otro puerto
+    jarvis --sin-browser    # para correrlo en un servidor
 """
 import argparse
 import os
@@ -42,13 +37,13 @@ def _abrir_cuando_responda(url: str, espera: float = 30.0):
             return
         except (urllib.error.URLError, OSError):
             time.sleep(0.4)
-    print(f'[plotspace] el motor no respondió en {espera:.0f}s — abrilo a mano: {url}')
+    print(f'[jarvis] el motor no respondió en {espera:.0f}s — abrilo a mano: {url}')
 
 
 def construir_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
-        prog='plotspace',
-        description='Tu flota de agentes de código, en una app.')
+        prog='jarvis',
+        description='Jarvis Workspace — tu flota de agentes de código, en una app.')
     p.add_argument('--puerto', type=int, default=int(os.environ.get('JARVIS_PORT', 3000)))
     # 127.0.0.1 y NO 0.0.0.0: el default no puede exponer a toda la red local
     # una app que ejecuta comandos arbitrarios. Quien quiera entrar desde el
@@ -75,16 +70,16 @@ def main(argv=None) -> int:
     os.chdir(raiz)
 
     if args.host not in ('127.0.0.1', 'localhost', '::1'):
-        print(f'[plotspace] escuchando en {args.host}: la app queda accesible '
+        print(f'[jarvis] escuchando en {args.host}: la app queda accesible '
               'desde la red. Asegurate de que sea lo que querés.')
 
     url = f'http://{"127.0.0.1" if args.host == "0.0.0.0" else args.host}:{args.puerto}'
     if not args.sin_browser:
         threading.Thread(target=_abrir_cuando_responda, args=(url,),
-                         daemon=True, name='plotspace-browser').start()
+                         daemon=True, name='jarvis-browser').start()
 
     import uvicorn
-    print(f'[plotspace] {url}')
+    print(f'[jarvis] {url}')
     uvicorn.run(
         'plotspace.main:app', host=args.host, port=args.puerto,
         # asyncio y NO uvloop: uvloop sufre un stall periódico del event loop
