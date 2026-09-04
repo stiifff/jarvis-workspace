@@ -190,7 +190,7 @@
     return 'translate(' + (panX || 0) + 'px, ' + (panY || 0) + 'px) scale(' + (zoom || 1) + ')';
   }
 
-  // ── Cards de NAVEGADOR en el lienzo (browse nativo de Complot) ────────────
+  // ── Cards de NAVEGADOR en el lienzo (webview nativo del escritorio) ────
   // Una card web = { id, url, x, y, w, h } en unidades del board, conviviendo
   // con los teléfonos. Geometría default: tamaño desktop cómodo, ubicada a la
   // derecha del elemento existente más a la derecha (phones y webs por igual).
