@@ -39,14 +39,15 @@ REM es tmpfs y se borra en cada arranque de la distro — justo lo que uno
 REM necesita leer cuando esto falla.
 %WSL% -- true
 if errorlevel 1 (
-  echo No pude hablar con WSL. Instala Ubuntu u otra distro y reinicia.
+  echo No pude hablar con WSL. Instala una distro ^(wsl --install^) y reinicia.
   pause
   exit /b 1
 )
 
 REM Repo = JARVIS_WSL_DIR, o $HOME/jarvis-workspace adentro de la distro.
 REM Windows reenvia JARVIS_WSL_DIR al entorno de WSL si esta seteada.
-%WSL% -- bash -lc "REPO=\"${JARVIS_WSL_DIR:-$HOME/jarvis-workspace}\"; if [ ! -f \"$REPO/scripts/reiniciar-server.sh\" ]; then echo \"NO_REPO:$REPO\" >&2; exit 42; fi; cd \"$REPO\" && mkdir -p data && setsid nohup bash scripts/reiniciar-server.sh >>data/lanzador.log 2>&1 </dev/null & exit 0"
+REM (sin comillas anidadas: cmd.exe no escapa \" como bash)
+%WSL% -- bash -lc "REPO=${JARVIS_WSL_DIR:-$HOME/jarvis-workspace}; test -f $REPO/scripts/reiniciar-server.sh || exit 42; cd $REPO && mkdir -p data && setsid nohup bash scripts/reiniciar-server.sh >>data/lanzador.log 2>&1 </dev/null & exit 0"
 if errorlevel 42 goto sin_repo
 if errorlevel 1 goto fallo
 

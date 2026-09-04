@@ -862,9 +862,9 @@ class VentanaJarvis : Form
         try
         {
             // JARVIS_WSL_DIR from Windows is visible inside WSL; otherwise $HOME/jarvis-workspace.
-            Wsl("REPO=\"${JARVIS_WSL_DIR:-$HOME/jarvis-workspace}\"; " +
-                "cd \"$REPO\" && mkdir -p data && { date '+== %F %T lanzado por Jarvis.exe'; } " +
-                ">>data/lanzador.log 2>&1; cd \"$REPO\" && setsid nohup bash " +
+            Wsl("REPO=${JARVIS_WSL_DIR:-$HOME/jarvis-workspace}; " +
+                "cd $REPO && mkdir -p data && { date '+== %F %T lanzado por Jarvis.exe'; } " +
+                ">>data/lanzador.log 2>&1; cd $REPO && setsid nohup bash " +
                 "scripts/reiniciar-server.sh >>data/lanzador.log 2>&1 </dev/null & exit 0", 20000);
         }
         catch { }

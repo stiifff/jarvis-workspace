@@ -8,6 +8,10 @@
 # 2026-08-06 es que el quilombo empezó cuando la app quiso ser más que una
 # ventana.
 #
+# El exe resuelve el repo en WSL en runtime — no bakea rutas de esta máquina:
+#   $HOME/jarvis-workspace   (override: JARVIS_WSL_DIR)
+#   distro default de WSL    (override: JARVIS_WSL_DISTRO)
+#
 # Toolchain: SOLO el csc.exe que Windows trae de fábrica (.NET Framework 4)
 # + las 3 DLLs del SDK de WebView2, que se bajan de NuGet a data/ (gitignored)
 # la primera vez y quedan EMBEBIDAS en el exe — un solo archivo, sin
