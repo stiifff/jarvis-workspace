@@ -1458,5 +1458,21 @@
       "A link dissolves on its own after 30 minutes with nobody touching the shared area.",
     "borró": "deleted", "lo usa": "used by",
     "atrás": "ago", "ahora": "now",
+    "Para hablar hace falta una clave de Groq": "Voice needs a Groq API key",
+    "El dictado usa Whisper gratis en Groq. Creá una clave (sin tarjeta) y pegala acá — después podés hablarle a los agentes.":
+      "Dictation uses Groq’s free Whisper API. Create a key (no credit card) and paste it here — then you can talk to your agents.",
+    "Sacá una clave gratis de Groq": "Get a free Groq API key",
+    "Tu clave de Groq": "Your Groq API key",
+    "Guardar y seguir": "Save and continue",
+    "Eso no parece una clave de Groq (empieza con gsk_).":
+      "That doesn’t look like a Groq key (it starts with gsk_).",
+    "No se pudo guardar. Revisá la clave e intentá de nuevo.":
+      "Couldn’t save the key. Check it and try again.",
+    "Elegí la tecla para dictar": "Choose your talk key",
+    "Apretá una tecla o un botón del mouse. También podés elegir Mouse 1–4 acá.":
+      "Press a key or a mouse button. Or pick Mouse 1–4 here.",
+    "Botones del mouse": "Mouse buttons",
+    "Mouse 1 es el izquierdo, 2 el derecho, 3 el del medio, 4 el de atrás. Por defecto es Alt.":
+      "Mouse 1 is left, 2 is right, 3 is middle, 4 is back. Default is Alt.",
   });
 })();

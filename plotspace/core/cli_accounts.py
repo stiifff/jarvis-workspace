@@ -814,9 +814,30 @@ def _backfill_identidades():
         conn.close()
 
 
+def adoptar_sesiones_nativas():
+    """Si el HOME ya tiene un login y no hay perfil Jarvis que coincida, lo
+    captura. Así ⚙ → Cuentas muestra Grok (etc.) aunque nunca se tocó Conectar."""
+    adoptadas = []
+    for tipo in TIPOS:
+        if not esta_logueado(tipo):
+            continue
+        perfiles = [c for c in listar() if c["tipo"] == tipo]
+        em = email_actual(tipo)
+        if em and any(c.get("email") == em for c in perfiles):
+            continue
+        if not em and perfiles:
+            continue
+        try:
+            adoptadas.append(capturar_actual(tipo))
+        except (NoLogueado, TipoDesconocido, PerfilNoEncontrado):
+            continue
+    return adoptadas
+
+
 def estado():
     """Payload de la sección Cuentas: por cada CLI, sus cuentas guardadas + qué
     cuenta está logueada AHORA en el HOME + si esa sesión no está guardada."""
+    adoptar_sesiones_nativas()
     _backfill_identidades()
     perfiles = listar()
     por_tipo = {}

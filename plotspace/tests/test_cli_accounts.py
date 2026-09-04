@@ -391,25 +391,36 @@ def test_capturar_sin_login_falla(monkeypatch):
 
 # ── estado(): payload para la UI ────────────────────────────────────────────
 
+def test_estado_adopta_sesion_nativa_sin_conectar(monkeypatch):
+    """Grok (u otro CLI) logueado en el HOME, nunca tocado en ⚙ → Cuentas:
+    estado() lo detecta y lo guarda solo. Pedido: no hace falta pulsar Conectar."""
+    home, _ = _entorno(monkeypatch)
+    _grok_login(home, "user@example.com")
+    est = ca.estado()
+    grok = next(c for c in est["clis"] if c["tipo"] == "grok")
+    assert grok["logueado"] is True
+    assert grok["home_sin_guardar"] is False
+    assert len(grok["cuentas"]) == 1
+    assert grok["cuentas"][0]["email"] == "user@example.com"
+    assert grok["cuentas"][0]["activa"] is True
+    # segunda lectura no duplica
+    est2 = ca.estado()
+    grok2 = next(c for c in est2["clis"] if c["tipo"] == "grok")
+    assert len(grok2["cuentas"]) == 1
+
+
 def test_estado_reporta_clis_y_home_sin_guardar(monkeypatch):
     home, _ = _entorno(monkeypatch)
-    # codex logueado pero SIN perfil guardado -> home_sin_guardar = True
+    # codex logueado: estado() lo ADOPTA (ya no queda «sin guardar»)
     _escribir(os.path.join(home, ".codex", "auth.json"),
               {"tokens": {"id_token": _jwt({"email": "x@y.com"}), "account_id": "1"}})
     est = ca.estado()
     por_tipo = {c["tipo"]: c for c in est["clis"]}
     assert set(por_tipo) == set(ca.TIPOS)
     assert por_tipo["codex"]["logueado"] is True
-    assert por_tipo["codex"]["home_sin_guardar"] is True
+    assert por_tipo["codex"]["home_sin_guardar"] is False
+    assert len(por_tipo["codex"]["cuentas"]) == 1
     assert por_tipo["qwen"]["logueado"] is False
-
-    # tras capturar, deja de estar "sin guardar"
-    ca.capturar_actual("codex", "x")
-    est2 = ca.estado()
-    por_tipo2 = {c["tipo"]: c for c in est2["clis"]}
-    assert por_tipo2["codex"]["home_sin_guardar"] is False
-    assert por_tipo2["codex"]["perfil_activo_id"] is not None
-    assert len(por_tipo2["codex"]["cuentas"]) == 1
 
 
 def test_estado_sin_email_con_perfil_activo_no_avisa(monkeypatch):
@@ -422,13 +433,14 @@ def test_estado_sin_email_con_perfil_activo_no_avisa(monkeypatch):
     est = ca.estado()
     oc = next(c for c in est["clis"] if c["tipo"] == "opencode")
     assert oc["logueado"] is True
-    assert oc["home_sin_guardar"] is False        # sin NINGÚN perfil: no molestar
+    assert oc["home_sin_guardar"] is False
+    assert len(oc["cuentas"]) == 1                # sesión nativa adoptada sola
 
-    ca.capturar_actual("opencode", "Personal")
     est2 = ca.estado()
     oc2 = next(c for c in est2["clis"] if c["tipo"] == "opencode")
     assert oc2["perfil_activo_id"] is not None
-    assert oc2["home_sin_guardar"] is False       # perfil activo → HOME es suyo
+    assert oc2["home_sin_guardar"] is False
+    assert len(oc2["cuentas"]) == 1               # no duplica
 
 
 # ── auto-rotación: el switch que usa agent_watch al pegar el rate-limit ──────

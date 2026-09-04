@@ -125,6 +125,40 @@
     return (msDesdeHeal >= HEAL_RUEDA_MS) ? 'heal' : 'nada';
   }
 
+  // Destino de la rueda en CUALQUIER buffer. Grok Build (y otros TUI) corren
+  // en primary CON mouse-tracking: si interceptamos para scrollear xterm, la
+  // app nunca ve el wheel. mouseActivo manda siempre a la app; primary sin
+  // mouse sigue siendo el scrollback local (bash, tmux mouse on → copy-mode).
+  function decidirDestinoRueda({ alt, mouseActivo, wsAbierto, observador, msDesdeHeal }) {
+    if (mouseActivo) return 'app';
+    if (!alt) return 'xterm';
+    return decidirRuedaAlt({ mouseActivo: false, wsAbierto, observador, msDesdeHeal });
+  }
+
+  // Grok Build (y TUI similares) pintan en buffer NORMAL con CSI CUP + DEC 2026,
+  // SIN erase-display/erase-line y SIN alt-screen. xterm.js al resize REFLOWEA
+  // el primary: las líneas del TUI se re-wrapean y quedan fragmentos a mitad
+  // de pantalla ("tigravity)", "building today?)"). El TUI después solo escribe
+  // diffs contra SU frame virtual — no tapa esas celdas. Claude fullscreen no
+  // sufre esto (vive en alt-screen, que no reflowea; el watchdog de alt cubre
+  // el idle). Shell tampo: el reflow del historial es lo que se quiere.
+  // Ver [[tui-primary-sparse-resize]].
+  const SPARSE_SANEAR_MS = 280;
+
+  function marcarPintorTui(prev, chunk) {
+    const s = typeof chunk === 'string' ? chunk : '';
+    return {
+      vioSync2026: !!(prev && prev.vioSync2026) || s.includes('\x1b[?2026h'),
+      vioAltScreen: !!(prev && prev.vioAltScreen) || s.includes('\x1b[?1049h'),
+    };
+  }
+
+  function debeSanearSparsePrimary({ alt, vioSync2026, vioAltScreen, observador, wsAbierto }) {
+    if (observador || !wsAbierto) return false;
+    if (alt || vioAltScreen) return false;
+    return !!vioSync2026;
+  }
+
   // ── Backlog en pestaña OCULTA: descartar + seed en vez de parsear MB (2026-07-12) ──
   // Con la pestaña oculta el rAF está congelado → _flush nunca corre y _inbuf
   // acumula sin drenar (el failsafe FC_TIMEOUT=30s del backend gotea bytes
@@ -213,8 +247,9 @@
                 MARCA_SYNC_H, MARCA_SYNC_L, HEAL_RUEDA_MS,
                 MARCA_HIDE, MARCA_SHOW, CAP_BACKLOG_OCULTO,
                 crearContadorAck, decidirDrenado, lineasDeRueda,
-                decidirReintento, decidirRuedaAlt, cortarFrameSync,
-                decidirBacklogOculto };
+                decidirReintento, decidirRuedaAlt, decidirDestinoRueda,
+                SPARSE_SANEAR_MS, marcarPintorTui, debeSanearSparsePrimary,
+                cortarFrameSync, decidirBacklogOculto };
   global.TerminalFlow = Object.assign(global.TerminalFlow || {}, api);
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

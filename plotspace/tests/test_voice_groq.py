@@ -39,6 +39,46 @@ def test_plan_inferencia_groq_traduce_por_texto():
     assert voice._plan_inferencia("groq", True) == {"motor": "groq", "traducir_texto": True}
 
 
+def test_clave_parece_groq():
+    assert stt_groq.clave_parece_groq(FAKE_KEY) is True
+    assert stt_groq.clave_parece_groq("  " + FAKE_KEY + "  ") is True
+    assert stt_groq.clave_parece_groq("") is False
+    assert stt_groq.clave_parece_groq("sk-ant-falso") is False
+    assert stt_groq.clave_parece_groq("gsk_corta") is False
+
+
+def test_upsert_env_escribe_y_no_pisa_otras(tmp_path):
+    p = tmp_path / ".env"
+    p.write_text("FOO=bar\nSTT_MOTOR=parakeet\n", encoding="utf-8")
+    stt_groq.upsert_env(str(p), "GROQ_API_KEY", FAKE_KEY)
+    stt_groq.upsert_env(str(p), "STT_MOTOR", "groq")
+    txt = p.read_text(encoding="utf-8")
+    assert "FOO=bar" in txt
+    assert f"GROQ_API_KEY={FAKE_KEY}" in txt
+    assert "STT_MOTOR=groq" in txt
+    assert "STT_MOTOR=parakeet" not in txt
+    assert oct(p.stat().st_mode)[-3:] == "600"
+
+
+def test_setup_sin_key_y_guardar(monkeypatch, tmp_path):
+    monkeypatch.setenv("STT_MOTOR", "groq")
+    monkeypatch.delenv("GROQ_API_KEY", raising=False)
+    envp = tmp_path / ".env"
+    monkeypatch.setattr(stt_groq, "ruta_env_local", lambda: str(envp))
+    c = _app_client()
+    r = c.get("/api/voice/setup")
+    assert r.status_code == 200
+    assert r.json()["groq"] is False
+    bad = c.post("/api/voice/groq-key", json={"key": "no-es-gsk"})
+    assert bad.status_code == 400
+    ok = c.post("/api/voice/groq-key", json={"key": FAKE_KEY})
+    assert ok.status_code == 200, ok.text
+    assert ok.json()["groq"] is True
+    assert os.getenv("GROQ_API_KEY") == FAKE_KEY
+    assert os.getenv("STT_MOTOR") == "groq"
+    assert f"GROQ_API_KEY={FAKE_KEY}" in envp.read_text(encoding="utf-8")
+
+
 def test_groq_habilitado_exige_motor_y_key(monkeypatch):
     monkeypatch.setenv("STT_MOTOR", "groq")
     monkeypatch.setenv("GROQ_API_KEY", FAKE_KEY)

@@ -10,8 +10,13 @@ local). El free tier alcanza de sobra para dictado (7.200 s de audio/hora);
 la key vive en plotspace/.env (GROQ_API_KEY, jamás en el repo).
 """
 import os
+import re
+import stat
 
 GROQ_STT_URL = "https://api.groq.com/openai/v1/audio/transcriptions"
+GROQ_KEYS_URL = "https://console.groq.com/keys"
+
+_CLAVE_RE = re.compile(r"^gsk_[A-Za-z0-9]{20,}$")
 
 _MODELO_DEFAULT = "whisper-large-v3-turbo"
 
@@ -30,6 +35,42 @@ def modelo() -> str:
 def api_key() -> str | None:
     k = (os.getenv("GROQ_API_KEY") or "").strip()
     return k or None
+
+
+def clave_parece_groq(s: str) -> bool:
+    return bool(_CLAVE_RE.match((s or "").strip()))
+
+
+def ruta_env_local() -> str:
+    """plotspace/.env junto al paquete (gitignored)."""
+    return os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".env"))
+
+
+def upsert_env(path: str, clave: str, valor: str) -> None:
+    """Escribe o reemplaza CLAVE=valor en un .env. 0600. No toca otras líneas."""
+    linea = f"{clave}={valor}"
+    d = os.path.dirname(path)
+    if d:
+        os.makedirs(d, exist_ok=True)
+    lineas = []
+    if os.path.isfile(path):
+        with open(path, encoding="utf-8") as f:
+            lineas = f.read().splitlines()
+    out, visto = [], False
+    pref = clave + "="
+    for L in lineas:
+        s = L.strip()
+        if s.startswith(pref) or s.startswith(clave + " ="):
+            if not visto:
+                out.append(linea)
+                visto = True
+            continue
+        out.append(L)
+    if not visto:
+        out.append(linea)
+    with open(path, "w", encoding="utf-8") as f:
+        f.write("\n".join(out) + "\n")
+    os.chmod(path, stat.S_IRUSR | stat.S_IWUSR)
 
 
 def armar_form(modelo_nombre: str, prompt: str | None) -> dict:

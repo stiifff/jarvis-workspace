@@ -270,6 +270,63 @@ console.log('OK terminal-flow');
   console.log('OK decidirRuedaAlt');
 }
 
+// ══ decidirDestinoRueda: primary+mouse (Grok) vs primary sin mouse (bash) ══
+// Grok Build (y otros TUI) corren en buffer NORMAL con mouse-tracking activo.
+// El handler viejo SIEMPRE interceptaba la rueda en primary y scrolleaba el
+// scrollback de xterm → la app jamás recibía el wheel ("el scroll no afecta
+// a Grok"). Si la app pidió mouse, la rueda es de ELLA, también fuera de alt.
+{
+  const R = F.decidirDestinoRueda;
+  assert.strictEqual(typeof R, 'function', 'decidirDestinoRueda exportada');
+  const vivo = { wsAbierto: true, observador: false, msDesdeHeal: Infinity };
+  assert.strictEqual(R({ ...vivo, alt: false, mouseActivo: true }), 'app',
+    'Grok: primary + mouse → la rueda va a la app');
+  assert.strictEqual(R({ ...vivo, alt: false, mouseActivo: false }), 'xterm',
+    'bash: primary sin mouse → scrollback local de xterm');
+  assert.strictEqual(R({ ...vivo, alt: true, mouseActivo: true }), 'app',
+    'claude fullscreen: alt + mouse → app');
+  assert.strictEqual(R({ ...vivo, alt: true, mouseActivo: false }), 'heal',
+    'alt sin mouse + WS vivo → heal (seed degradado)');
+  assert.strictEqual(R({ ...vivo, alt: true, mouseActivo: false, msDesdeHeal: 500 }), 'nada',
+    'alt sin mouse recién curado → no tragar en loop');
+  assert.strictEqual(R({ ...vivo, alt: false, mouseActivo: true, observador: true }), 'app',
+    'observador con mouse activo: deja pasar (solo mira)');
+  console.log('OK decidirDestinoRueda');
+}
+
+// ══ TUI sparse en primary (Grok): sanear post-resize, no el shell ni Claude alt ══
+{
+  const M = F.marcarPintorTui;
+  const D = F.debeSanearSparsePrimary;
+  assert.strictEqual(typeof F.SPARSE_SANEAR_MS, 'number');
+  assert.ok(F.SPARSE_SANEAR_MS > 0 && F.SPARSE_SANEAR_MS < 400,
+    'cabe dentro de la cortina de resize (400ms)');
+
+  const vacio = M(null, 'hello\n');
+  assert.deepStrictEqual(vacio, { vioSync2026: false, vioAltScreen: false });
+  const grok = M(vacio, 'x\x1b[?2026h\x1b[10;1Hhi\x1b[?2026l');
+  assert.strictEqual(grok.vioSync2026, true);
+  assert.strictEqual(grok.vioAltScreen, false);
+  const grok2 = M(grok, 'more text');
+  assert.strictEqual(grok2.vioSync2026, true, 'el flag se conserva');
+  const claude = M(grok, '\x1b[?1049h');
+  assert.strictEqual(claude.vioAltScreen, true);
+
+  const vivo = { observador: false, wsAbierto: true };
+  assert.strictEqual(D({ ...vivo, alt: false, vioSync2026: true, vioAltScreen: false }), true,
+    'Grok: primary + 2026 sin alt → sanear (xterm refloweó el TUI)');
+  assert.strictEqual(D({ ...vivo, alt: false, vioSync2026: false, vioAltScreen: false }), false,
+    'bash: primary sin 2026 → el reflow del historial se queda');
+  assert.strictEqual(D({ ...vivo, alt: true, vioSync2026: true, vioAltScreen: true }), false,
+    'claude fullscreen: alt-screen, el watchdog de alt cubre');
+  assert.strictEqual(D({ ...vivo, alt: false, vioSync2026: true, vioAltScreen: true }), false,
+    'usó alt alguna vez: no es el pintor sparse de Grok');
+  assert.strictEqual(D({ ...vivo, alt: false, vioSync2026: true, vioAltScreen: false, observador: true }), false,
+    'QA observador no pide refresh');
+  assert.strictEqual(D({ ...vivo, alt: false, vioSync2026: true, vioAltScreen: false, wsAbierto: false }), false);
+  console.log('OK debeSanearSparsePrimary');
+}
+
 // ══ decidirBacklogOculto: freeze de ~10s al volver de minutos de idle ══
 // (2026-07-12) Con la pestaña OCULTA el rAF está congelado → _flush nunca corre
 // y _inbuf acumula sin drenar el goteo del failsafe FC_TIMEOUT (30s) del

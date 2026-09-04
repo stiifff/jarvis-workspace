@@ -1066,6 +1066,9 @@ async function inicializar() {
     window.JarvisReview?.init(projectId);
     window.JarvisSettings?.init(projectId);
     document.getElementById('jw-gear')?.addEventListener('click', () => window.JarvisSettings?.open());
+    window.JarvisGroqSetup?.init?.();
+    // Adopta logins nativos (Grok, etc.) aunque nunca se tocó ⚙ → Cuentas.
+    fetch('/api/cuentas', { credentials: 'same-origin' }).catch(() => {});
 
     // ?launcher=nuevo (desde la home): abrir el launcher en modo workspace
     if (new URLSearchParams(location.search).get('launcher') === 'nuevo') {
@@ -2828,6 +2831,10 @@ function _instalarLiberacionMicCicloVida() {
 }
 
 async function iniciarGrabacion() {
+  if (window.JarvisGroqSetup?.haceFaltaClave?.()) {
+    window.JarvisGroqSetup.abrir();
+    return;
+  }
   _micSoltado = false;
   _dictadoT0 = 0;        // reloj release→texto fresco: un commit sin release loguea ms=null, no horas
   _recRevividas = 0;
@@ -6139,7 +6146,7 @@ function _refrescarControlesModal() { window.JarvisControls?.onCambio?.(); }
 // tienen que seguir respondiendo al click izquierdo mientras esperamos el
 // binding. Cualquier OTRO botón del mouse se captura igual encima de ellos.
 const _SEL_BOTON_BIND = '.set-keybind, .control-keybind, .kb-k';
-const _SEL_UI_CAPTURA = '.set-keybind-reset, .control-clear, .settings-close';
+const _SEL_UI_CAPTURA = '.set-keybind-reset, .control-clear, .settings-close, .gq-btn, .gq-mouse';
 
 // cleanup() de la captura en curso, para no apilar listeners si se reabre.
 let _capturaCleanup = null;
@@ -6187,8 +6194,8 @@ function _iniciarCaptura(id) {
   const onMouse = (e) => {
     const d = window.PttCaptura?.decisionMouse({
       button: e.button,
-      enBotonBind: !!e.target.closest(_SEL_BOTON_BIND),
-      enUiCaptura: !!e.target.closest(_SEL_UI_CAPTURA),
+      enBotonBind: !!e.target?.closest?.(_SEL_BOTON_BIND),
+      enUiCaptura: !!e.target?.closest?.(_SEL_UI_CAPTURA),
     }) ?? 'bindear';
     if (d !== 'bindear') return;
     e.preventDefault();
@@ -6213,9 +6220,10 @@ function _iniciarCaptura(id) {
   };
 
   const desarmarPostMouse = () => {
-    document.removeEventListener('mouseup',   silenciarPostMouse, true);
-    document.removeEventListener('auxclick',  silenciarPostMouse, true);
-    document.removeEventListener('click',     silenciarPostMouse, true);
+    document.removeEventListener('mouseup',     silenciarPostMouse, true);
+    document.removeEventListener('auxclick',    silenciarPostMouse, true);
+    document.removeEventListener('click',       silenciarPostMouse, true);
+    document.removeEventListener('contextmenu', silenciarPostMouse, true);
   };
 
   const cleanup = () => {
@@ -6233,10 +6241,11 @@ function _iniciarCaptura(id) {
 
   document.addEventListener('keydown',   onKey,            true);
   if (aceptaMouse) {
-    document.addEventListener('mousedown', onMouse,          true);
-    document.addEventListener('mouseup',   silenciarPostMouse, true);
-    document.addEventListener('auxclick',  silenciarPostMouse, true);
-    document.addEventListener('click',     silenciarPostMouse, true);
+    document.addEventListener('mousedown',  onMouse,           true);
+    document.addEventListener('mouseup',    silenciarPostMouse, true);
+    document.addEventListener('auxclick',   silenciarPostMouse, true);
+    document.addEventListener('click',      silenciarPostMouse, true);
+    document.addEventListener('contextmenu', silenciarPostMouse, true);
   }
 
   // Timeout de la captura. Solo aplica si ESTA sigue siendo la captura viva:
@@ -6262,7 +6271,29 @@ function _detenerCaptura() {
 window.JarvisControls = {
   list:  () => CONTROLS.map(c => ({ id: c.id, label: c.label, desc: c.desc, icon: c.iconSVG, mode: c.mode })),
   label: (id) => _renderBindingLabel(_controlBindings[id]),
+  binding: (id) => {
+    const b = _controlBindings[id];
+    return b ? { type: b.type, value: b.value } : null;
+  },
   capturar: (id) => _iniciarCaptura(id),
+  setBinding: (id, binding) => {
+    if (!CONTROLS.find(x => x.id === id) || !binding || !binding.type) return;
+    if (binding.type === 'mouse' && !Number.isFinite(Number(binding.value))) return;
+    const next = binding.type === 'mouse'
+      ? { type: 'mouse', value: Number(binding.value) }
+      : { type: binding.type, value: binding.value };
+    _controlBindings[id] = next;
+    _guardarBinding(id, next);
+    // Un chip del picker elige el botón sin pasar por el mousedown de captura:
+    // hay que cortar la escucha para que el keycap deje de decir "Apretá…".
+    if (_capturaCleanup) { _capturando = false; _capturaCleanup(); }
+    _refrescarControlesModal();
+  },
+  cancelarCaptura: () => {
+    if (!_capturaCleanup) return;
+    _cancelarCaptura();
+    _capturaCleanup();
+  },
   reset: (id) => { const c = CONTROLS.find(x => x.id === id); if (c) _resetBinding(c); },
   onCambio: null,   // settings.js asigna un callback para re-renderizar la fila
 };

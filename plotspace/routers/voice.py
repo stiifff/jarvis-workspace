@@ -630,6 +630,38 @@ async def traducir_texto(req: TranslateRequest):
         raise HTTPException(status_code=502, detail="No se pudo traducir")
 
 
+class GroqKeyIn(BaseModel):
+    key: str = ""
+
+
+@router.get("/setup")
+def voice_setup():
+    """¿Hay Groq listo para dictar? Lo usa el modal de primer arranque."""
+    return {"groq": _groq_habilitado(), "motor": _stt_motor()}
+
+
+@router.post("/groq-key")
+def guardar_groq_key(body: GroqKeyIn):
+    """Guarda GROQ_API_KEY + STT_MOTOR=groq en .env y en el proceso. Sin restart."""
+    key = (body.key or "").strip()
+    if not stt_groq.clave_parece_groq(key):
+        raise HTTPException(status_code=400, detail="La clave de Groq empieza con gsk_")
+    path = stt_groq.ruta_env_local()
+    stt_groq.upsert_env(path, "GROQ_API_KEY", key)
+    stt_groq.upsert_env(path, "STT_MOTOR", "groq")
+    try:
+        from plotspace.core.datadir import ruta_data
+        extra = ruta_data(".env")
+        if os.path.abspath(extra) != os.path.abspath(path):
+            stt_groq.upsert_env(extra, "GROQ_API_KEY", key)
+            stt_groq.upsert_env(extra, "STT_MOTOR", "groq")
+    except Exception:
+        pass
+    os.environ["GROQ_API_KEY"] = key
+    os.environ["STT_MOTOR"] = "groq"
+    return {"groq": True, "motor": "groq"}
+
+
 @router.get("/welcome")
 async def bienvenida(lang: str = "es"):
     """Genera el audio de bienvenida y lo devuelve como base64.

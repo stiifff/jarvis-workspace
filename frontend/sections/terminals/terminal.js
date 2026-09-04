@@ -786,13 +786,11 @@ function crearTerminal(containerId, terminalId, tipoIa = 'manual', intentoAuto =
   });
 
   // ─── Rueda → scroll ──────────────────────────────────────────────────────
-  // Buffer principal (bash): interceptamos y scrolleamos xterm.js directo.
-  //   Sin intercept, tmux (con mouse on) recibiría el evento como mouse y
-  //   entraría en copy-mode, que no se refleja visualmente en el browser.
-  // Buffer alternativo (Claude Code fullscreen, htop): la rueda la scrollea
-  //   la APP (viaja como mouse event vía PTY/tmux). Para que rinda igual que
-  //   el buffer normal se REENVÍAN copias sintéticas del evento (xterm no
-  //   chequea isTrusted) → la app recibe FACTOR_RUEDA reportes por notch.
+  // Si la APP pidió mouse-tracking (Grok, Claude fullscreen, htop…): la rueda
+  //   viaja al PTY. En primary SIN mouse (bash): interceptamos y scrolleamos
+  //   xterm.js — si no, tmux (mouse on) entra en copy-mode invisible.
+  // En app-mode se REENVÍAN copias sintéticas (xterm no chequea isTrusted)
+  //   → FACTOR_RUEDA reportes por notch.
   //
   // VELOCIDAD (pedido del usuario 2026-07-02): sin throttle — el de 40ms
   // comía la mitad de los notches en giro rápido y TODO trackpad. Ahora los
@@ -826,36 +824,31 @@ function crearTerminal(containerId, terminalId, tipoIa = 'manual', intentoAuto =
   let _ruedaAcum = 0, _ruedaRAF = 0, _ruedaHealTs = -Infinity;
   container.addEventListener('wheel', e => {
     if (e._jarvisRuedaSint) return;               // copia sintética nuestra: dejarla llegar a xterm
-    if (term.buffer.active.type === 'alternate') {
-      // Buffer alternativo (claude fullscreen, htop, vim…): la rueda la scrollea
-      // la APP. Selección en fullscreen = la NATIVA de lo visible (arrastrar +
-      // Ctrl+C); NO hay overlay ni magia (la selección scroll+select en el lugar
-      // requiere scrollback, que el alt-screen no tiene — es el TUI default/inline).
-      // La rueda scrollea el transcript de claude a velocidad plena (se
-      // reenvían copias sintéticas para que rinda como el buffer normal).
-      // DESACOPLE del seed (2026-07-11): si el mouse-tracking de xterm quedó
-      // inactivo (seed degradado), cederle la rueda a la app es tirarla al vacío
-      // → scroll muerto hasta el próximo redraw. decidirRuedaAlt (pura, testeada)
-      // lo detecta y auto-cura: reset + refresh re-siembra con la verdad de tmux
-      // (alt-screen + modos de mouse re-enunciados). Esta rueda se sacrifica; la
-      // próxima ya viaja a la app.
-      let _mouseActivo = true;
-      try { _mouseActivo = !!term._core.coreMouseService.areMouseEventsActive; }
-      catch (_) { /* interna de xterm 5.3: si cambia, asumir activo (camino normal) */ }
-      const _dec = window.TerminalFlow?.decidirRuedaAlt?.({
-        mouseActivo: _mouseActivo,
-        wsAbierto: !!(ws && ws.readyState === WebSocket.OPEN),
-        observador: ES_OBSERVADOR,
-        msDesdeHeal: performance.now() - _ruedaHealTs,
-      }) ?? 'app';
-      if (_dec === 'heal') {
-        _ruedaHealTs = performance.now();
-        // Contrato refresh (2026-07-02): reset ANTES — el seed cae en terminal virgen.
-        try { term.reset(); } catch (_) {}
-        try { ws.send(JSON.stringify({ type: 'refresh' })); } catch (_) {}
-        return;
-      }
-      if (_dec === 'nada') return;
+    // Destino: si la APP pidió mouse-tracking, la rueda es de ella — también
+    // en buffer NORMAL (Grok Build y otros TUI no usan alt-screen). Antes se
+    // interceptaba SIEMPRE en primary y se scrolleaba xterm → Grok no veía
+    // el wheel. Ver decidirDestinoRueda. Alt sin mouse sigue el heal de
+    // seed degradado; primary sin mouse = scrollback local (bash).
+    const _alt = term.buffer.active.type === 'alternate';
+    let _mouseActivo = true;
+    try { _mouseActivo = !!term._core.coreMouseService.areMouseEventsActive; }
+    catch (_) { /* interna de xterm 5.3: si cambia, asumir activo (camino normal) */ }
+    const _dec = window.TerminalFlow?.decidirDestinoRueda?.({
+      alt: _alt,
+      mouseActivo: _mouseActivo,
+      wsAbierto: !!(ws && ws.readyState === WebSocket.OPEN),
+      observador: ES_OBSERVADOR,
+      msDesdeHeal: performance.now() - _ruedaHealTs,
+    }) ?? (_alt ? 'app' : 'xterm');
+    if (_dec === 'heal') {
+      _ruedaHealTs = performance.now();
+      // Contrato refresh (2026-07-02): reset ANTES — el seed cae en terminal virgen.
+      try { term.reset(); } catch (_) {}
+      try { ws.send(JSON.stringify({ type: 'refresh' })); } catch (_) {}
+      return;
+    }
+    if (_dec === 'nada') return;
+    if (_dec === 'app') {
       const extra = (window.TerminalFlow?.FACTOR_RUEDA || 3) - 1;
       for (let i = 0; i < extra; i++) {
         const ev = new WheelEvent('wheel', e);
@@ -1295,6 +1288,19 @@ function crearTerminal(containerId, terminalId, tipoIa = 'manual', intentoAuto =
     // closure de _flush y desde ahí `_rzHold = ...` creaba un GLOBAL implícito
     // (la cortina nunca enganchaba; probado en QA con window._rzHold apareciendo).
     instancia.cortinaResize = (ms) => { _rzHold = performance.now() + ms; };
+    // Post-resize de TUI sparse en primary (Grok): xterm ya refloweó el viewport
+    // y los diffs 2026 no tapan los fragmentos. Tiramos el buffer local + el
+    // inbuf de diffs y pedimos el seed de tmux (verdad del pane post-SIGWINCH).
+    instancia._sanearSparsePrimary = () => {
+      if (instancia._cerrando) return;
+      _inbuf = ''; _inbufN = 0;
+      _rzHold = 0;
+      _holdVencido = false;
+      clearTimeout(instancia._holdTimer);
+      if (!_w || _w.readyState !== WebSocket.OPEN) return;
+      try { term.reset(); } catch (_) {}
+      try { _w.send(JSON.stringify({ type: 'refresh' })); } catch (_) {}
+    };
     let _resynced = false;
     ws.onmessage = e => {
       // Señal para el diagnóstico post-update (shell/diag-update.js): bytes que
@@ -1335,6 +1341,10 @@ function crearTerminal(containerId, terminalId, tipoIa = 'manual', intentoAuto =
       _inbuf += datos;
       _inbufN += datos.length;
       _lastChunk = performance.now();   // la cortina de resize mide el settle con esto
+      // Firma del pintor: Grok (2026, sin alt-screen) vs Claude (1049) vs bash.
+      if (window.TerminalFlow?.marcarPintorTui) {
+        instancia._pintor = window.TerminalFlow.marcarPintorTui(instancia._pintor, datos);
+      }
       // Pestaña OCULTA con backlog desbordado (2026-07-12): descartar en vez de
       // acumular MB que al volver se parseaban de un SAQUE en el main thread
       // (~10s de app congelada tras minutos de idle — el failsafe FC_TIMEOUT del
@@ -1525,6 +1535,7 @@ function desconectarTerminal(terminalId) {
   clearTimeout(inst._rzTimer);       // y el flush pendiente de la cortina de resize
   clearTimeout(inst._healTimer);     // matar el debounce del auto-heal de render (sin refresh post-dispose)
   clearTimeout(inst._holdTimer);     // matar la válvula del frame 2026 retenido (sin flush post-dispose)
+  clearTimeout(inst._sparseSanearTimer); // sanear Grok post-resize (sin reset+seed post-dispose)
   inst.observer.disconnect();
   try { inst.ioRepintar?.disconnect(); } catch (_) {}  // observer del repintado-al-mostrar
   try { inst.moWipe?.disconnect(); }    catch (_) {}  // observer del wipe de canvas (4ta capa)
@@ -1867,6 +1878,24 @@ function refitTerminal(terminalId, force = false) {
       // El redraw de tmux viene en camino (clear + contenido): armar la cortina
       // para pintarlo atómico — sin el pantallazo negro del clear suelto.
       inst.cortinaResize?.(400);
+      // Grok (TUI sparse en primary): xterm acaba de reflowear el viewport.
+      // Dentro de la cortina, cuando Grok ya pintó tmux, reset+seed tapa los
+      // fragmentos. Claude alt no entra (debeSanearSparsePrimary = false).
+      let _alt = false;
+      try { _alt = inst.term.buffer.active.type === 'alternate'; } catch (_) {}
+      if (window.TerminalFlow?.debeSanearSparsePrimary?.({
+        alt: _alt,
+        vioSync2026: !!inst._pintor?.vioSync2026,
+        vioAltScreen: !!inst._pintor?.vioAltScreen,
+        observador: ES_OBSERVADOR,
+        wsAbierto: true,
+      })) {
+        const espera = window.TerminalFlow.SPARSE_SANEAR_MS || 280;
+        clearTimeout(inst._sparseSanearTimer);
+        inst._sparseSanearTimer = setTimeout(() => {
+          try { inst._sanearSparsePrimary?.(); } catch (_) {}
+        }, espera);
+      }
       // Scroll fantasma (2026-07-18): si tras este resize claude fullscreen queda
       // con el transcript EN BLANCO (idle no redibuja en SIGWINCH — upstream
       // #43273; solo repinta su franja de abajo + pill), la única cura es la
