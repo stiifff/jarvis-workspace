@@ -91,6 +91,11 @@
   let _errSeguidos = 0;      // racha de tracks NO reproducibles (freno anti-tormenta de saltos)
   let _errEnEsteLoad = false; // ya se manejó UN error de esta carga (de-dupe del doble handshake)
 
+  // Memoria POR FUENTE de lo que se ve en #jr-pane-rel: al cambiar la pill se
+  // congela {items, fuente, esPl, buscando, q, hint, scrollTop} y al volver se
+  // restaura desde el snapshot (sin re-fetch) — cada fuente conserva su vista.
+  const _panes = {};   // fuente id → snapshot del pane
+
   // ── Fuentes de música (registro multi-fuente) ──────────────────────────────
   // Cada fuente aporta su buscador y su player; el resto de la Radio es
   // agnóstico. Registrar la tuya con window.JarvisRadio.registrarFuente({...})
@@ -868,6 +873,9 @@
     _renderFuentes();
     _renderEstaciones();
     _renderNow(); _renderMini(); _renderPaneChrome();
+    // El placeholder y los hints los setea el código (no el HTML): al cambiar
+    // de idioma hay que re-sincronizarlos con la fuente activa.
+    window.addEventListener('jarvis:lang', () => { _syncPlaceholder(); _renderHints(); });
 
     // Estado inicial: si el boot no lo levantó, restaurar cued desde storage.
     if (!_state) {
@@ -1272,10 +1280,12 @@
     if (!_fuentes[id]) return;
     _fuenteElegida = true;
     if (id === _fuenteActiva) return;
+    _guardarPane(_fuenteActiva);   // memoria por fuente: congelá lo que ésta veía
     _fuenteActiva = id;
     try { localStorage.setItem(SRCKEY, id); } catch {}
     _renderFuentes();
     const rel = $('#jr-pane-rel');
+    if (rel && _panes[id]) { _restaurarPane(id, rel); return; }   // snapshot → re-render inmediato
     if (rel) { rel.innerHTML = ''; rel._items = []; rel._fuente = null; rel._esPl = false; }
     const q = $('#jr-q'); const txt = q ? q.value.trim() : '';
     if (txt) { _buscar(txt, '#jr-pane-rel'); return; }
@@ -1296,6 +1306,48 @@
     if (_pl.items.length) _renderPlaylistEn(rel);
     else rel.innerHTML = '<div class="jr-hint">Buscá música o elegí una estación.</div>';
   }
+  // Transcribe EN→ES si el hint capturado ya pasó por el observer de i18n
+  // (inverse del DICT, mejor esfuerzo: la vista restaurada queda en la frase
+  // canónica y el observer se encarga de re-traducirla si el idioma es EN).
+  const _hintEs = (t) => {
+    const I = root.JarvisI18n;
+    if (I && I.DICT && t) {
+      for (const k of Object.keys(I.DICT)) if (I.DICT[k] === t) return k;
+    }
+    return t || '';
+  };
+  function _guardarPane(fid) {
+    const rel = $('#jr-pane-rel'); if (!rel) return;
+    const sc = rel.closest('.jr-scroll');
+    _panes[fid] = {
+      items: rel._items || [],
+      fuente: rel._fuente || null,
+      esPl: !!rel._esPl,
+      buscando: _buscando,
+      q: ($('#jr-q') && $('#jr-q').value) || '',
+      hint: _hintEs((rel.querySelector(':scope > .jr-hint') || {}).textContent || ''),
+      scrollTop: sc ? sc.scrollTop : 0,
+    };
+  }
+  function _restaurarPane(fid, box) {
+    const snap = _panes[fid];
+    if (!snap || !box) return false;
+    const q = $('#jr-q'); if (q) q.value = snap.q || '';
+    _buscando = !!snap.buscando;
+    if (snap.esPl) {
+      // La lista visible era la playlist: renderizarla FRESCA (la real, que
+      // siguió creciendo mientras se veía otra fuente) y conservar la mesa de
+      // continuación que la parió (snap.fuente) para los dots.
+      _renderPlaylistEn(box);
+      if (snap.fuente && snap.fuente !== _plFuente) box._fuente = Object.assign({}, snap.fuente);
+      _marcarActiva(false);
+    } else {
+      _renderFilas(box, snap.items || [], snap.hint || null, snap.fuente);
+    }
+    const sc = box.closest('.jr-scroll');
+    if (sc) requestAnimationFrame(() => { sc.scrollTop = snap.scrollTop; });
+    return true;
+  }
   function _renderFuentes() {
     _syncPlaceholder();
     const row = $('#jr-src'); if (!row) return;
@@ -1312,6 +1364,10 @@
     const fi = $('#jr-src-file');
     if (fi) fi.addEventListener('change', (ev) => { _subirLocal(ev.target && ev.target.files); if (ev.target) ev.target.value = ''; });
     _renderHints();
+    // Hook opcional de la fuente activa: al ENTRAR (o re-pintar) la fuente se
+    // le da la palabra (spotify: verificar sesión → hint de login si no hay).
+    const fa = _intFuente() || _fuentes.youtube;
+    if (fa && typeof fa.alActivar === 'function') { try { fa.alActivar(); } catch {} }
   }
 
   // ── Placeholder del buscador por fuente + hints de la fuente (spotify) ──────
@@ -1330,21 +1386,36 @@
     q.placeholder = _PH[f.id] || 'Buscá música o pegá un link de YouTube…';
   }
   const _hintsFuente = {};
-  function hintDeFuente(fid, texto) {
+  // `extra` opcional: {boton: 'Conectá Spotify'} → cada línea del hint (salvo
+  // la de Premium, que pide otra cosa) se acompaña de un botón que llama al
+  // `login` de la fuente activa.
+  function hintDeFuente(fid, texto, extra) {
     if (!fid) return;
     const txt = (typeof texto === 'string' && texto.trim()) ? texto : null;
-    if (txt) _hintsFuente[fid] = txt; else delete _hintsFuente[fid];
+    if (txt) _hintsFuente[fid] = { txt: txt, boton: (extra && extra.boton) ? extra.boton : null };
+    else delete _hintsFuente[fid];
     _renderHints();
   }
   function _renderHints() {
     const cont = $('#jr-src-hints'); if (!cont) return;
-    const txt = _hintsFuente[_fuenteActiva];
+    const h = _hintsFuente[_fuenteActiva];
+    const txt = h && h.txt;
     if (!txt) { cont.hidden = true; cont.innerHTML = ''; return; }
     cont.hidden = false; cont.innerHTML = '';
     for (const linea of String(txt).split('\n')) {
       const b = document.createElement('div'); b.className = 'jr-src-hint';
       const span = document.createElement('span'); span.textContent = linea.trim();
-      b.appendChild(span); cont.appendChild(b);
+      b.appendChild(span);
+      if (h && h.boton && !linea.trim().includes('Premium')) {
+        const bt = document.createElement('button'); bt.type = 'button'; bt.className = 'jr-src-hint-btn';
+        bt.textContent = h.boton;
+        bt.addEventListener('click', () => {
+          const f = _fuentes[_fuenteActiva];
+          if (f && typeof f.login === 'function') { try { f.login(); } catch {} }
+        });
+        b.appendChild(bt);
+      }
+      cont.appendChild(b);
     }
     if (root.JarvisI18n && typeof root.JarvisI18n.aplicar === 'function') {
       try { root.JarvisI18n.aplicar(cont); } catch {}

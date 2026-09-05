@@ -242,6 +242,14 @@
   function _limpiarHint(clave) {
     if (_hints.delete(clave || '')) _renderHint();
   }
+  // ENTRADA a la fuente (pill, registro con preferencia, apertura del popover):
+  // se verifica la sesión contra END_TOKEN — 401/404/red → hint de login AL
+  // entrar (no solo tras un error de búsqueda); token OK → se limpia el hint.
+  function _alActivar() {
+    _pedirToken()
+      .then(() => { _limpiarHint('spotify:sesion'); _limpiarHint('spotify:config'); })
+      .catch(() => _hint('Sesión de Spotify no iniciada', 'spotify:sesion'));
+  }
   let _cssInyectado = false;
   function _css() {
     if (_cssInyectado) return; _cssInyectado = true;
@@ -279,7 +287,7 @@
   }
   function _renderHint() {
     const J = root.JarvisRadio;
-    if (J && typeof J.hintDeFuente === 'function') { try { J.hintDeFuente(ID, Array.from(_hints.values()).join('\n'), true); return; } catch {} }
+    if (J && typeof J.hintDeFuente === 'function') { try { J.hintDeFuente(ID, Array.from(_hints.values()).join('\n'), { boton: 'Conectá Spotify' }); return; } catch {} }
     if (J && typeof J.fuenteHint === 'function') { try { J.fuenteHint(ID, Array.from(_hints.values()).join('\n'), true); return; } catch {} }
     _css();
     const pop = document.getElementById('jarvis-radio-pop');
@@ -420,7 +428,7 @@
     return {
       id: ID, etiqueta_es: 'Spotify', etiqueta_en: 'Spotify',
       buscar, mas: null, relacionados: null,
-      player: _adapter, login: abrirLogin,
+      player: _adapter, login: abrirLogin, alActivar: _alActivar,
     };
   }
   function registrar() {
