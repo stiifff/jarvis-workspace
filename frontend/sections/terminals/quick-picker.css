@@ -7,8 +7,10 @@
   --qp-info-30: color-mix(in oklch, var(--ob-info) 30%, transparent);
   position: fixed; inset: 0; z-index: var(--z-modal);
   display: flex; align-items: center; justify-content: center; padding: 24px;
-  background: oklch(7% 0.012 300 / 0.52);
-  backdrop-filter: blur(14px) saturate(120%);
+  background:
+    radial-gradient(120% 90% at 50% 0%,
+      color-mix(in oklch, var(--ob-bg-void) 74%, transparent) 0%,
+      color-mix(in oklch, var(--ob-bg-void) 93%, transparent) 100%);
   animation: qp-ovin var(--dur-3) var(--ease-out);
 }
 .qp-overlay[hidden] { display: none; }
@@ -17,7 +19,7 @@
 .qp-panel {
   width: min(580px, calc(var(--jw-vw, 100vw) * .94)); max-height: calc(var(--jw-vh, 100vh) * .92); overflow: auto;
   position: relative; padding: 20px 20px 18px;
-  border-radius: 20px; border: 1px solid transparent; outline: none;
+  border-radius: var(--radius-xl); border: 1px solid transparent; outline: none;
   background:
     linear-gradient(180deg, var(--ob-glass-hi), transparent 40%) padding-box,
     linear-gradient(180deg, oklch(20% 0.022 300 / 0.97), oklch(15% 0.018 300 / 0.97)) padding-box,
@@ -53,7 +55,7 @@
 .qp-x {
   margin-left: auto; flex: 0 0 auto; width: 26px; height: 26px; border-radius: 8px;
   display: grid; place-items: center; background: none; border: none; cursor: pointer;
-  color: var(--ob-fg-3); transition: all var(--dur-1) var(--ease-out);
+  color: var(--ob-fg-3); transition: background var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out);
 }
 .qp-x:hover { background: var(--ob-bg-3); color: var(--ob-fg-0); }
 .qp-x svg { width: 11px; height: 11px; }
@@ -66,11 +68,11 @@
 .qp-cap { display: flex; align-items: center; gap: 8px; }
 .qp-cap-cells { display: flex; gap: 3px; }
 .qp-cap-cells i { width: 8px; height: 8px; border-radius: 2.5px; background: var(--ob-bg-3);
-  border: 1px solid var(--ob-line-1); transition: all var(--dur-2) var(--ease-out); }
+  border: 1px solid var(--ob-line-1); transition: background var(--dur-2) var(--ease-out), border-color var(--dur-2) var(--ease-out); }
 .qp-cap-cells i.uso { background: var(--ob-bg-4); border-color: var(--ob-line-2); }
 .qp-cap-cells i.on { background: var(--ob-accent); border-color: var(--ob-accent);
   box-shadow: 0 0 8px var(--qp-acc-40); }
-.qp-cap-txt { font: 500 var(--text-2xs) var(--font-mono); color: var(--ob-fg-4); white-space: nowrap; }
+.qp-cap-txt { font: 500 var(--text-2xs) var(--font-mono); color: var(--ob-fg-3); white-space: nowrap; }
 .qp-hint { min-width: 200px; text-align: right; font: 500 var(--text-xs) var(--font-ui);
   color: var(--ob-fg-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .qp-hint b { color: var(--ob-accent-fg); font-weight: 600; }
@@ -111,7 +113,8 @@
   background: linear-gradient(180deg, oklch(27% 0.022 300), oklch(21% 0.02 300));
   border: 1px solid oklch(36% 0.025 300);
   box-shadow: inset 0 1px 0 oklch(100% 0 0 / 0.10), 0 2px 0 oklch(11% 0.012 300);
-  transition: all var(--dur-2) var(--ease-out);
+  transition: color var(--dur-2) var(--ease-out), background var(--dur-2) var(--ease-out),
+              border-color var(--dur-2) var(--ease-out);
 }
 .qp-row:hover .qp-tecla { color: var(--ob-accent-fg); border-color: var(--ob-accent-24); }
 /* stepper − n + (reemplaza a la keycap cuando hay conteo) */
@@ -121,7 +124,7 @@
   background: var(--ob-accent-08); }
 .qp-st-b { width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center;
   cursor: pointer; color: var(--ob-fg-2); font: 600 12px/1 var(--font-mono); user-select: none;
-  transition: all var(--dur-1) var(--ease-out); }
+  transition: background var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out); }
 .qp-st-b:hover { background: var(--ob-accent-24); color: var(--ob-on-accent); }
 .qp-step b { min-width: 15px; text-align: center; font: 700 var(--text-sm) var(--font-mono);
   color: var(--ob-accent-fg); }
@@ -154,12 +157,12 @@
 }
 .qp-pd-thumb { position: relative; width: 84px; height: 50px; border-radius: 6px; overflow: hidden; display: block; }
 .qp-pd-thumb i { position: absolute; border-radius: 2.5px; background: var(--ob-bg-3);
-  border: 1px solid var(--ob-line-2); transition: all var(--dur-2) var(--ease-out); }
+  border: 1px solid var(--ob-line-2); transition: background var(--dur-2) var(--ease-out), border-color var(--dur-2) var(--ease-out); }
 .qp-pd:hover .qp-pd-thumb i { border-color: var(--ob-line-3); }
 .qp-pd.sel .qp-pd-thumb i { background: var(--ob-accent-14); border-color: var(--qp-acc-55);
   box-shadow: inset 0 0 8px -4px var(--qp-acc-40); }
 .qp-pd small { text-align: center; font: 600 9px var(--font-mono); letter-spacing: 0.06em;
-  color: var(--ob-fg-4); text-transform: uppercase; max-width: 84px;
+  color: var(--ob-fg-3); text-transform: uppercase; max-width: 84px;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .qp-pd.sel small { color: var(--ob-accent-fg); }
 
@@ -175,7 +178,8 @@
   border: 1px solid var(--qp-acc-55); color: var(--ob-on-accent);
   font: 600 var(--text-sm) var(--font-ui);
   box-shadow: inset 0 1px 0 var(--ob-bevel-accent), var(--shadow-1), 0 4px 22px -6px var(--qp-acc-55);
-  transition: all var(--dur-2) var(--ease-out);
+  transition: transform var(--dur-2) var(--ease-out), filter var(--dur-2) var(--ease-out),
+              background var(--dur-2) var(--ease-out), box-shadow var(--dur-2) var(--ease-out);
 }
 .qp-go:hover:not(:disabled) { transform: translateY(-1px); filter: brightness(1.06); }
 .qp-go:active:not(:disabled) { transform: translateY(0) scale(0.98); }

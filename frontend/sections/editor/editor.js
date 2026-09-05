@@ -1441,7 +1441,7 @@
     // hereda intacta de vs-dark (rules: []).
     const bg     = _aHexMonaco(tok('--ob-bg-void', '#0b0b0b'), '#0b0b0b');
     const fg     = _aHexMonaco(tok('--ob-fg-1', '#e2e2e2'), '#e2e2e2');
-    const line   = _aHexMonaco(tok('--ob-fg-4', '#3a3a3a'), '#3a3a3a');
+    const line   = _aHexMonaco(tok('--ob-fg-3', '#3a3a3a'), '#3a3a3a');
     const accent = _aHexMonaco(tok('--ob-accent', '#7c3aed'), '#7c3aed');
     const cursor = _aHexMonaco(tok('--ob-accent-fg', '#a78bfa'), '#a78bfa');
     // Selección: acento al ~27% sobre el fondo (color-mix resuelto a hex).

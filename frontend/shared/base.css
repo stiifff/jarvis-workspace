@@ -24,7 +24,7 @@ body {
   background:  var(--bg-app);
   color:       var(--text-primary);
   font-family: var(--font-ui);
-  font-size:   13px;
+  font-size:   var(--text-base);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -235,7 +235,7 @@ body {
 .sb-search input {
   flex: 1; min-width: 0;
   background: transparent; border: none; outline: none;
-  font: 500 13px 'Inter', sans-serif; color: var(--sb-fg-1);
+  font: 500 13px var(--font-ui); color: var(--sb-fg-1);
   caret-color: var(--sb-violet);
 }
 .sb-search input::placeholder { color: var(--sb-fg-3); font-weight: 500; }
@@ -310,7 +310,8 @@ body {
 .sb-row.drop-above::before { top: -1px; }
 .sb-row.drop-below::after  { bottom: -1px; }
 /* Obsidian Glass (2026-07-02): hover vidrioso con canto superior iluminado */
-.sb-row:hover { background: rgb(255 255 255 / .03); box-shadow: inset 0 1px 0 rgb(255 255 255 / .04); }
+.sb-row:hover { background: color-mix(in oklch, var(--ob-fg-0) 3%, transparent);
+  box-shadow: inset 0 1px 0 var(--ob-glass-hi); }
 /* ── Proyecto SELECCIONADO: tinte de acento sutil, MISMO tamaño que las demás. ── */
 .sb-row.activo { background: var(--ob-accent-08); border-color: color-mix(in oklch, var(--ob-accent) 24%, transparent); }
 .sb-row.activo:hover { background: var(--ob-accent-08); }
@@ -348,21 +349,21 @@ body {
    que al hover se rellena de acento y gira 90° (mock "El Roster"). ── */
 .sb-new-ghost {
   position: relative; display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 11px;
-  width: 100%; height: 42px; margin: 10px 0 2px; padding: 0 12px 0 8px; border-radius: 11px;
+  width: 100%; height: 42px; margin: 10px 0 2px; padding: 0 12px 0 8px; border-radius: var(--radius-lg);
   border: 1px solid color-mix(in oklch, var(--ob-line-1) 70%, transparent);
-  background: linear-gradient(180deg, rgb(255 255 255 / .035), rgb(255 255 255 / .008));
-  color: var(--sb-fg-2); font: 600 12.5px 'Inter', sans-serif; letter-spacing: .005em; cursor: pointer; text-align: left;
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / .05);
+  background: linear-gradient(180deg, color-mix(in oklch, var(--ob-fg-0) 3.5%, transparent), color-mix(in oklch, var(--ob-fg-0) 0.8%, transparent));
+  color: var(--sb-fg-2); font: 600 12.5px var(--font-ui); letter-spacing: .005em; cursor: pointer; text-align: left;
+  box-shadow: inset 0 1px 0 var(--ob-glass-hi);
   transition: color 170ms var(--ease-out), border-color 170ms var(--ease-out), background 170ms var(--ease-out), box-shadow 170ms var(--ease-out), transform 120ms var(--ease-out);
 }
 .sb-new-ghost .sb-gplus { display: grid; place-items: center; width: 19px; height: 19px; border-radius: 6px; flex: none;
-  background: rgb(255 255 255 / .07); color: var(--sb-fg-3); box-shadow: inset 0 1px 0 rgb(255 255 255 / .08);
+  background: color-mix(in oklch, var(--ob-fg-0) 7%, transparent); color: var(--sb-fg-3); box-shadow: inset 0 1px 0 var(--ob-glass-hi);
   transition: color 200ms var(--ease-out), background 200ms var(--ease-out), transform 300ms var(--ease-out), box-shadow 200ms var(--ease-out); }
 .sb-new-ghost .sb-gplus svg { width: 11px; height: 11px; }
 .sb-new-ghost:hover { color: var(--ob-accent-fg); border-color: var(--ob-accent-24);
   background: linear-gradient(180deg, var(--ob-accent-08), transparent);
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / .07), 0 6px 20px -12px var(--ob-accent-glow); }
-.sb-new-ghost:hover .sb-gplus { color: #fff;
+  box-shadow: inset 0 1px 0 var(--ob-glass-hi), 0 6px 20px -12px var(--ob-accent-glow); }
+.sb-new-ghost:hover .sb-gplus { color: var(--ob-on-accent);
   background: linear-gradient(180deg, color-mix(in oklch, var(--ob-accent) 86%, #fff), var(--ob-accent));
   transform: rotate(90deg); box-shadow: 0 2px 9px -2px var(--ob-accent-glow); }
 .sb-new-ghost:active { transform: scale(.985); }
@@ -451,7 +452,7 @@ body.jw-rail .sb-snake { left: 50%; transform: translate(-50%, -50%); }   /* fig
 .tone-green  { --ic-bg: #1a2620; --ic-fg: #86efac; --ic-edge: rgba(134,239,172,0.18); }
 
 .sb-row-name {
-  font: 600 14px 'Inter', sans-serif;   /* nombres parejos y con presencia */
+  font: 600 14px var(--font-ui);   /* nombres parejos y con presencia */
   padding-left: 6px;   /* aire entre el marcador (veta/figura) y el nombre */
   color: var(--sb-fg-0);
   white-space: nowrap;
@@ -483,7 +484,7 @@ body.jw-rail .sb-snake { left: 50%; transform: translate(-50%, -50%); }   /* fig
 /* Contador de terminales — píldora neutra; verde estático cuando trabaja (mock .ct) */
 .sb-row-count { display: inline-flex; align-items: center; justify-content: center; flex: none;
   font: 600 11px var(--font-mono); font-feature-settings: "tnum"; padding: 2px 7px; border-radius: 6px;
-  background: rgb(255 255 255 / .05); color: var(--sb-fg-3);
+  background: color-mix(in oklch, var(--ob-fg-0) 5%, transparent); color: var(--sb-fg-3);
   border: 1px solid color-mix(in oklch, var(--ob-line-1) 55%, transparent); }
 .sb-row.status-work .sb-row-count, .sb-row.status-run .sb-row-count {
   color: var(--ob-run); border-color: color-mix(in oklch, var(--ob-run) 26%, transparent);
@@ -512,7 +513,7 @@ body.jw-rail .sb-snake { left: 50%; transform: translate(-50%, -50%); }   /* fig
 .sb-fnode { display: flex; align-items: center; gap: 6px; height: 24px; border-radius: 5px;
   color: var(--ob-fg-2); cursor: pointer; white-space: nowrap;
   transition: background 120ms ease, color 120ms ease; }
-.sb-fnode:hover { background: rgb(255 255 255 / .04); color: var(--ob-fg-1); }
+.sb-fnode:hover { background: color-mix(in oklch, var(--ob-fg-0) 4%, transparent); color: var(--ob-fg-1); }
 .sb-fchev { width: 11px; height: 11px; color: var(--ob-fg-4); flex: none; transition: transform 180ms var(--ease-out); }
 .sb-fold.open > .sb-fdir .sb-fchev { transform: rotate(90deg); }
 .sb-fico { width: 13px; height: 13px; flex: none; display: inline-flex; }
@@ -532,7 +533,7 @@ body.jw-rail .sb-snake { left: 50%; transform: translate(-50%, -50%); }   /* fig
 .sb-fsub { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 240ms var(--ease-out); }
 .sb-fold.open > .sb-fsub { grid-template-rows: 1fr; }
 .sb-fsub-clip { overflow: hidden; min-height: 0; }
-.sb-ftree-empty { padding: 8px 10px; font: 500 11px 'Inter', sans-serif; color: var(--ob-fg-4); }
+.sb-ftree-empty { padding: 8px 10px; font: 500 11px var(--font-ui); color: var(--ob-fg-3); }
 /* Drop de archivos del escritorio sobre el árbol (franja y pane Editor) */
 .sb-drop-over { border-radius: 8px;
   box-shadow: inset 0 0 0 1.5px var(--ob-accent-dim);
@@ -542,7 +543,7 @@ body.jw-rail .sb-snake { left: 50%; transform: translate(-50%, -50%); }   /* fig
 }
 
 .sb-empty {
-  font: 500 12px 'Inter', sans-serif;
+  font: 500 12px var(--font-ui);
   color: var(--sb-fg-3);
   padding: 12px;
   text-align: center;
@@ -561,7 +562,7 @@ body.jw-rail .sb-snake { left: 50%; transform: translate(-50%, -50%); }   /* fig
   border: 1px solid var(--ob-line-2);
   border-radius: var(--radius-lg);
   padding: 5px;
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / .06), var(--shadow-3);
+  box-shadow: inset 0 1px 0 var(--ob-glass-hi), var(--shadow-3);
   display: flex; flex-direction: column;
   gap: 1px;
   transform-origin: top left;
@@ -574,7 +575,7 @@ body.jw-rail .sb-snake { left: 50%; transform: translate(-50%, -50%); }   /* fig
 .sb-ctx-item {
   display: flex; align-items: center; gap: 10px;
   padding: 6px 8px;
-  font: 500 12.5px 'Inter', sans-serif;
+  font: 500 12.5px var(--font-ui);
   color: var(--sb-fg-1);
   background: transparent;
   border: none;
@@ -584,8 +585,8 @@ body.jw-rail .sb-snake { left: 50%; transform: translate(-50%, -50%); }   /* fig
   transition: background 120ms ease, color 120ms ease;
 }
 .sb-ctx-item:hover {
-  background: rgb(255 255 255 / .04);
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / .05);
+  background: color-mix(in oklch, var(--ob-fg-0) 4%, transparent);
+  box-shadow: inset 0 1px 0 var(--ob-glass-hi);
   color: var(--sb-fg-0);
 }
 /* Chip de icono: mini-monograma con bisel de vidrio, coloreado por tone-* */
@@ -597,7 +598,7 @@ body.jw-rail .sb-snake { left: 50%; transform: translate(-50%, -50%); }   /* fig
     color-mix(in oklch, var(--ic-bg, var(--sb-bg-3)) 92%, white),
     var(--ic-bg, var(--sb-bg-3)));
   color: var(--ic-fg, var(--sb-fg-2));
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / .14),
+  box-shadow: inset 0 1px 0 var(--ob-glass-hi),
               inset 0 0 0 1px var(--ic-edge, rgba(255,255,255,0.06)),
               0 2px 4px rgb(0 0 0 / .3);
 }
@@ -763,7 +764,7 @@ body.jw-rail .sb-snake { left: 50%; transform: translate(-50%, -50%); }   /* fig
 /* tile de ícono faux-glass */
 .tea-ico {
   position: relative; overflow: hidden;
-  width: 38px; height: 38px; flex: 0 0 auto; border-radius: 11px;
+  width: 38px; height: 38px; flex: 0 0 auto; border-radius: var(--radius-lg);
   display: grid; place-items: center;
   background: linear-gradient(165deg,
     color-mix(in oklch, var(--ob-accent) 28%, transparent),
@@ -771,7 +772,8 @@ body.jw-rail .sb-snake { left: 50%; transform: translate(-50%, -50%); }   /* fig
   border: 1px solid var(--ob-accent-24); color: var(--ob-accent-fg);
   box-shadow: inset 0 1px 0 oklch(100% 0 0/.16), inset 0 -9px 14px -10px var(--tea-acc-40),
     0 2px 6px -2px oklch(0% 0 0/.5);
-  transition: all var(--dur-2) var(--ease-out);
+  transition: transform var(--dur-2) var(--ease-out), color var(--dur-2) var(--ease-out),
+              box-shadow var(--dur-2) var(--ease-out);
 }
 .tea-ico::before { content: ""; position: absolute; inset: 0; pointer-events: none;
   background: linear-gradient(115deg, transparent 32%, oklch(100% 0 0/.10) 47%, transparent 63%); }
@@ -816,7 +818,8 @@ body.jw-rail .sb-snake { left: 50%; transform: translate(-50%, -50%); }   /* fig
   border: 1px solid oklch(36% 0.025 300);
   box-shadow: inset 0 1px 0 oklch(100% 0 0/.10), 0 2px 0 oklch(11% 0.012 300),
     0 3px 6px -2px oklch(0% 0 0/.5);
-  transition: all var(--dur-2) var(--ease-out);
+  transition: color var(--dur-2) var(--ease-out), border-color var(--dur-2) var(--ease-out),
+              transform var(--dur-2) var(--ease-out), box-shadow var(--dur-2) var(--ease-out);
 }
 .tea-card:hover kbd {
   color: var(--ob-accent-fg); border-color: var(--ob-accent-24); transform: translateY(-1px);
@@ -922,7 +925,7 @@ body.jw-rail .sb-snake { left: 50%; transform: translate(-50%, -50%); }   /* fig
 .terminals-grid {
   position:   absolute;
   inset:      0;
-  background: var(--sb-bg-0);
+  background: var(--ob-bg-0);
   /* El mosaico auto-tile llena exactamente el alto: sin scroll. Hidden evita que
      un redondeo de 1px dispare una barra que achique el ancho en bucle. */
   overflow:   hidden;
@@ -1083,7 +1086,7 @@ body.jw-rail .sb-snake { left: 50%; transform: translate(-50%, -50%); }   /* fig
   overflow:       visible;
   min-height:     0;
   border:         1px solid transparent;
-  border-radius:  9px;
+  border-radius:  var(--radius);
   /* Lámina .ob-edge: borde-gradiente (luz arriba-izq, sombra abajo-der) —
      barato, sin blur. Es lo que hace que cada card se lea como instrumento. */
   background:
@@ -1133,7 +1136,7 @@ body.jw-rail .sb-snake { left: 50%; transform: translate(-50%, -50%); }   /* fig
   inset:          0;
   z-index:        0;        /* primer hijo + z0 → bajo el body (auto) y el chrome (5) */
   pointer-events: none;
-  border-radius:  9px;
+  border-radius:  var(--radius);
   opacity:        0;
   transition:     opacity 420ms var(--ease-out);
 }
@@ -1434,7 +1437,7 @@ body.jw-rail .sb-snake { left: 50%; transform: translate(-50%, -50%); }   /* fig
   background: transparent;
   border: 1px solid transparent;
   border-radius: 9px;
-  color: var(--sb-fg-3);
+  color: var(--ob-fg-3);
   cursor: pointer;
   transition: background var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out), box-shadow var(--dur-1) var(--ease-out), transform var(--dur-1) var(--ease-out);
   flex-shrink: 0;
@@ -1464,9 +1467,9 @@ body.jw-rail .sb-snake { left: 50%; transform: translate(-50%, -50%); }   /* fig
    visibles el LOGO (identidad + halo de estado) + maximizar + cerrar. Se suelta
    primero el grip, después el nombre. El logo NUNCA se oculta — pedido del
    usuario 2026-07-05: "que el logo no desaparezca al llenarse de terminales". */
-.terminal-card.t-narrow .terminal-chrome { gap: 5px; padding: 0 5px; }
+.terminal-card.t-narrow .terminal-chrome { top: 5px; left: 5px; right: 5px; height: 30px; gap: 6px; padding: 0 5px; }
 .terminal-card.t-narrow .t-name { max-width: 100%; }
-.terminal-card.t-narrow .t-drag { min-width: 0; }
+.terminal-card.t-narrow .t-drag { display: none; }
 .terminal-card.t-xnarrow .t-name { display: none; }   /* extremo: logo + maximizar + cerrar */
 
 /* (El popover de texto Vertical/Ordenada `.tl-mode-pop` se retiró junto con el modo
@@ -1731,7 +1734,7 @@ body.jw-rail .sb-snake { left: 50%; transform: translate(-50%, -50%); }   /* fig
 .tsnap-ghost.tsnap-ghost-on { opacity: 1; }
 .tsnap-ghost > i { position: absolute; }
 .tsnap-ghost > i::before {
-  content: ""; position: absolute; inset: 3px; border-radius: 10px;
+  content: ""; position: absolute; inset: 3px; border-radius: var(--radius);
   background: color-mix(in oklch, var(--ob-accent) 5%, transparent);
   box-shadow: inset 0 0 0 1px var(--ob-accent-24);
 }
@@ -1807,11 +1810,10 @@ body.jw-rail .sb-snake { left: 50%; transform: translate(-50%, -50%); }   /* fig
   z-index:       10000;
   min-width:     180px;
   padding:       4px;
-  background:    #15151a;
-  border:        1px solid var(--sb-line-2);
+  background:    var(--ob-bg-2);
+  border:        1px solid var(--ob-line-2);
   border-radius: var(--radius-sm);
-  box-shadow:    0 12px 32px rgba(0, 0, 0, 0.45),
-                 0 0 0 1px rgba(0, 0, 0, 0.5);
+  box-shadow:    var(--shadow-2), inset 0 1px 0 var(--ob-glass-hi);
   display:       flex;
   flex-direction:column;
   gap:           1px;
@@ -1826,7 +1828,7 @@ body.jw-rail .sb-snake { left: 50%; transform: translate(-50%, -50%); }   /* fig
   background:    transparent;
   border:        none;
   color:         var(--sb-fg-1);
-  font:          500 12.5px 'Inter', sans-serif;
+  font:          500 12.5px var(--font-ui);
   text-align:    left;
   padding:       7px 12px;
   border-radius: 4px;
@@ -1834,8 +1836,8 @@ body.jw-rail .sb-snake { left: 50%; transform: translate(-50%, -50%); }   /* fig
   transition:    background 100ms ease, color 100ms ease;
 }
 .term-ctxmenu-item:hover:not(:disabled) {
-  background: var(--sb-violet);
-  color:      #fff;
+  background: var(--ob-accent-14);
+  color:      var(--ob-accent-fg);
 }
 .term-ctxmenu-item:disabled {
   color:  var(--sb-fg-4);
@@ -1849,29 +1851,8 @@ body.jw-rail .sb-snake { left: 50%; transform: translate(-50%, -50%); }   /* fig
   border-radius: 0 0 4px 4px;
 }
 
-/* Toast de feedback (copiado, etc) — flotante abajo-centro, no interactivo */
-.term-toast {
-  position: fixed;
-  bottom:   24px;
-  left:     50%;
-  transform: translateX(-50%) translateY(8px);
-  padding:  8px 16px;
-  background: rgba(124, 58, 237, 0.95);
-  color:    #fff;
-  font:     500 12.5px 'Inter', sans-serif;
-  letter-spacing: 0.2px;
-  border-radius: var(--radius-pill);
-  box-shadow: 0 8px 24px rgba(124, 58, 237, 0.35),
-              0 0 0 1px rgba(255, 255, 255, 0.06);
-  opacity:  0;
-  pointer-events: none;
-  z-index:  10001;
-  transition: opacity 160ms ease, transform 160ms ease;
-}
-.term-toast.visible {
-  opacity:   1;
-  transform: translateX(-50%) translateY(0);
-}
+/* Toast de feedback (copiado, etc): reemplazado por window.toast() de
+   shared/ui.js (tokens.css #ob-toasts) — terminal.js ya no crea #term-toast. */
 
 /* (Los estilos del modal de Historial de terminal .term-history-* se removieron
    el 2026-07-05 junto con esa feature: ahora se copia y scrollea directo en la
@@ -1942,9 +1923,7 @@ body.jw-rail .sb-snake { left: 50%; transform: translate(-50%, -50%); }   /* fig
   justify-content: center;
   gap: 8px;
   z-index: 4;
-  background: color-mix(in oklch, var(--ob-bg-void) 72%, transparent);
-  backdrop-filter: blur(3px);
-  -webkit-backdrop-filter: blur(3px);
+  background: color-mix(in oklch, var(--ob-bg-void) 80%, transparent);
   color: var(--ob-fg-2);
   font: 400 var(--text-sm) var(--font-ui);
   animation: ob-fade-in var(--dur-2) var(--ease-out);
@@ -1983,7 +1962,7 @@ body.jw-rail .sb-snake { left: 50%; transform: translate(-50%, -50%); }   /* fig
 /* Cuando hay drag-over sobre el editor, hacer que el placeholder lo anuncie */
 .panel-editor.drag-over .monaco-placeholder::after {
   content: attr(data-drop-hint);
-  color: #a78bfa;
+  color: var(--ob-accent-fg);
 }
 
 /* ── Drag & drop de archivos sobre una TERMINAL (rediseño 2026-07-21) ────────
@@ -2476,7 +2455,7 @@ body.jw-rail .sb-snake { left: 50%; transform: translate(-50%, -50%); }   /* fig
   cursor:        pointer;
   font-size:     12px;
 }
-.btn-danger:hover { background: rgba(239,68,68,.1); }
+.btn-danger:hover { background: var(--ob-err-08); }
 
 /* ═══════════════════════════════════════════════════════════════════
    MODALES: historial / workflows / tmux
@@ -2495,6 +2474,14 @@ body.jw-rail .sb-snake { left: 50%; transform: translate(-50%, -50%); }   /* fig
   font-size:  13px;
   text-align: center;
 }
+/* Skeleton "Cargando…" (ft-empty / hist-empty): 3 filas shimmer del patrón
+   .term-conectando; los textos reales (vacío/error) siguen en .ft-empty/.hist-empty. */
+.ft-empty .skeleton, .hist-empty .skeleton {
+  display: block; height: 11px; margin: 0 auto 8px;
+}
+.ft-empty .skeleton:nth-child(1), .hist-empty .skeleton:nth-child(1) { width: 45%; }
+.ft-empty .skeleton:nth-child(2), .hist-empty .skeleton:nth-child(2) { width: 70%; }
+.ft-empty .skeleton:nth-child(3), .hist-empty .skeleton:nth-child(3) { width: 30%; }
 .hist-item {
   display:        flex;
   align-items:    center;
@@ -2574,11 +2561,11 @@ body.jw-rail .sb-snake { left: 50%; transform: translate(-50%, -50%); }   /* fig
   border: 1px solid var(--sb-line-2);
   border-radius: var(--radius);
   color: var(--sb-fg-1);
-  font: 500 12.5px 'Inter', sans-serif;
+  font: 500 12.5px var(--font-ui);
   cursor: pointer;
   min-width: 180px;
   justify-content: space-between;
-  transition: all 140ms ease;
+  transition: border-color 140ms ease, background 140ms ease;
   white-space: nowrap;
 }
 .settings-keybind:hover {
@@ -2616,7 +2603,7 @@ body.jw-rail .sb-snake { left: 50%; transform: translate(-50%, -50%); }   /* fig
 .settings-keybind:hover .settings-keybind-edit { color: var(--sb-fg-1); }
 
 .settings-keybind-listening {
-  font: 500 12px 'Inter', sans-serif;
+  font: 500 12px var(--font-ui);
   color: var(--sb-violet);
   letter-spacing: -0.005em;
 }
@@ -2627,7 +2614,7 @@ body.jw-rail .sb-snake { left: 50%; transform: translate(-50%, -50%); }   /* fig
   margin-left: auto;
 }
 .settings-keybind-empty {
-  font: 500 12px 'Inter', sans-serif;
+  font: 500 12px var(--font-ui);
   color: var(--sb-fg-3);
   font-style: italic;
 }
@@ -3024,7 +3011,7 @@ body:has(.voice-pill.dragging) .vp-grip { cursor: grabbing; }
 .tl-tpl-logos { display: flex; align-items: center; gap: 7px; }
 .tl-tpl-logo { display: inline-flex; align-items: center; gap: 2px; }
 .tl-tpl-logo i { font: 700 9.5px var(--font-mono); font-style: normal; color: var(--ob-fg-3); }
-.tl-tpl-total { font: 500 9.5px var(--font-mono); letter-spacing: .04em; color: var(--ob-fg-4);
+.tl-tpl-total { font: 500 9.5px var(--font-mono); letter-spacing: .04em; color: var(--ob-fg-3);
   text-transform: uppercase; }
 .tl-tpl-del { position: absolute; top: 4px; right: 5px; width: 16px; height: 16px;
   display: none; align-items: center; justify-content: center; border-radius: 50%;
@@ -3051,7 +3038,7 @@ body:has(.voice-pill.dragging) .vp-grip { cursor: grabbing; }
 .tl-card.on .tl-card-nombre { color: var(--ob-fg-0); }
 .tl-card-badge { position: absolute; top: -7px; right: -6px; min-width: 19px; height: 19px;
   display: inline-flex; align-items: center; justify-content: center; padding: 0 5px;
-  background: var(--ob-accent); color: #fff; font: 700 11px var(--font-mono);
+  background: var(--ob-accent); color: var(--ob-on-accent); font: 700 11px var(--font-mono);
   border-radius: var(--radius-pill); box-shadow: 0 0 12px -3px var(--ob-accent-glow);
   pointer-events: none; }
 .tl-card-badge[hidden] { display: none; }  /* el display de la clase le gana al UA [hidden] */
@@ -3062,7 +3049,7 @@ body:has(.voice-pill.dragging) .vp-grip { cursor: grabbing; }
 .tl-step-btn:hover { color: var(--ob-fg-0); }
 .tl-step-n { font: 700 12px var(--font-mono); color: var(--ob-fg-0); min-width: 13px;
   text-align: center; user-select: none; }
-.tl-grid-hint { font: 400 10px var(--font-ui); color: var(--ob-fg-4); text-align: center;
+.tl-grid-hint { font: 400 10px var(--font-ui); color: var(--ob-fg-3); text-align: center;
   margin-top: -4px; }
 
 /* ── Capacidad (9 cupos: en uso / a crear / libres) ── */
@@ -3088,7 +3075,7 @@ body:has(.voice-pill.dragging) .vp-grip { cursor: grabbing; }
   font: 500 var(--text-2xs) var(--font-mono);
   letter-spacing: var(--ls-wide);
   text-transform: uppercase;
-  color: var(--ob-fg-4);
+  color: var(--ob-fg-3);
 }
 .tl-atajos kbd {
   font: 600 var(--text-2xs) var(--font-mono);

@@ -144,7 +144,7 @@
 .jw-ed .ce-input::selection{ background: var(--ob-accent-24); -webkit-text-fill-color: transparent; }
 .jw-ed .ce-gutter{ position: absolute; left: 0; top: 0; bottom: 0; width: var(--ce-gut); z-index: 3;
   overflow: hidden; pointer-events: none; padding: var(--ce-pt) 0 40px;
-  font: 400 12.5px/1.7 var(--ed-mono); color: var(--ob-fg-4); text-align: right;
+  font: 400 12.5px/1.7 var(--ed-mono); color: var(--ob-fg-3); text-align: right;
   background: var(--ob-bg-0); border-right: 1px solid var(--ob-line-1); }
 .jw-ed .ce-gutter i{ display: block; padding-right: 13px; font-style: normal; }
 .jw-ed .ce-gutter i.on{ color: var(--ob-accent-fg); }
@@ -230,11 +230,11 @@
 /* Barra "Nuevo archivo / Nueva carpeta" ARRIBA del árbol de archivos de la franja
    (aparece al abrir el cajón). Va en editor-slide.css para no tocar base.css. */
 .sb-files-bar{ display: flex; align-items: center; gap: 2px; padding: 5px 8px 4px 22px; }
-.sb-files-title{ flex: 1; font: 600 9px var(--font-mono, monospace); letter-spacing: .14em; text-transform: uppercase; color: var(--ob-fg-4); }
-.sb-fnew{ width: 22px; height: 22px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center;
+.sb-files-title{ flex: 1; font: 600 var(--text-2xs,10px) var(--font-mono, monospace); letter-spacing: .14em; text-transform: uppercase; color: var(--ob-fg-4); }
+.sb-fnew{ width: 30px; height: 30px; border-radius: var(--radius-btn,7px); display: inline-flex; align-items: center; justify-content: center;
   color: var(--ob-fg-3); background: transparent; border: none; cursor: pointer; transition: background .12s, color .12s; }
 .sb-fnew svg{ width: 14px; height: 14px; }
-.sb-fnew:hover{ background: var(--ob-bg-3); color: var(--ob-accent-fg); }
+.sb-fnew:hover{ background: var(--ob-bg-3); color: var(--ob-fg-0); }
 .sb-fnew-row{ display: flex; align-items: center; gap: 6px; height: 27px; padding: 0 8px 0 22px; }
 .sb-fnew-row .sb-fico{ flex: none; display: inline-flex; color: var(--ob-accent-fg); }
 .sb-fnew-row .sb-fico svg{ width: 13px; height: 13px; }

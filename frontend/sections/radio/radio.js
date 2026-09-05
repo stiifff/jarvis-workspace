@@ -554,6 +554,7 @@
       'Silenciar': 'Mute', 'Activar sonido': 'Unmute', 'Volumen': 'Volume', 'Progreso': 'Progress',
       'Buscá música o pegá un link de YouTube…': 'Search for music or paste a YouTube link…',
       'Buscá música o elegí una estación.': 'Search for music or pick a station.',
+      'Lista para sonar': 'Ready to play',
       'Nada sonando todavía.': 'Nothing playing yet.',
       'Poné algo a sonar y te muestro relacionados.': "Play something and I'll show you related tracks.",
       'Poné algo a sonar': 'Play something', 'en el workspace': 'in the workspace',
@@ -742,7 +743,7 @@
     const now = $('#jr-now'); if (!now) return;
     const t = _state && _state.track, son = _state && _state.sonando;
     const live = $('#jr-live'); if (live) live.hidden = !(t && son);
-    if (!t) { now.classList.remove('playing'); now.innerHTML = '<div class="jr-hint" style="padding:14px 4px">Nada sonando todavía.</div>'; _renderTransport(); return; }
+    if (!t) { now.classList.remove('playing'); now.innerHTML = `<span class="jr-art ghost"></span><span class="jr-ninfo"><span class="jr-eyebrow">Lista para sonar</span><span class="jr-ntitle">Nada sonando todavía.</span></span>`; _renderTransport(); return; }
     now.innerHTML =
       `<span class="jr-art">${t.thumb ? `<img src="${_esc(t.thumb)}" alt="" onerror="this.remove()">` : ''}${viz(!!son)}</span>`
       + `<span class="jr-ninfo"><span class="jr-eyebrow">Reproduciendo</span>`

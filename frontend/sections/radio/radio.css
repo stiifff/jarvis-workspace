@@ -41,7 +41,7 @@
 @media (prefers-reduced-motion: reduce){.jr-mini.playing .jr-rd-wv,.jr-mini.playing .jr-rd-core{animation:none}}
 .jr-mini-meta{min-width:0;display:flex;flex-direction:column;justify-content:center;gap:1px;line-height:1.14;max-width:118px}
 .jr-mini-meta b{font:600 var(--text-xs,11px) var(--font-ui);color:var(--ob-fg-0);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.jr-mini-meta span{font:400 9px var(--font-ui);color:var(--ob-fg-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.jr-mini-meta span{font:400 var(--text-2xs,10px) var(--font-ui);color:var(--ob-fg-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 /* Play chico PREMIUM (orbe de vidrio) — igual que el del popover */
 .jr-mini-play{position:relative;width:26px;height:26px;border-radius:50%;border:0;flex:0 0 auto;cursor:pointer;
   background:radial-gradient(120% 120% at 32% 24%, var(--ob-accent-fg), var(--ob-accent) 46%, var(--ob-accent-dim) 100%);
@@ -73,8 +73,8 @@
     radial-gradient(130% 85% at 88% -14%, var(--ob-accent-08), transparent 56%),
     var(--ob-bg-1);
   backdrop-filter:blur(28px) saturate(150%);-webkit-backdrop-filter:blur(28px) saturate(150%);
-  border:1px solid var(--ob-line-2);border-radius:var(--radius-2xl,22px);
-  box-shadow:var(--shadow-4,0 24px 60px -12px oklch(0% 0 0/.7)), 0 0 0 1px var(--ob-glass-hi) inset;
+  border:1px solid var(--ob-line-2);border-radius:var(--radius-xl,16px);
+  box-shadow:var(--shadow-3), 0 0 0 1px var(--ob-glass-hi) inset;
   max-height:min(640px, calc(var(--jw-vh, 100vh) - 72px));
   transform-origin:top right;animation:jr-in .3s cubic-bezier(.22,1,.36,1)}
 @keyframes jr-in{from{opacity:0;transform:translateY(-10px) scale(.97)}to{opacity:1;transform:none}}
@@ -111,7 +111,7 @@
   box-shadow:inset 0 1.5px 4px var(--ob-glass-lo), 0 0 0 3px var(--ob-accent-08)}
 .jr-search svg{width:16px;height:16px;color:var(--ob-fg-3);flex:0 0 auto}
 .jr-search input{flex:1;min-width:0;border:0;background:transparent;color:var(--ob-fg-0);outline:none;font:400 var(--text-sm,12px) var(--font-ui)}
-.jr-search input::placeholder{color:var(--ob-fg-3)}
+.jr-search input::placeholder{color:var(--ob-fg-4)}
 /* Mata el focus-ring global de tokens.css (:where(...input...):focus-visible) → sin rectángulo */
 .jr-search input:focus,.jr-search input:focus-visible{outline:none;box-shadow:none}
 
@@ -121,7 +121,7 @@
 .jr-now .jr-art .jr-viz{height:22px}
 .jr-now .jr-art .jr-viz i{width:4px}
 .jr-ninfo{min-width:0;flex:1;display:flex;flex-direction:column;gap:7px}
-.jr-eyebrow{font:600 var(--text-2xs,10px) var(--font-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--ob-accent-fg)}
+.jr-eyebrow{font:600 var(--text-2xs,10px) var(--font-mono);letter-spacing:var(--ls-caps,0.12em);text-transform:uppercase;color:var(--ob-fg-3)}
 .jr-ntitle{font:600 var(--text-md,15px)/1.25 var(--font-ui);color:var(--ob-fg-0);
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .jr-chanlink{display:flex;align-items:center;gap:7px;border:0;background:transparent;cursor:pointer;padding:2px 4px 2px 0;
@@ -280,6 +280,10 @@
 #jr-browse{display:flex;flex-direction:column;min-height:0;flex:1 1 auto}
 #jr-browse[hidden]{display:none}
 .jr-pane[hidden]{display:none}
+/* Cambio de vista: fade suave al entrar (ob-fade-in vive en shared/tokens.css) */
+.jr-pane:not([hidden]){animation:ob-fade-in var(--dur-1) var(--ease-out)}
+/* Carátula fantasma del "nada sonando": misma base .jr-art pero sin glow de acento */
+.jr-now .jr-art.ghost{box-shadow:var(--shadow-2), inset 0 0 0 1px oklch(100% 0 0 / .08)}
 .jr-stations{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:4px}
 .jr-hint{padding:24px 12px;text-align:center;color:var(--ob-fg-3);font:400 var(--text-sm,12px) var(--font-ui)}
 
@@ -292,9 +296,9 @@
 .jr-thumb{position:relative;width:74px;height:42px;border-radius:var(--radius,8px);flex:0 0 auto;overflow:hidden;background:var(--ob-bg-3)}
 .jr-thumb img{width:100%;height:100%;object-fit:cover;display:block}
 .jr-thumb .jr-viz{position:absolute;left:6px;bottom:5px;height:10px}
-.jr-dur{position:absolute;right:4px;bottom:4px;z-index:2;font:600 9px var(--font-mono);color:#fff;
+.jr-dur{position:absolute;right:4px;bottom:4px;z-index:2;font:600 var(--text-2xs,10px) var(--font-mono);color:#fff;
   background:oklch(0% 0 0 / .78);padding:1px 5px;border-radius:3px;letter-spacing:.02em}
-.jr-dur.live{background:var(--ob-err);color:#fff}
+.jr-dur.live{background:var(--ob-info);color:#fff}
 .jr-rmeta{min-width:0;flex:1 1 auto;display:flex;flex-direction:column;gap:3px}
 .jr-rmeta b{font:600 var(--text-sm,12px) var(--font-ui);color:var(--ob-fg-0);line-height:1.3;
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
@@ -396,7 +400,7 @@
 .jr-now .jr-art:has(img) .jr-viz i{width:2.5px}
 
 @media (prefers-reduced-motion: reduce){
-  .jr-viz.on i,.jr-livewrap .jr-eq.on i,.jr-wave.on i,.jr-now.playing .jr-art,.jr-tp-btn.pop svg{animation:none}
+  .jr-viz.on i,.jr-livewrap .jr-eq.on i,.jr-wave.on i,.jr-now.playing .jr-art,.jr-tp-btn.pop svg,.jr-pane{animation:none}
   .jr-viz.on i{transform:scaleY(.7)}
   .jr-wave.on i{transform:scaleY(.5)}
   /* Sin goma ni deslizamientos: los cambios son instantáneos (radio.js también

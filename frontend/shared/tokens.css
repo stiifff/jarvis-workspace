@@ -518,6 +518,27 @@ html[data-theme="alba"] {
 }
 .ob-spinner.lg { width: 28px; height: 28px; }
 
+/* Etiqueta técnica mono: capitular 10px, espaciada, muted — mismo lenguaje
+   que los labels de sección (.sb-*/.qp-*) para reuso transversal. */
+.ob-label {
+  font: 600 var(--text-2xs) var(--font-mono);
+  letter-spacing: var(--ls-caps);
+  text-transform: uppercase;
+  color: var(--ob-fg-3);
+}
+
+/* Botón de ícono de 30px: ghost en reposo, se asienta al hover. */
+.ob-icon-btn {
+  width: 30px; height: 30px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: transparent; border: 0; border-radius: var(--radius-btn);
+  color: var(--ob-fg-3); cursor: pointer; flex: none;
+  transition: background var(--dur-1) var(--ease-out),
+              color var(--dur-1) var(--ease-out);
+}
+.ob-icon-btn:hover { background: var(--ob-bg-3); color: var(--ob-fg-0); }
+.ob-icon-btn svg { flex-shrink: 0; }
+
 /* ═══════════════════════════════════════════════════════════════
    KEYFRAMES COMPARTIDOS
 ═══════════════════════════════════════════════════════════════ */

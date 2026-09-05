@@ -35,20 +35,21 @@
 }
 .rv-titulo { font: italic 400 var(--text-xl) var(--font-display); color: var(--ob-fg-0); }
 .rv-branch {
-  font: 500 var(--text-2xs) var(--font-mono);
-  letter-spacing: var(--ls-wide);
+  font: 600 var(--text-2xs) var(--font-mono);
+  letter-spacing: var(--ls-caps);
+  text-transform: uppercase;
   color: var(--ob-fg-3);
 }
 .rv-branch b { color: var(--ob-accent-fg); font-weight: 600; }
 .rv-spacer { flex: 1; }
 .rv-refresh {
   display: inline-flex; align-items: center; justify-content: center;
-  width: 28px; height: 28px;
-  background: none; border: 1px solid var(--ob-line-1); border-radius: var(--radius-sm);
-  color: var(--ob-fg-2); cursor: pointer;
-  transition: color var(--dur-1), border-color var(--dur-1), background var(--dur-1);
+  width: 30px; height: 30px;
+  background: none; border: none; border-radius: var(--radius-btn);
+  color: var(--ob-fg-3); cursor: pointer;
+  transition: color var(--dur-1), background var(--dur-1);
 }
-.rv-refresh:hover { color: var(--ob-fg-0); border-color: var(--ob-line-3); background: var(--ob-bg-3); }
+.rv-refresh:hover { color: var(--ob-fg-0); background: var(--ob-bg-3); }
 
 /* ── Cuerpo ── */
 .rv-body { flex: 1; display: flex; min-height: 0; }
@@ -77,13 +78,14 @@
   width: 16px; height: 16px;
   display: inline-flex; align-items: center; justify-content: center;
   border-radius: 4px;
-  font: 700 9px var(--font-mono);
+  font: 700 var(--text-2xs) var(--font-mono);
   flex-shrink: 0;
 }
 .rv-estado.M { color: var(--ob-work); background: var(--ob-work-08); }
 .rv-estado.A { color: var(--ob-run);  background: var(--ob-run-08); }
 .rv-estado.D { color: var(--ob-err);  background: var(--ob-err-08); }
-.rv-estado.R { color: var(--ob-info); background: color-mix(in oklch, var(--ob-info) 10%, transparent); }
+.rv-estado.R { color: var(--ob-accent-fg); background: var(--ob-accent-08); }
+.rv-estado.U { color: var(--ob-run);  background: var(--ob-run-08); }
 .rv-path {
   flex: 1; min-width: 0;
   font: 400 var(--text-xs) var(--font-mono);
@@ -91,7 +93,11 @@
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   direction: rtl; text-align: left; /* recorta el inicio, no el archivo */
 }
-.rv-stat { font: 500 var(--text-2xs) var(--font-mono); flex-shrink: 0; }
+.rv-stat {
+  font: 500 var(--text-2xs) var(--font-mono); flex-shrink: 0;
+  min-width: 46px; text-align: right;
+  font-variant-numeric: tabular-nums;
+}
 .rv-stat .mas   { color: var(--ob-run); }
 .rv-stat .menos { color: var(--ob-err); }
 
@@ -130,9 +136,9 @@
   display: flex; align-items: center; gap: 8px;
   margin-top: 14px;
   padding: 7px 14px;
-  background: color-mix(in oklch, var(--ob-bg-1) 92%, var(--ob-accent));
+  background: var(--ob-bg-1);
   border-top: 1px solid var(--ob-line-1);
-  border-bottom: 1px solid var(--ob-line-1);
+  box-shadow: 0 1px 0 var(--ob-line-1);
   font: 600 var(--text-xs) var(--font-mono);
   color: var(--ob-fg-0);
 }

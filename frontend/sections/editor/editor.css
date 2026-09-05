@@ -193,7 +193,26 @@
   text-align: center;
 }
 .monaco-placeholder.oculto { display: none; }
-.mp-icon { opacity: 0.4; }
+/* Orbe del empty state: radial accent + ring + halo (patrón .wp-empty) */
+.mp-icon {
+  width: 60px; height: 60px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ob-accent-fg);
+  background: radial-gradient(circle at 50% 34%, var(--ob-accent-14), var(--ob-bg-2));
+  border: 1px solid var(--ob-accent-24);
+  border-radius: 50%;
+  box-shadow: 0 0 0 6px var(--ob-accent-08), 0 0 34px -8px var(--ob-accent-glow),
+              inset 0 1px 0 var(--ob-glass-hi);
+}
+.mp-icon svg { width: 28px; height: 28px; }
+.mp-eyebrow {
+  font: 600 var(--text-2xs) var(--font-mono);
+  letter-spacing: var(--ls-caps);
+  text-transform: uppercase;
+  color: var(--ob-fg-3);
+}
 .mp-text { font-size: var(--text-base); color: var(--ob-fg-2); }
 
 /* ─── Paleta canonica del editor (spec Fase 2) (Task 2.7) ──────── */
@@ -230,11 +249,10 @@
 }
 .ft-title {
   flex: 1;
-  font-size: var(--text-xs);
+  font: 600 var(--text-2xs) var(--font-mono);
+  letter-spacing: var(--ls-caps);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
   color: var(--ob-fg-3);
-  font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -368,7 +386,8 @@
   transition: border-color var(--dur-1) var(--ease-out);
 }
 .ft-search:focus {
-  border-color: var(--ob-line-3);
+  border-color: var(--ob-accent-24);
+  box-shadow: 0 0 0 3px var(--ob-accent-08);
 }
 .ft-node.ft-hidden { display: none; }
 .ft-node.ft-match .ft-name { color: var(--ob-accent-fg); font-weight: 600; }
@@ -662,21 +681,30 @@
   font-family: var(--font-mono);
   opacity: 0.95;
 }
+/* Formato de chip (paridad con .rv-estado de review): 10px mono 700
+   sobre fondo al -08 del estado. */
+.ft-git-badge {
+  font: 700 var(--text-2xs) var(--font-mono);
+  letter-spacing: .02em;
+  padding: 1px 5px;
+  border-radius: 4px;
+  line-height: 1;
+}
 
 /* M = modificado (work/amber); U/A = nuevo/añadido (run/verde);
    D/C = borrado/copia conflictiva (err/rojo); R = renombrado (accent). */
 .ft-git-M > .ft-git-badge,
-.ft-git-M  .ft-git-badge { color: var(--ob-work); }
+.ft-git-M  .ft-git-badge { color: var(--ob-work); background: var(--ob-work-08); }
 .ft-git-U > .ft-git-badge,
 .ft-git-U  .ft-git-badge,
 .ft-git-A > .ft-git-badge,
-.ft-git-A  .ft-git-badge { color: var(--ob-run); }
+.ft-git-A  .ft-git-badge { color: var(--ob-run); background: var(--ob-run-08); }
 .ft-git-D > .ft-git-badge,
 .ft-git-D  .ft-git-badge,
 .ft-git-C > .ft-git-badge,
-.ft-git-C  .ft-git-badge { color: var(--ob-err); }
+.ft-git-C  .ft-git-badge { color: var(--ob-err); background: var(--ob-err-08); }
 .ft-git-R > .ft-git-badge,
-.ft-git-R  .ft-git-badge { color: var(--ob-accent-fg); }
+.ft-git-R  .ft-git-badge { color: var(--ob-accent-fg); background: var(--ob-accent-14); }
 
 /* También tintar el nombre para escaneo rápido (sutil). */
 .ft-git-M > .ft-name,  .ft-git-M  .ft-name  { color: var(--ob-work); }
@@ -745,10 +773,14 @@
 ═══════════════════════════════════════════════════════════════ */
 
 .ft-empty {
-  padding:    20px 12px;
-  color:      var(--ob-fg-3);
-  font-size:  var(--text-xs);
-  text-align: center;
+  display:     flex;
+  flex-direction: column;
+  align-items: center;
+  gap:         8px;
+  padding:     20px 12px;
+  color:       var(--ob-fg-3);
+  font-size:   var(--text-xs);
+  text-align:  center;
 }
 .ft-children.oculto { display: none; }
 

@@ -4923,7 +4923,7 @@ async function abrirModalHistorial() {
   modalHistorial.style.display = 'flex';
   const cont = document.getElementById('historial-lista');
   if (!cont) return;
-  cont.innerHTML = '<div class="hist-empty">Cargando…</div>';
+  cont.innerHTML = '<div class="hist-empty" aria-hidden="true"><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></div>';
 
   try {
     const res = await fetch(`/api/orchestrator/historial/${projectId}`);
@@ -5053,7 +5053,7 @@ function exportarConversacion() {
 window.JarvisWorkflows = {
   async render(cont) {
     if (!cont) return;
-    cont.innerHTML = '<div class="hist-empty">Cargando…</div>';
+    cont.innerHTML = '<div class="hist-empty" aria-hidden="true"><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></div>';
     try {
       const res = await fetch(`/api/orchestrator/workflows/${projectId}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);

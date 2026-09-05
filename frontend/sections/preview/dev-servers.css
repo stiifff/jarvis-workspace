@@ -9,7 +9,7 @@
 .jw-ds-count {
   min-width: 15px;
   padding: 0 4px;
-  font: 600 10px var(--sb-mono);
+  font: 600 var(--text-2xs) var(--font-mono);
   line-height: 15px;
   text-align: center;
   border-radius: var(--radius-sm);
@@ -17,8 +17,8 @@
   color: var(--ob-accent-fg);
 }
 #jw-localhosts-btn.jw-ds-vacio .jw-ds-count {
-  background: var(--sb-bg-3);
-  color: var(--sb-fg-4);
+  background: var(--ob-bg-3);
+  color: var(--ob-fg-4);
 }
 #jw-localhosts-btn.activo .jw-ds-count {
   background: var(--ob-accent-24);
@@ -64,11 +64,11 @@
 }
 .jw-ds-title {
   font: 600 12px var(--font-ui);
-  color: var(--sb-fg-1);
+  color: var(--ob-fg-1);
   letter-spacing: .01em;
 }
 .jw-ds-n {
-  font: 600 10px var(--sb-mono);
+  font: 600 var(--text-2xs) var(--font-mono);
   color: var(--ob-accent-fg);
   background: var(--ob-accent-14);
   padding: 1px 6px;
@@ -94,7 +94,7 @@
   padding: 18px 14px;
   text-align: center;
   font: 400 12px var(--font-ui);
-  color: var(--sb-fg-4);
+  color: var(--ob-fg-3);
   line-height: 1.5;
 }
 
@@ -139,7 +139,7 @@
   border-radius: var(--radius-pill);
   background: var(--ob-accent-14);
   color: var(--ob-accent);
-  font: 600 9px var(--font-ui);
+  font: 600 var(--text-2xs) var(--font-ui);
   letter-spacing: .06em;
   text-transform: uppercase;
   vertical-align: 1px;
@@ -153,15 +153,15 @@
   gap: 1px;
 }
 .jw-ds-host {
-  font: 600 12.5px var(--sb-mono);
-  color: var(--sb-fg-0);
+  font: 600 12.5px var(--font-mono);
+  color: var(--ob-fg-0);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .jw-ds-quien {
   font: 400 10.5px var(--font-ui);
-  color: var(--sb-fg-4);
+  color: var(--ob-fg-3);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -171,7 +171,7 @@
   flex-shrink: 0;
   width: 26px; height: 26px;
   display: inline-flex; align-items: center; justify-content: center;
-  color: var(--sb-fg-4);
+  color: var(--ob-fg-4);
   background: transparent;
   border: none;
   border-radius: var(--radius-sm);

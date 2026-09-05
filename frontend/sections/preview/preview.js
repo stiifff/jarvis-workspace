@@ -664,7 +664,7 @@
   // imagen; si falla (404) → globo para los locales (el "default" que el usuario
   // espera), la letra para los públicos.
   function _pintarFavicon(fav, t) {
-    fav.className = 'wp-tab-fav';
+    fav.className = fav.dataset.base || 'wp-tab-fav';
     fav.style.background = '';
     fav.replaceChildren();
     const host = _host(t.url);
@@ -884,7 +884,20 @@
       if (fb)   fb.hidden   = vista.vista !== 'fallback';
       const t = _estado.tabs.find((x) => x.id === id);
       const urlEl = vista.cell.querySelector('.wp-cell-url');
-      if (urlEl && t) urlEl.textContent = t.titulo || _host(t.url) || 'Nueva pestaña';
+      const favEl = vista.cell.querySelector('.wp-cell-fav');
+      if (favEl && t) _pintarFavicon(favEl, t);
+      if (urlEl && t) {
+        urlEl.textContent = '';
+        const b = document.createElement('b');
+        b.textContent = _host(t.url) || t.titulo || 'Nueva pestaña';
+        urlEl.appendChild(b);
+        const i = document.createElement('i');
+        try {
+          const u = new URL(t.url);
+          i.textContent = (u.pathname && u.pathname !== '/') ? u.pathname : '';
+        } catch { /* URL no parseable (pestaña vacía): sin ruta */ }
+        urlEl.appendChild(i);
+      }
     }
 
     const empty = $('#wp-empty');
@@ -948,6 +961,7 @@
     cell.hidden = true;
     cell.innerHTML =
       `<div class="wp-cell-head">
+         <span class="wp-cell-fav" data-base="wp-cell-fav"></span>
          <span class="wp-cell-url"></span>
          <button class="wp-cell-max" type="button" title="Ver solo este panel" aria-label="Maximizar panel">${SVG_MAX2}</button>
          <button class="wp-cell-cerrar" type="button" title="Cerrar pestaña" aria-label="Cerrar">×</button>

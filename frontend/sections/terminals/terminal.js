@@ -2017,7 +2017,7 @@ function _copiarTextoAlClipboard(texto) {
   // Intento moderno
   if (navigator.clipboard?.writeText) {
     navigator.clipboard.writeText(texto).then(
-      () => _toastTerminal('Copiado'),
+      () => window.toast?.('Copiado', 'success', 1400),
       () => _copiarLegacy(texto),
     );
     return;
@@ -2044,22 +2044,7 @@ function _copiarLegacy(texto) {
     document.getSelection().removeAllRanges();
     document.getSelection().addRange(prevSelection);
   }
-  _toastTerminal(ok ? 'Copiado' : 'No se pudo copiar');
-}
-
-let _toastTimer = null;
-function _toastTerminal(texto) {
-  let toast = document.getElementById('term-toast');
-  if (!toast) {
-    toast = document.createElement('div');
-    toast.id = 'term-toast';
-    toast.className = 'term-toast';
-    document.body.appendChild(toast);
-  }
-  toast.textContent = texto;
-  toast.classList.add('visible');
-  clearTimeout(_toastTimer);
-  _toastTimer = setTimeout(() => toast.classList.remove('visible'), 1200);
+  window.toast?.(ok ? 'Copiado' : 'No se pudo copiar', ok ? 'success' : 'error', 1400);
 }
 
 // Sube una imagen o video (File del clipboard o del drag&drop) al backend y

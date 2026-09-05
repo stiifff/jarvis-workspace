@@ -80,7 +80,7 @@
      (Se probó altura por contenido y saltaba entre secciones — mal.) El que
      scrollea es el cuerpo; el rail y el alféizar quedan fijos. */
   height: min(790px, 100%);
-  border-radius: 22px;
+  border-radius: var(--radius-xl);
   overflow: hidden;
   isolation: isolate;
   background:
@@ -89,8 +89,7 @@
   backdrop-filter: blur(30px) saturate(180%);
   -webkit-backdrop-filter: blur(30px) saturate(180%);
   box-shadow:
-    0 40px 120px -32px oklch(0% 0 0 / .78),
-    0 8px 28px -12px oklch(0% 0 0 / .6);
+    var(--shadow-3);
   animation: sx-slab-in 320ms var(--ease-out) both;
 }
 @keyframes sx-slab-in {
@@ -168,7 +167,7 @@
   height: 34px;
   margin: 0 4px 14px;
   padding: 0 10px;
-  border-radius: 9px;
+  border-radius: var(--radius);
   background: var(--sx-input);
   box-shadow: inset 0 0 0 1px var(--sx-hair), inset 0 1px 0 color-mix(in oklch, white 5%, transparent);
   transition: box-shadow var(--dur-1) var(--ease-out);
@@ -288,7 +287,7 @@
   width: 100%;
   padding: 8px 10px;
   border: 0;
-  border-radius: 9px;
+  border-radius: var(--radius);
   background: none;
   color: var(--ob-fg-1);
   text-align: left;
@@ -533,7 +532,7 @@
   display: inline-flex;
   gap: 2px;
   padding: 3px;
-  border-radius: 9px;
+  border-radius: var(--radius);
   background: var(--sx-input);
   box-shadow: inset 0 0 0 1px var(--sx-hair);
 }
@@ -1024,7 +1023,7 @@
 .ap-esc-ends i {
   position: absolute; top: 0;
   font: 500 10px var(--font-mono); font-style: normal;
-  color: var(--ob-fg-4); font-variant-numeric: tabular-nums;
+  color: var(--ob-fg-3); font-variant-numeric: tabular-nums;
 }
 .ap-esc-ends i:nth-child(1) { left: 0; }
 .ap-esc-ends i:nth-child(2) { left: var(--esc-det, 37.5%); transform: translateX(-50%); }
@@ -1132,7 +1131,7 @@
 .pl-i {
   display: flex; align-items: center; gap: 14px;
   padding: 11px 12px;
-  border-radius: 9px;
+  border-radius: var(--radius);
   cursor: pointer;
   transition: background var(--dur-1) var(--ease-out);
 }
@@ -1218,7 +1217,7 @@
 .mm-i {
   display: flex; align-items: center; gap: 18px;
   width: 100%; padding: 11px 10px;
-  border: 0; border-radius: 9px;
+  border: 0; border-radius: var(--radius);
   background: none; text-align: left; cursor: pointer;
   border-bottom: 1px solid color-mix(in oklch, var(--ob-line-1) 55%, transparent);
   transition: background var(--dur-1) var(--ease-out);
@@ -1308,7 +1307,7 @@
 .ps-buscar {
   display: flex; align-items: center; gap: 8px; flex: 1;
   max-width: 300px; min-width: 180px; height: 34px; padding: 0 11px;
-  border-radius: 11px; background: color-mix(in oklch, var(--ob-bg-void) 85%, transparent);
+  border-radius: var(--radius-lg); background: color-mix(in oklch, var(--ob-bg-void) 85%, transparent);
   border: 1px solid var(--ob-line-1); color: var(--ob-fg-4);
   transition: border-color var(--dur-1) var(--ease-out), box-shadow var(--dur-1) var(--ease-out);
 }
@@ -1322,12 +1321,12 @@
 /* ítems/cards filtrados por el buscador */
 #jw-settings .ps-filtrado { display: none !important; }
 .ps-filtro-vacio {
-  padding: 14px 12px; font: 500 12px var(--font-ui); color: var(--ob-fg-4);
+  padding: 14px 12px; font: 500 12px var(--font-ui); color: var(--ob-fg-3);
 }
 .ps-filtro-vacio b { color: var(--ob-fg-2); font-weight: 600; }
 #jw-settings .ps-grid .ps-filtro-vacio { grid-column: 1 / -1; }
 #jw-settings .ps-tab {
-  height: 28px; padding: 0 14px; border-radius: 9px; border: 1px solid transparent;
+  height: 28px; padding: 0 14px; border-radius: var(--radius); border: 1px solid transparent;
   background: transparent; color: var(--ob-fg-2); font: 550 12px var(--font-ui); cursor: pointer;
   transition: background var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out);
 }
@@ -1356,8 +1355,8 @@
   background: linear-gradient(180deg, var(--ob-bg-1), var(--ob-bg-0));
   border: 1px solid color-mix(in oklch, var(--ob-fg-1) 14%, transparent);
   border-radius: 16px; padding: 20px 22px;
-  box-shadow: inset 0 1px 0 color-mix(in oklch, var(--ob-fg-0) 8%, transparent),
-              0 24px 80px oklch(0% 0 0 / .6);
+  box-shadow: inset 0 1px 0 var(--ob-glass-hi),
+              var(--shadow-3);
   animation: set-alta-in 0.2s var(--ease-out, ease);
 }
 @keyframes set-alta-in {
@@ -1382,7 +1381,7 @@
 .cta-alta-row { display: flex; gap: 8px; }
 .cta-alta-input {
   flex: 1; min-width: 0; background: var(--ob-bg-void); color: var(--ob-fg-0);
-  border: 1px solid var(--ob-line-2); border-radius: 9px;
+  border: 1px solid var(--ob-line-2); border-radius: var(--radius);
   padding: 9px 12px; font: 500 13px var(--font-mono);
   transition: border-color var(--dur-1) var(--ease-out), box-shadow var(--dur-1) var(--ease-out);
 }
@@ -1495,7 +1494,7 @@
 #jw-settings .ps-item {
   display: flex; align-items: center; gap: 12px;
   padding: 10px 10px;
-  border: 0; border-radius: 9px;
+  border: 0; border-radius: var(--radius);
   background: none; box-shadow: none;
   transition: background var(--dur-1) var(--ease-out);
 }

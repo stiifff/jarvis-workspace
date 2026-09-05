@@ -41,7 +41,7 @@
   width: 30px; height: 30px;
   padding: 0;
   border: 1px solid transparent;
-  border-radius: var(--radius);
+  border-radius: var(--radius-btn);
   background: transparent;
   color: var(--ob-fg-2);
   cursor: pointer;
@@ -102,7 +102,7 @@
   background: var(--ob-run-08);
   border: 1px solid color-mix(in oklch, var(--ob-run) 30%, transparent);
   color: var(--ob-run);
-  font: 700 9px/1 var(--font-mono);
+  font: 700 var(--text-2xs)/1 var(--font-mono);
   letter-spacing: .08em;
   user-select: none;
 }
@@ -131,7 +131,7 @@
   font: 400 var(--text-base) var(--font-ui);
   outline: none;
 }
-.wp-url::placeholder { color: var(--ob-fg-3); }
+.wp-url::placeholder { color: var(--ob-fg-4); }
 /* Estado de error: shake (solo transform); el borde rojo va en .wp-omni */
 .wp-url.error { animation: wp-shake 240ms ease; }
 @keyframes wp-shake {
@@ -213,10 +213,23 @@
 }
 .wp-cell-url {
   flex: 1 1 auto; min-width: 0;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  font: 400 10px var(--font-mono); color: var(--ob-fg-3);
+  display: flex; align-items: baseline; gap: 6px;
+  overflow: hidden;
 }
-.wp-cell.foco .wp-cell-url { color: var(--ob-fg-1); }
+.wp-cell-url b {
+  flex: 0 0 auto;
+  font: 600 var(--text-2xs) var(--font-mono);
+  color: var(--ob-fg-1);
+  white-space: nowrap;
+}
+.wp-cell-url i {
+  flex: 1 1 auto; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font: 400 var(--text-2xs) var(--font-mono);
+  color: var(--ob-fg-4);
+}
+.wp-cell.foco .wp-cell-url b { color: var(--ob-fg-0); }
+.wp-cell.foco .wp-cell-url i { color: var(--ob-fg-3); }
 .wp-cell-max, .wp-cell-cerrar {
   flex: 0 0 auto;
   width: 18px; height: 18px;
@@ -260,7 +273,7 @@
 }
 .wp-lg-cell:hover { background: var(--ob-bg-3); border-color: var(--ob-line-3); color: var(--ob-fg-1); }
 .wp-lg-cell.activo { background: var(--ob-accent-14); border-color: var(--ob-accent-24); color: var(--ob-accent-fg); }
-.wp-lg-cell > span:last-child { font: 500 9px var(--font-ui); }
+.wp-lg-cell > span:last-child { font: 500 var(--text-2xs) var(--font-ui); }
 .wp-lg-mini { width: 40px; height: 28px; display: grid; gap: 2px; color: currentColor; }
 .wp-lg-mini i { background: currentColor; border-radius: 1px; opacity: .85; }
 .wp-lg-mini i:nth-child(1) { grid-area: a; } .wp-lg-mini i:nth-child(2) { grid-area: b; }
@@ -537,19 +550,21 @@
   box-shadow: inset 0 1px 0 var(--ob-glass-hi);
   color: var(--ob-fg-0);
 }
-.wp-tab.activa::after {             /* subrayado de acento (look Nave) */
+.wp-tab.activa::after {             /* firma "top-bar": borde superior de acento */
   content: '';
   position: absolute;
-  left: var(--sp-2); right: var(--sp-2); bottom: -1px;
-  height: 2px; border-radius: 2px;
+  left: 0; right: 0; top: 0;
+  height: 2px;
   background: var(--ob-accent);
   box-shadow: 0 0 8px var(--ob-accent-glow);
 }
 
 /* Favicon del sitio (img real con fallback a inicial coloreada / globo). Es lo
    ÚLTIMO que se sacrifica al comprimir: flex 0 0 + min-width fijo ⇒ nunca se
-   encoge ni se recorta, cualquiera sea el ancho de la pestaña. */
-.wp-tab-fav {
+   encoge ni se recorta, cualquiera sea el ancho de la pestaña. El mismo bloque
+   sirve al favicon del head de cada celda (split) — .wp-cell-fav. */
+.wp-tab-fav,
+.wp-cell-fav {
   flex: 0 0 auto;
   width: 15px; height: 15px;
   min-width: 15px;
@@ -558,8 +573,8 @@
   overflow: hidden;
   font: 700 8px var(--font-ui); color: #fff;
 }
-.wp-tab-fav img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.wp-tab-fav svg { width: 12px; height: 12px; }   /* globo de pestaña sin sitio */
+.wp-tab-fav img, .wp-cell-fav img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.wp-tab-fav svg, .wp-cell-fav svg { width: 12px; height: 12px; }   /* globo de pestaña sin sitio */
 .wp-tab-fav-blank { background: var(--ob-bg-4); color: var(--ob-fg-3); }
 
 .wp-tab-titulo {
@@ -570,14 +585,8 @@
   white-space: nowrap;
   text-align: left;
 }
-/* El título deja hueco para el × SOLO cuando el × se muestra (hover/activa):
-   así una pestaña comprimida a ícono no reserva ancho muerto para el botón. */
-.wp-tab:hover .wp-tab-titulo,
-.wp-tab.activa .wp-tab-titulo { padding-right: 16px; }
-
-/* Cerrar: overlay anclado a la derecha, FUERA del flujo flex. Al no ocupar
-   ancho no infla el mínimo de la pestaña (más favicons entran sin scroll) y
-   nunca queda recortado por el overflow como cuando era inline. */
+/* El × del tab es overlay absolute (no infla el mínimo) — sin padding de
+   reserva; el hover solo cambia fondo. */
 .wp-tab-cerrar {
   position: absolute;
   right: 3px; top: 50%;

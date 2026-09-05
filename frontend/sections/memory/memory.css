@@ -222,7 +222,7 @@
   font: 500 var(--text-2xs) var(--font-mono);
   letter-spacing: var(--ls-wide);
   text-transform: uppercase;
-  color: var(--ob-fg-4);
+  color: var(--ob-fg-3);
   pointer-events: none;
 }
 
@@ -261,7 +261,7 @@
 .mem-core-label {
   fill: var(--ob-fg-3);
   font: 500 calc(10px * var(--lk, 1)) var(--font-mono);
-  letter-spacing: var(--ls-wide);
+  letter-spacing: var(--ls-caps);
   text-transform: uppercase;
   pointer-events: none;
 }
@@ -280,6 +280,11 @@
   fill: var(--ob-fg-1);
   font: 500 calc(10px * var(--lk, 1)) var(--font-ui);
   pointer-events: none;
+  /* Legibilidad sobre aristas: halo de fondo antes que el trazo */
+  paint-order: stroke;
+  stroke: var(--ob-bg-void);
+  stroke-width: 3px;
+  stroke-linejoin: round;
 }
 .mem-nodo.dim { opacity: 0.15; }
 .mem-nodo.hito circle {
@@ -320,7 +325,10 @@
 }
 @keyframes mem-draw-ina { from { stroke-dashoffset: 900; } to { stroke-dashoffset: 0; } }
 
-.mem-grafo svg.sin-etiquetas .mem-nodo text { opacity: 0; transition: opacity var(--dur-1); }
+/* Declutter por jerarquía: al alejar se ocultan las etiquetas de los nodos
+   "menores" (≤1 conexión) y los "mayores" (grado ≥ 2, la clase la pone
+   memory.js) quedan como ancla de lectura del atlas. */
+.mem-grafo svg.sin-etiquetas .mem-nodo:not(.mayor) text { opacity: 0; transition: opacity var(--dur-1); }
 
 /* Tooltip del grafo (plane-2 — puede usar blur). Refuerza el ancla de
    "memoria actual" al hacer sobre-scroll para que no se pierda el foco. */
@@ -330,7 +338,7 @@
   max-width: 300px;
   padding: 8px 11px;
   pointer-events: none;
-  font: 400 11px var(--font-ui);
+  font: 400 var(--text-xs) var(--font-ui);
   color: var(--ob-fg-1);
   border: 1px solid var(--ob-line-2);
   border-radius: var(--radius-lg);
@@ -347,8 +355,8 @@
   display: block;
   margin-bottom: 2px;
 }
-.mem-tooltip i { font-style: normal; color: var(--ob-fg-3); font: 400 10px var(--font-mono); white-space: nowrap; }
-.mem-tooltip em { font-style: normal; color: var(--ob-fg-4); font: 400 10px var(--font-mono); }
+.mem-tooltip i { font-style: normal; color: var(--ob-fg-3); font: 400 var(--text-2xs) var(--font-mono); white-space: nowrap; }
+.mem-tooltip em { font-style: normal; color: var(--ob-fg-4); font: 400 var(--text-2xs) var(--font-mono); }
 
 .mem-graf-ctrl { position: absolute; top: 10px; right: 12px; z-index: 2; display: flex; align-items: center; gap: 4px; }
 .mem-graf-ctrl button {

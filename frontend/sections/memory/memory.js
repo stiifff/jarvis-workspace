@@ -69,13 +69,13 @@
     if (alti) {
       html += `<div class="mem-salud mem-salud-altimetro"
         title="¿El recall rinde? De las memorias que el sistema inyectó a los prompts (7 días), cuántas leyeron de verdad los agentes según su cierre, y cuántas lecturas fueron en pasos que terminaron bien">
-        ${icon('chart', 11) || '📈'} <span>${esc(alti.texto)}</span>
+        ${icon('chart', 11)} <span>${esc(alti.texto)}</span>
       </div>`;
     }
     if (globales.length) {
       // Candidatas a memoria GLOBAL: un click y los proyectos futuros la heredan.
       html += `<div class="mem-salud mem-salud-global" title="Lecciones de este proyecto que valen para TODOS (entorno compartido o fallo repetido en otro proyecto) — promover las siembra en cada proyecto nuevo">
-        🌍 ${globales.slice(0, 4).map(c =>
+        ${icon('globe', 11)} ${globales.slice(0, 4).map(c =>
           `<span class="mem-global-chip">${esc(c.slug)}
             <button class="mem-promover" data-slug="${esc(c.slug)}" type="button">Promover</button>
           </span>`).join(' ')}
@@ -90,7 +90,7 @@
       const r = await fetch(`/api/projects/${_projectId}/memory/${encodeURIComponent(slug)}/promover`,
                             { method: 'POST' });
       if (!r.ok) throw new Error(await r.text());
-      window.toast?.(_t('🌍 {slug} promovida a memoria global').replace('{slug}', slug), 'ok');
+      window.toast?.(_t('Globo · {slug} promovida a memoria global').replace('{slug}', slug), 'ok');
       await _cargar();
       _renderBody();
     } catch (e) {
@@ -326,13 +326,17 @@
       return;
     }
     const W = 1400, H = 900;
-    const nodos = _memorias.map((m, i) => ({
-      ...m,
-      x: W / 2 + Math.cos(i * 2.4) * (120 + (i % 5) * 40),
-      y: H / 2 + Math.sin(i * 2.4) * (90 + (i % 4) * 35),
-      vx: 0, vy: 0,
-      grado: _edges.filter(e => e.from === m.slug || e.to === m.slug).length,
-    }));
+    const nodos = _memorias.map((m, i) => {
+      const grado = _edges.filter(e => e.from === m.slug || e.to === m.slug).length;
+      return {
+        ...m,
+        x: W / 2 + Math.cos(i * 2.4) * (120 + (i % 5) * 40),
+        y: H / 2 + Math.sin(i * 2.4) * (90 + (i % 4) * 35),
+        vx: 0, vy: 0,
+        grado,
+        mayor: grado >= 2,   // hierarchy: the declutter (sin-etiquetas) respects them
+      };
+    });
     const porSlug = Object.fromEntries(nodos.map(n => [n.slug, n]));
     const springs = _edges
       .map(e => [porSlug[e.from], porSlug[e.to]])
@@ -385,12 +389,12 @@
             <g class="mem-core" transform="translate(${_core.x.toFixed(1)},${_core.y.toFixed(1)})">
               <circle class="mem-core-nucleo" r="30"/>
               <circle class="mem-core-anillo" r="44"/>
-              <text class="mem-core-label" y="64" text-anchor="middle">${_t('Memoria')}</text>
+              <text class="mem-core-label" y="72" text-anchor="middle">${_t('Memoria')}</text>
             </g>
             ${springs.map(([a, b], i) =>
               `<line class="mem-edge" style="--d:${(i * 22).toFixed(0)}ms" x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b.x.toFixed(1)}" y2="${b.y.toFixed(1)}"/>`).join('')}
             ${nodos.map(n => `
-              <g class="mem-nodo" data-slug="${esc(n.slug)}" transform="translate(${n.x.toFixed(1)},${n.y.toFixed(1)})">
+              <g class="mem-nodo${n.mayor ? ' mayor' : ''}" data-slug="${esc(n.slug)}" transform="translate(${n.x.toFixed(1)},${n.y.toFixed(1)})">
                 <circle r="${7 + Math.min(n.grado * 2.5, 14)}"/>
                 <text x="0" y="${18 + Math.min(n.grado * 2.5, 14)}" text-anchor="middle">${esc(n.titulo.slice(0, 26))}</text>
               </g>`).join('')}
@@ -423,7 +427,7 @@
       // Escala servida a las etiquetas: el CSS las agranda al alejar (1/k)
       // para que el nombre de cada memoria sea legible a cualquier zoom.
       svg.style.setProperty('--lk', 1 / _grafT.k);
-      svg.classList.toggle('sin-etiquetas', _grafT.k < 0.8);
+      svg.classList.toggle('sin-etiquetas', _grafT.k < 0.95);
       if (zlbl) zlbl.textContent = Math.round(_grafT.k * 100) + '%';
     }
     function zoomEn(factor) {
@@ -487,10 +491,12 @@
     // visible a cualquier zoom: la identidad de la memoria no se pierde
     // al alejar (las etiquetas del nodo las escala --lk).
     function tooltipMostrar(ev, n) {
-      tip.innerHTML = `<b>${esc(n.titulo)}</b><i>${esc(n.autor)} · ${esc(n.creado)}${n.actualizado ? ' · act. ' + esc(n.actualizado) : ''}</i><em>${_t('Conexiones')}: ${n.grado}</em>`;
+      tip.innerHTML = `${_badgesHTML(n)}<b>${esc(n.titulo)}</b><i>${esc(n.autor)} · ${esc(n.creado)}${n.actualizado ? ' · act. ' + esc(n.actualizado) : ''}</i><em>${_t('Conexiones')}: ${n.grado}</em>`;
       tip.hidden = false;
       const w = tip.offsetWidth, h = tip.offsetHeight;
-      tip.style.left = Math.min(ev.clientX + 14, window.innerWidth - w - 6) + 'px';
+      // Flip: si a la derecha no entra, va a la IZQUIERDA del cursor
+      const aDerecha = (ev.clientX + 14 + w) <= window.innerWidth - 6;
+      tip.style.left = (aDerecha ? ev.clientX + 14 : ev.clientX - w - 14) + 'px';
       tip.style.top  = Math.min(ev.clientY + 14, window.innerHeight - h - 6) + 'px';
     }
     nodeEls.forEach(g => {
@@ -525,7 +531,12 @@
     // ── Disparos neuronales ─────────────────────────────────────
     // Un nodo al azar "dispara" y sus sinapsis se encienden: flash efímero
     // sin animaciones infinitas. Se limpia en el próximo render/cierre.
+    // El mouse sobre el grafo pausa los disparos (el hover ya es señal).
+    let _firing = true;
+    view.addEventListener('pointerenter', () => { _firing = false; });
+    view.addEventListener('pointerleave', () => { _firing = true; });
     _grafTimer = setInterval(() => {
+      if (!_firing) return;
       const g = nodeEls[Math.floor(Math.random() * nodeEls.length)];
       if (!g) return;
       const slug = g.dataset.slug;

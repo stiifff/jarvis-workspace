@@ -5,9 +5,9 @@
   <title>Jarvis Workspace — Editor</title>
   <link rel="icon" href="/favicon.ico" sizes="48x48">
   <link rel="icon" href="/static/shared/favicon.svg?v=1" type="image/svg+xml">
-  <link rel="stylesheet" href="/static/shared/tokens.css?v=17">
-  <link rel="stylesheet" href="/static/shared/base.css?v=72">
-  <link rel="stylesheet" href="/static/sections/editor/editor.css?v=23">
+  <link rel="stylesheet" href="/static/shared/tokens.css?v=18">
+  <link rel="stylesheet" href="/static/shared/base.css?v=73">
+  <link rel="stylesheet" href="/static/sections/editor/editor.css?v=24">
   <style>
     html, body { height: 100%; margin: 0; background: var(--ob-bg-0); }
     /* --jw-vh (shared/escala.js) = alto de ventana ajustado por la Escala de la
@@ -47,7 +47,11 @@
                  autocomplete="off" spellcheck="false">
         </div>
         <div class="file-tree-body" id="file-tree-body">
-          <div class="ft-empty">Cargando…</div>
+          <div class="ft-empty" aria-hidden="true">
+            <div class="skeleton"></div>
+            <div class="skeleton"></div>
+            <div class="skeleton"></div>
+          </div>
         </div>
       </div>
 
@@ -75,6 +79,7 @@
             <div class="monaco-editor-wrap" id="monaco-editor-wrap">
               <div class="monaco-placeholder" id="monaco-placeholder">
                 <svg class="mp-icon" viewBox="0 0 16 16" width="64" height="64" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 2.5h5l4 4v7a1 1 0 0 1-1 1h-8a1 1 0 0 1-1-1v-10a1 1 0 0 1 1-1z"/><path d="M8.5 2.5v4h4"/></svg>
+                <span class="mp-eyebrow">Editor</span>
                 <span class="mp-text">Abrí un archivo del árbol para empezar a editar.</span>
               </div>
               <div class="editor-binary-view" id="editor-binary-view" hidden></div>
@@ -86,6 +91,7 @@
             <div class="monaco-editor-wrap" id="monaco-editor-wrap-1">
               <div class="monaco-placeholder" id="monaco-placeholder-1">
                 <svg class="mp-icon" viewBox="0 0 16 16" width="64" height="64" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 2.5h5l4 4v7a1 1 0 0 1-1 1h-8a1 1 0 0 1-1-1v-10a1 1 0 0 1 1-1z"/><path d="M8.5 2.5v4h4"/></svg>
+                <span class="mp-eyebrow">Editor</span>
                 <span class="mp-text">Panel secundario.</span>
               </div>
               <div class="editor-binary-view" id="editor-binary-view-1" hidden></div>
@@ -119,7 +125,7 @@
     window.editorVisible = true;
     window.togglePanel = () => {};
   </script>
-  <script src="/static/sections/editor/editor.js?v=32"></script>
+  <script src="/static/sections/editor/editor.js?v=33"></script>
   <script>
     const pid = new URLSearchParams(location.search).get('project');
     if (!pid) { document.getElementById('ed-proj').textContent = 'Falta ?project='; }

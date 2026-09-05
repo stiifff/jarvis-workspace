@@ -99,10 +99,10 @@
 .tk-col[data-col="blocked"] .tk-col-dot { background: var(--ob-err);  box-shadow: 0 0 6px color-mix(in oklch, var(--ob-err) 45%, transparent); }
 .tk-col[data-col="done"]    .tk-col-dot { background: var(--ob-run);  box-shadow: 0 0 6px color-mix(in oklch, var(--ob-run) 45%, transparent); }
 .tk-col-nombre {
-  font: 500 var(--text-2xs) var(--font-mono);
+  font: 600 var(--text-2xs) var(--font-mono);
   letter-spacing: var(--ls-caps);
   text-transform: uppercase;
-  color: var(--ob-fg-2);
+  color: var(--ob-fg-3);
 }
 .tk-col-count {
   margin-left: auto;
