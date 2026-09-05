@@ -121,7 +121,11 @@ Windows only: the launcher (`Jarvis.exe`) pushes your fleet to Discord — live 
   <img src="docs/images/appearance.png" alt="Settings → Appearance — 24 themes, tint, scale" width="920">
 </p>
 
-Also in the dock: web preview, editor, tasks, per-agent diff review. Hold your voice key to dictate (Groq’s free Whisper API).
+Also in the dock: web preview, editor, tasks, per-agent diff review. Hold your voice key to dictate (Groq's free Whisper API).
+
+### Radio: local music & Spotify
+
+The Radio searches **local music** (`data/music/` — upload via the UI or drop files into `data/music/audio/`) and **Spotify** (search with your own account, playback in the browser). For Spotify you need a client ID — free at [developer.spotify.com](https://developer.spotify.com/dashboard) → **Create app** → set the **Redirect URI** to `http://localhost:3000/api/radio/spotify/callback` — then put `SPOTIFY_CLIENT_ID` (and optionally `SPOTIFY_CLIENT_SECRET`) in your `.env` (see `.env.example`). Never commit those values.
 
 ## Use
 
