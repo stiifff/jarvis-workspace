@@ -216,7 +216,7 @@
 
 /* ── Grafo ── */
 .mem-grafo { flex: 1; min-height: 0; position: relative; }
-.mem-grafo svg { width: 100%; height: 100%; display: block; cursor: grab; }
+.mem-grafo svg { width: 100%; height: 100%; display: block; cursor: grab; overflow: visible; }
 .mem-grafo-hint {
   position: absolute; bottom: 10px; left: 14px;
   font: 500 var(--text-2xs) var(--font-mono);
@@ -225,19 +225,84 @@
   color: var(--ob-fg-4);
   pointer-events: none;
 }
+
+/* Núcleo neuronal — esfera violeta con pulso lento + anillo que respira.
+   transform-origin/transform-box se fijan acá: sin ellos el scale en SVG
+   parte del origen del viewBox y los círculos se dispararían. */
+.mem-core { pointer-events: none; }
+.mem-core-nucleo {
+  fill: radial-gradient(circle at 50% 42%,
+    var(--ob-accent) 0%,
+    var(--ob-accent-24) 52%,
+    color-mix(in oklch, var(--ob-accent) 12%, transparent) 100%);
+  stroke: color-mix(in oklch, var(--ob-accent) 60%, transparent);
+  stroke-width: 1.5;
+  transform-origin: center;
+  transform-box: fill-box;
+  animation: mem-core-pulso 3.2s ease-in-out infinite;
+}
+@keyframes mem-core-pulso {
+  0%, 100% { transform: scale(0.9);  opacity: 0.85; }
+  50%      { transform: scale(1.05); opacity: 1; }
+}
+.mem-core-anillo {
+  fill: none;
+  stroke: var(--ob-accent);
+  stroke-width: 1.5;
+  opacity: 0.8;
+  transform-origin: center;
+  transform-box: fill-box;
+  animation: mem-core-anillo 2.6s ease-out infinite;
+}
+@keyframes mem-core-anillo {
+  from { transform: scale(1);   opacity: 0.8; }
+  to   { transform: scale(1.5); opacity: 0; }
+}
+.mem-core-label {
+  fill: var(--ob-fg-3);
+  font: 500 calc(10px * var(--lk, 1)) var(--font-mono);
+  letter-spacing: var(--ls-wide);
+  text-transform: uppercase;
+  pointer-events: none;
+}
+
+/* Nudos — estados del subgrafo: .dim atenuado, .hito destacado, .fire disparo. */
+.mem-nodo { cursor: pointer; transition: opacity var(--dur-1); }
 .mem-nodo circle {
   fill: var(--ob-bg-3);
   stroke: var(--ob-accent);
   stroke-width: 1.5;
-  transition: fill var(--dur-1) var(--ease-out);
-  cursor: pointer;
+  transition: fill var(--dur-1) var(--ease-out), stroke var(--dur-1) var(--ease-out),
+              stroke-width var(--dur-1) var(--ease-out);
 }
 .mem-nodo:hover circle { fill: var(--ob-accent-24); }
 .mem-nodo text {
   fill: var(--ob-fg-1);
-  font: 500 10px var(--font-ui);
+  font: 500 calc(10px * var(--lk, 1)) var(--font-ui);
   pointer-events: none;
 }
+.mem-nodo.dim { opacity: 0.15; }
+.mem-nodo.hito circle {
+  fill: color-mix(in oklch, var(--ob-accent) 28%, transparent);
+  stroke: var(--ob-accent);
+  stroke-width: 2;
+}
+/* glow solo en hover puntual (una docena de nodos, no es hot path) */
+.mem-nodo.hito:hover circle { filter: drop-shadow(0 0 6px var(--ob-accent)); }
+.mem-nodo.fire circle {
+  fill: var(--ob-accent-fg);
+  stroke: var(--ob-accent);
+  transform-origin: center;
+  transform-box: fill-box;
+  animation: mem-fire 0.7s var(--ease-out);
+}
+@keyframes mem-fire {
+  0%   { transform: scale(1); }
+  35%  { transform: scale(1.25); }
+  100% { transform: scale(1); }
+}
+
+/* Aristas — dibujo inicial, estados y sinapsis de disparo. */
 .mem-edge {
   stroke: var(--ob-accent-24);
   stroke-width: 1;
@@ -248,10 +313,43 @@
 @keyframes mem-draw { from { stroke-dashoffset: 900; } to { stroke-dashoffset: 0; } }
 .mem-edge.activo { stroke: var(--ob-accent); stroke-width: 1.8; }
 .mem-edge.atenuado { opacity: 0.14; }
-.mem-nodo { cursor: pointer; transition: opacity var(--dur-1); }
-.mem-nodo.dim { opacity: 0.18; }
-.mem-nodo.hito circle { fill: var(--ob-accent-28); }
+.mem-edge.sinapsis {
+  stroke: var(--ob-accent);
+  stroke-width: 1.8;
+  animation: mem-draw-ina 0.7s var(--ease-out);
+}
+@keyframes mem-draw-ina { from { stroke-dashoffset: 900; } to { stroke-dashoffset: 0; } }
+
 .mem-grafo svg.sin-etiquetas .mem-nodo text { opacity: 0; transition: opacity var(--dur-1); }
+
+/* Tooltip del grafo (plane-2 — puede usar blur). Refuerza el ancla de
+   "memoria actual" al hacer sobre-scroll para que no se pierda el foco. */
+.mem-tooltip {
+  position: absolute;
+  z-index: 5;
+  max-width: 300px;
+  padding: 8px 11px;
+  pointer-events: none;
+  font: 400 11px var(--font-ui);
+  color: var(--ob-fg-1);
+  border: 1px solid var(--ob-line-2);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(var(--ob-glass), var(--ob-glass));
+  backdrop-filter: blur(12px) saturate(150%);
+  -webkit-backdrop-filter: blur(12px) saturate(150%);
+  box-shadow: 0 12px 32px -12px oklch(0% 0 0 / .7), 0 2px 8px -2px oklch(0% 0 0 / .5);
+  transition: opacity var(--dur-1) var(--ease-out);
+}
+.mem-tooltip[hidden] { display: none; }
+.mem-tooltip b {
+  color: var(--ob-fg-0);
+  font-weight: 600;
+  display: block;
+  margin-bottom: 2px;
+}
+.mem-tooltip i { font-style: normal; color: var(--ob-fg-3); font: 400 10px var(--font-mono); white-space: nowrap; }
+.mem-tooltip em { font-style: normal; color: var(--ob-fg-4); font: 400 10px var(--font-mono); }
+
 .mem-graf-ctrl { position: absolute; top: 10px; right: 12px; z-index: 2; display: flex; align-items: center; gap: 4px; }
 .mem-graf-ctrl button {
   width: 30px; height: 30px; display: grid; place-items: center;

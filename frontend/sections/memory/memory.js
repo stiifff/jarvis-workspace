@@ -17,6 +17,8 @@
   let _liveTimer  = null;          // limpieza de flashes
   let _mapaPos    = {};            // id de nodo → {x,y} del último layout (persistencia del grafo)
   let _grafT      = { k: 1, x: 0, y: 0 };  // zoom + paneo de la vista Grafo
+  let _grafTimer  = null;          // tick de disparos neuronales del grafo
+  let _core       = null;          // centro de masa del grafo (núcleo central)
   let _salud      = null;          // lint del backend (/memory/salud)
 
   const esc = (s) => { const d = document.createElement('div'); d.textContent = String(s ?? ''); return d.innerHTML; };
@@ -123,6 +125,7 @@
   function _onKey(e) { if (e.key === 'Escape') _cerrar(); }
   function _cerrar() {
     clearTimeout(_liveTimer);
+    clearInterval(_grafTimer); _grafTimer = null;
     document.removeEventListener('keydown', _onKey);
     document.querySelector('.mem-overlay')?.remove();
   }
@@ -312,12 +315,17 @@
   }
 
   /* ── Grafo (force layout mini, SVG puro + zoom/paneo) ──────────── */
+  // Metáfora neuronal: el núcleo es la memoria en sí, las neuronas son las
+  // memorias y las sinapsis los [[wikilinks]]. El mundo es grande (1400×900)
+  // y SIN clamps de borde — el layout respira y el fit() inicial encuadra;
+  // el svg es overflow:visible para que nada se corte al paneear.
   function _renderGrafo(body) {
+    clearInterval(_grafTimer); _grafTimer = null;   // apagar disparos del render anterior
     if (!_memorias.length) {
       body.innerHTML = `<div class="mem-vacio" style="flex:1;align-self:center">${_t('El grafo aparece cuando haya memorias enlazadas con [[wikilinks]].')}</div>`;
       return;
     }
-    const W = 900, H = 520;
+    const W = 1400, H = 900;
     const nodos = _memorias.map((m, i) => ({
       ...m,
       x: W / 2 + Math.cos(i * 2.4) * (120 + (i % 5) * 40),
@@ -330,19 +338,20 @@
       .map(e => [porSlug[e.from], porSlug[e.to]])
       .filter(([a, b]) => a && b);
 
-    // Simulación precomputada (sin loop de animación: 0 costo en reposo)
-    for (let it = 0; it < 220; it++) {
+    // Simulación precomputada (sin loop de animación: 0 costo en reposo).
+    // Repulsión más fuerte + gravedad suave al centro; sin límites duros.
+    for (let it = 0; it < 320; it++) {
       for (const a of nodos) {
         for (const b of nodos) {
           if (a === b) continue;
           const dx = a.x - b.x, dy = a.y - b.y;
           const d2 = Math.max(dx * dx + dy * dy, 64);
-          const f = 5200 / d2;
+          const f = 8200 / d2;
           const d = Math.sqrt(d2);
           a.vx += (dx / d) * f; a.vy += (dy / d) * f;
         }
-        a.vx += (W / 2 - a.x) * 0.012;
-        a.vy += (H / 2 - a.y) * 0.012;
+        a.vx += (W / 2 - a.x) * 0.010;
+        a.vy += (H / 2 - a.y) * 0.010;
       }
       for (const [a, b] of springs) {
         const dx = b.x - a.x, dy = b.y - a.y;
@@ -352,11 +361,16 @@
         b.vx -= (dx / d) * f; b.vy -= (dy / d) * f;
       }
       for (const n of nodos) {
-        n.x = Math.min(W - 60, Math.max(60, n.x + n.vx * 0.5));
-        n.y = Math.min(H - 40, Math.max(30, n.y + n.vy * 0.5));
+        n.x += n.vx * 0.5; n.y += n.vy * 0.5;
         n.vx *= 0.6; n.vy *= 0.6;
       }
     }
+
+    // Núcleo central: centro de masa promedio de las neuronas (memoria en sí).
+    _core = {
+      x: nodos.reduce((s, n) => s + n.x, 0) / Math.max(1, nodos.length),
+      y: nodos.reduce((s, n) => s + n.y, 0) / Math.max(1, nodos.length),
+    };
 
     body.innerHTML = `
       <div class="mem-grafo">
@@ -366,8 +380,13 @@
           <button type="button" title="${_t('Acercar')}" data-act="in" aria-label="${_t('Acercar')}">+</button>
           <button type="button" title="${_t('Ajustar')}" data-act="fit" aria-label="${_t('Ajustar')}">⤢</button>
         </div>
-        <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">
+        <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" style="overflow:visible">
           <g class="mem-graf-v">
+            <g class="mem-core" transform="translate(${_core.x.toFixed(1)},${_core.y.toFixed(1)})">
+              <circle class="mem-core-nucleo" r="30"/>
+              <circle class="mem-core-anillo" r="44"/>
+              <text class="mem-core-label" y="64" text-anchor="middle">${_t('Memoria')}</text>
+            </g>
             ${springs.map(([a, b], i) =>
               `<line class="mem-edge" style="--d:${(i * 22).toFixed(0)}ms" x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b.x.toFixed(1)}" y2="${b.y.toFixed(1)}"/>`).join('')}
             ${nodos.map(n => `
@@ -377,6 +396,7 @@
               </g>`).join('')}
           </g>
         </svg>
+        <div class="mem-tooltip" hidden style="position:fixed"></div>
         <span class="mem-grafo-hint">${_t('click en un nodo = abrir · tamaño = conexiones · rueda = zoom · arrastrar = mover')}</span>
       </div>`;
 
@@ -394,11 +414,15 @@
     const svg  = body.querySelector('svg');
     const grp  = body.querySelector('.mem-graf-v');
     const zlbl = body.querySelector('#mem-graf-zoom');
+    const tip  = body.querySelector('.mem-tooltip');
     const nodeEls = [...body.querySelectorAll('.mem-nodo')];
     const edges   = [...body.querySelectorAll('.mem-edge')];
 
     function aplicar() {
       grp.setAttribute('transform', `translate(${_grafT.x.toFixed(1)},${_grafT.y.toFixed(1)}) scale(${_grafT.k.toFixed(3)})`);
+      // Escala servida a las etiquetas: el CSS las agranda al alejar (1/k)
+      // para que el nombre de cada memoria sea legible a cualquier zoom.
+      svg.style.setProperty('--lk', 1 / _grafT.k);
       svg.classList.toggle('sin-etiquetas', _grafT.k < 0.8);
       if (zlbl) zlbl.textContent = Math.round(_grafT.k * 100) + '%';
     }
@@ -458,9 +482,19 @@
     });
     window.addEventListener('pointerup', () => { down = null; view.classList.remove('paneando'); });
 
-    // ── Highlight del subgrafo conectado (hover) ───────────────
+    // ── Highlight del subgrafo conectado (hover) + tooltip ─────
+    // El tooltip se llena SOLO en pointerenter (no en el move) y queda
+    // visible a cualquier zoom: la identidad de la memoria no se pierde
+    // al alejar (las etiquetas del nodo las escala --lk).
+    function tooltipMostrar(ev, n) {
+      tip.innerHTML = `<b>${esc(n.titulo)}</b><i>${esc(n.autor)} · ${esc(n.creado)}${n.actualizado ? ' · act. ' + esc(n.actualizado) : ''}</i><em>${_t('Conexiones')}: ${n.grado}</em>`;
+      tip.hidden = false;
+      const w = tip.offsetWidth, h = tip.offsetHeight;
+      tip.style.left = Math.min(ev.clientX + 14, window.innerWidth - w - 6) + 'px';
+      tip.style.top  = Math.min(ev.clientY + 14, window.innerHeight - h - 6) + 'px';
+    }
     nodeEls.forEach(g => {
-      g.addEventListener('pointerenter', () => {
+      g.addEventListener('pointerenter', (ev) => {
         const slug = g.dataset.slug;
         const conn = new Set([slug]);
         springs.forEach(([a, b]) => {
@@ -475,15 +509,39 @@
           e.classList.toggle('atenuado', !toca);
         });
         g.classList.add('hito');
+        const n = porSlug[slug];
+        if (n) tooltipMostrar(ev, n);
       });
       g.addEventListener('pointerleave', () => {
         nodeEls.forEach(o => o.classList.remove('dim'));
         edges.forEach(e => e.classList.remove('activo', 'atenuado'));
         g.classList.remove('hito');
+        tip.hidden = true;
       });
     });
 
     fit();
+
+    // ── Disparos neuronales ─────────────────────────────────────
+    // Un nodo al azar "dispara" y sus sinapsis se encienden: flash efímero
+    // sin animaciones infinitas. Se limpia en el próximo render/cierre.
+    _grafTimer = setInterval(() => {
+      const g = nodeEls[Math.floor(Math.random() * nodeEls.length)];
+      if (!g) return;
+      const slug = g.dataset.slug;
+      g.classList.add('fire');
+      edges.forEach((e, i) => {
+        const [a, b] = springs[i];
+        if (a.slug === slug || b.slug === slug) e.classList.add('sinapsis');
+      });
+      setTimeout(() => {
+        g.classList.remove('fire');
+        edges.forEach((e, i) => {
+          const [a, b] = springs[i];
+          if (a.slug === slug || b.slug === slug) e.classList.remove('sinapsis');
+        });
+      }, 750);
+    }, 2400);
   }
 
   /* ── Live (agentes en vivo) ────────────────────────────────── */
@@ -775,6 +833,7 @@
       _projectId = projectId;
       _memorias = []; _edges = []; _slugAbierta = null;
       _liveEstado = null; _mapaPos = {}; clearTimeout(_liveTimer);
+      clearInterval(_grafTimer); _grafTimer = null; _core = null;
     },
     abrir,
     onLiveEvent,

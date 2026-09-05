@@ -1298,6 +1298,7 @@
     "en cuarentena": "quarantined",
     "candidatas a guard": "guard candidates",
     "click en un nodo = abrir · tamaño = conexiones · rueda = zoom · arrastrar = mover": "click a node = open its memory · size = connections · wheel = zoom · drag = pan",
+    "Conexiones": "Connections",
   });
 })();
 
