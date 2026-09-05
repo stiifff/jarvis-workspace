@@ -2,7 +2,7 @@
 
 # Jarvis Workspace
 
-A local cockpit for several AI coding agents, in parallel, on your machine.
+A local web cockpit that runs several AI coding agents side by side — your keys, your machine.
 
 [![License](https://img.shields.io/badge/license-MIT-22c55e.svg)](LICENSE)
 ![Python](https://img.shields.io/badge/python-3.11+-3b82f6.svg)
