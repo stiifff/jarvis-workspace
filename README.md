@@ -62,7 +62,19 @@ Pick agents, how many, and a layout. Seven Claude Codes, a mix, or one shell. Th
 </p>
 
 <p align="center">
-  <img src="docs/images/swarm.png" alt="Jarvis Workspace — a live grid of Claude Code agents on the same project" width="920">
+  <img src="docs/images/swarm-live.png" alt="Jarvis Workspace — a live grid of Claude Code, Codex, and shell agents on the same project" width="920">
+</p>
+
+### Editor and radio by your side
+
+Edit your project while the agent works in its own pane — file tree and a live terminal together. Or open the Radio: search YouTube music or play a curated station while the swarm builds.
+
+<p align="center">
+  <img src="docs/images/editor.png" alt="Editor — file tree, settings.json, and a Claude Code terminal in the same workspace" width="920">
+</p>
+
+<p align="center">
+  <img src="docs/images/radio.png" alt="Radio — music search and playback open over the agent grid" width="920">
 </p>
 
 ### Your accounts, not ours
