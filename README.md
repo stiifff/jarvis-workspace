@@ -77,6 +77,14 @@ Edit your project while the agent works in its own pane — file tree and a live
   <img src="docs/images/radio.png" alt="Radio — music search and playback open over the agent grid" width="920">
 </p>
 
+### Live on Discord
+
+Windows only: the launcher (`Jarvis.exe`) pushes your fleet to Discord — live activity, agent count and uptime while the swarm works.
+
+<p align="center">
+  <img src="docs/images/discord-presence.png" alt="Discord Rich Presence — playing Jarvis, in Terminals, 1 agent (1 of 12), 2:38:07" width="450">
+</p>
+
 ### Your accounts, not ours
 
 ⚙ → **Accounts**. Several logins per CLI, switch without logging in again. Native sessions (Grok, Claude, …) show up even if you never clicked Connect. Rate-limit? It rotates.
