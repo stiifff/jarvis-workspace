@@ -1354,7 +1354,7 @@ body {
 }
 /* Cuando hay drag-over sobre el editor, hacer que el placeholder lo anuncie */
 .panel-editor.drag-over .monaco-placeholder::after {
-  content: ' · soltá para subir archivo';
+  content: attr(data-drop-hint);
   color: #a78bfa;
 }
 

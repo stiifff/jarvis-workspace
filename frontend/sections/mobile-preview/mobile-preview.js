@@ -23,6 +23,8 @@
   const _esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c =>
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
+  const _t = (s) => (window.JarvisI18n && window.JarvisI18n.t) ? window.JarvisI18n.t(s) : s;
+
   // ── Estado ────────────────────────────────────────────────────────────────
   let _projectId = null;
   let _url = null;              // origin del Expo web detectado (o null = espera)
@@ -647,7 +649,7 @@
   }
 
   function _addWeb(url) {
-    if (S.webs.length >= MAX_WEBS) { _toast(`Máximo ${MAX_WEBS} navegadores`); return; }
+    if (S.webs.length >= MAX_WEBS) { _toast(_t('Máximo {n} navegadores').replace('{n}', MAX_WEBS)); return; }
     const w = P().webNueva(_seq++, S.phones.map((p) => ({ x: p.x, y: p.y, w: _outer(p).w, h: _outer(p).h })).concat(S.webs));
     if (url) w.url = url;
     S.webs.push(w);
@@ -859,7 +861,7 @@
   }
 
   async function _addNota() {
-    if (S.notas.length >= MAX_NOTAS) { _toast(`Máximo ${MAX_NOTAS} notas`); return; }
+    if (S.notas.length >= MAX_NOTAS) { _toast(_t('Máximo {n} notas').replace('{n}', MAX_NOTAS)); return; }
     const base = P().notaNueva(
       S.phones.map((p) => { const o = _outer(p); return { x: p.x, y: p.y, w: o.w, h: o.h }; })
         .concat(S.webs).concat(S.notas));
@@ -885,7 +887,10 @@
     const n = _nota(id); if (!n) return;
     const vacia = !n.titulo.trim() && !n.cuerpo.trim();
     if (!vacia && window.confirmar) {
-      const ok = await window.confirmar(`Se elimina «${P().tituloNota(n)}» y su contenido. No se puede deshacer.`,
+      const titulo = P().tituloNota(n);
+      const ok = await window.confirmar(
+        _t('Se elimina «{titulo}» y su contenido. No se puede deshacer.')
+          .replace('{titulo}', titulo === 'Nota sin título' ? _t('Nota sin título') : titulo),
         { titulo: 'Eliminar la nota', confirmText: 'Eliminar', peligro: true });
       if (!ok) return;
     }

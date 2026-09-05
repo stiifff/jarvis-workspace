@@ -154,6 +154,8 @@
   // falta escapar también " (y ') para evitar romper el atributo (XSS).
   const escAttr = (s) => esc(s).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
+  const _t = (s) => (window.JarvisI18n && window.JarvisI18n.t) ? window.JarvisI18n.t(s) : s;
+
   // ─── File tree ──────────────────────────────────────────────────────
 
   // ─── Iconos SVG inline (reemplazan FT_ICONS/emoji). Coherentes con .ic-* del header.
@@ -259,7 +261,7 @@
       // Re-aplicar el filtro activo para que el polling no lo descarte.
       if (ftFilter) filtrarTree(ftFilter);
     } catch (err) {
-      cont.innerHTML = `<div class="ft-empty">Error: ${esc(err.message)}</div>`;
+      cont.innerHTML = `<div class="ft-empty">${esc(_t('Error: {msg}').replace('{msg}', err.message))}</div>`;
     }
   }
 
@@ -1005,7 +1007,11 @@
   // ─── Borrar archivo o carpeta (desde menú contextual) ──────────────
   async function _ftBorrar(path, tipo) {
     const etiqueta = tipo === 'dir' ? 'la carpeta' : 'el archivo';
-    if (!(await confirmar(`¿Borrar ${etiqueta} "${path}"? Esta acción no se puede deshacer.`,
+    if (!(await confirmar(
+      _t('¿Borrar {el archivo|la carpeta} "{path}"? Esta acción no se puede deshacer.')
+        .replace('{el archivo|la carpeta}', etiqueta)
+        .replace('{the file|the folder}', tipo === 'dir' ? 'the folder' : 'the file')
+        .replace('{path}', path),
       { peligro: true, confirmText: 'Eliminar' }))) return;
 
     try {
@@ -1132,7 +1138,7 @@
       await cargarFileTree();
       if (rechazadosTotal.length) {
         const motivos = rechazadosTotal.map(r => `${r.archivo}: ${r.motivo}`).join(', ');
-        toast(`Subidos: ${subidosTotal}. Algunos no se subieron — ${motivos}`, 'warning');
+        toast(_t('Subidos: {n}. Algunos no se subieron — {m}').replace('{n}', subidosTotal).replace('{m}', motivos), 'warning');
       }
     } catch (err) {
       toast(`Error subiendo archivos: ${err.message}`, 'error');
@@ -1158,7 +1164,7 @@
       await cargarFileTree();
       if (data.rechazados?.length) {
         const motivos = data.rechazados.map(r => `${r.archivo}: ${r.motivo}`).join(', ');
-        toast(`Extraídos: ${data.subidos?.length || 0}. Algunos se omitieron — ${motivos}`, 'warning');
+        toast(_t('Extraídos: {n}. Algunos se omitieron — {m}').replace('{n}', data.subidos?.length || 0).replace('{m}', motivos), 'warning');
       }
     } catch (err) {
       toast(`Error extrayendo zip: ${err.message}`, 'error');
@@ -1253,6 +1259,7 @@
       if (e.dataTransfer.types?.includes('Files')) {
         e.preventDefault();
         panel.classList.add('drag-over');
+        panel.querySelectorAll('.monaco-placeholder').forEach(ph => { ph.dataset.dropHint = _t(' · soltá para subir archivo'); });
       }
     });
     panel.addEventListener('dragleave', (e) => {
@@ -1283,6 +1290,10 @@
     });
   })();
 
+  window.addEventListener('jarvis:lang', () => {
+    document.querySelectorAll('.monaco-placeholder').forEach(ph => { ph.dataset.dropHint = _t(' · soltá para subir archivo'); });
+  });
+
   // ─── Borrar archivo con tecla Supr (Delete) ────────────────────────────────
   // Solo dispara cuando hay un archivo seleccionado en el tree Y el foco NO
   // está en Monaco, ni en un input/textarea — para no romper la edición.
@@ -1299,7 +1310,8 @@
     if (!path) return;
 
     e.preventDefault();
-    if (!(await confirmar(`¿Borrar el archivo "${path}"? Esta acción no se puede deshacer.`,
+    if (!(await confirmar(
+      _t('¿Borrar el archivo "{path}"? Esta acción no se puede deshacer.').replace('{path}', path),
       { peligro: true, confirmText: 'Eliminar' }))) return;
 
     try {
@@ -1317,7 +1329,7 @@
       _invalidarCache(path);
       await cargarFileTree();
     } catch (err) {
-      toast(`Error: ${err.message}`, 'error');
+      toast(_t('Error: {msg}').replace('{msg}', err.message), 'error');
     }
   });
 
@@ -1711,7 +1723,7 @@
       return;
     }
     if (g.tabs.size >= MAX_TABS) {
-      toast(`Máximo ${MAX_TABS} tabs abiertos en este panel. Cerrá alguno antes.`, 'warning');
+      toast(_t('Máximo {n} tabs abiertos en este panel. Cerrá alguno antes.').replace('{n}', MAX_TABS), 'warning');
       return;
     }
 
@@ -2246,7 +2258,7 @@
       if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);
     } catch (err) {
       meta.classList.add('error');
-      meta.textContent = `Error: ${err.message}`;
+      meta.textContent = _t('Error: {msg}').replace('{msg}', err.message);
       cont.innerHTML = '';
       return;
     }
@@ -2259,7 +2271,7 @@
     }
     meta.classList.remove('error');
     const trunc = data.truncated ? ' (parcial)' : '';
-    meta.textContent = `${data.total} resultado(s) en ${data.results.length} archivo(s)${trunc}`;
+    meta.textContent = _t('{n} resultado(s) en {m} archivo(s)').replace('{n}', data.total).replace('{m}', data.results.length) + trunc;
 
     if (data.results.length === 0) {
       cont.innerHTML = '<div class="sr-empty">Sin coincidencias.</div>';

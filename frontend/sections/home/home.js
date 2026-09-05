@@ -30,6 +30,7 @@ function _iniciales(n) {
   return limpio[0].toUpperCase() + limpio[1].toLowerCase();
 }
 function esc(s) { const d = document.createElement('div'); d.textContent = String(s ?? ''); return d.innerHTML; }
+function _t(s) { return (window.JarvisI18n && window.JarvisI18n.t(s)) || s; }
 function _fechaHumana(iso) {
   if (!iso) return 'sin actividad';
   const d = new Date(iso); if (isNaN(d)) return 'sin actividad';
@@ -37,10 +38,10 @@ function _fechaHumana(iso) {
   const min = Math.floor(diff / 60_000);
   const h   = Math.floor(diff / 3_600_000);
   const dia = Math.floor(diff / 86_400_000);
-  if (min < 1)   return 'ahora';
-  if (min < 60)  return `hace ${min}m`;
-  if (h   < 24)  return `hace ${h}h`;
-  if (dia < 7)   return `hace ${dia}d`;
+  if (min < 1)   return _t('ahora');
+  if (min < 60)  return _t('hace {n}m').replace('{n}', min);
+  if (h   < 24)  return _t('hace {n}h').replace('{n}', h);
+  if (dia < 7)   return _t('hace {n}d').replace('{n}', dia);
   return d.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' });
 }
 
@@ -221,9 +222,12 @@ function renderizar() {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         toast(archivado ? 'Proyecto restaurado.' : 'Proyecto archivado.', 'success');
         cargarProyectos();
-      } catch (err) {
-        toast(`No pude ${archivado ? 'restaurar' : 'archivar'} el proyecto: ${err.message}`, 'error');
-      }
+    } catch (err) {
+        const frase = archivado
+          ? _t('No pude restaurar el proyecto: {msg}').replace('{msg}', err.message)
+          : _t('No pude archivar el proyecto: {msg}').replace('{msg}', err.message);
+        toast(frase, 'error');
+    }
     });
   });
   elGrid.querySelector('.hc-card-new')?.addEventListener('click', abrirModal);

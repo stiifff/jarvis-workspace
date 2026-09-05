@@ -1,8 +1,8 @@
 {
   "name": "Jarvis Workspace",
   "short_name": "Jarvis",
-  "description": "Tu flota de agentes de código, en una app.",
-  "lang": "es",
+  "description": "Your fleet of code agents, in one app.",
+  "lang": "en",
   "id": "/",
   "start_url": "/",
   "scope": "/",

@@ -19,6 +19,7 @@
   let _salud      = null;          // lint del backend (/memory/salud)
 
   const esc = (s) => { const d = document.createElement('div'); d.textContent = String(s ?? ''); return d.innerHTML; };
+  const _t = (s) => (window.JarvisI18n && window.JarvisI18n.t) ? window.JarvisI18n.t(s) : s;
 
   /* ── Datos ─────────────────────────────────────────────────── */
   async function _cargar() {
@@ -86,11 +87,11 @@
       const r = await fetch(`/api/projects/${_projectId}/memory/${encodeURIComponent(slug)}/promover`,
                             { method: 'POST' });
       if (!r.ok) throw new Error(await r.text());
-      window.toast?.(`🌍 ${slug} promovida a memoria global`, 'ok');
+      window.toast?.(_t('🌍 {slug} promovida a memoria global').replace('{slug}', slug), 'ok');
       await _cargar();
       _renderBody();
     } catch (e) {
-      window.toast?.(`No pude promover ${slug}`, 'error');
+      window.toast?.(_t('No pude promover {slug}').replace('{slug}', slug), 'error');
       if (btn) { btn.disabled = false; btn.textContent = 'Promover'; }
     }
   }
@@ -167,7 +168,7 @@
     const body = document.getElementById('mem-body');
     if (!body) return;
     document.getElementById('mem-count').textContent =
-      `${_memorias.length} memoria${_memorias.length !== 1 ? 's' : ''} · .jarvis/memory/`;
+      _t('{n} memoria(s) · .jarvis/memory/').replace('{n}', _memorias.length);
     if (_tab === 'grafo') { _renderGrafo(body); return; }
     if (_tab === 'live')  { _renderLive(body);  return; }
 
@@ -234,7 +235,7 @@
     v.innerHTML = `
       <div class="mem-view-head">
         <span class="mem-view-titulo">${esc(mem.titulo)}${_badgesHTML(mem)}</span>
-        <span class="mem-view-meta">${esc(mem.autor || '')} · ${esc(mem.creado || '')}${mem.actualizado ? ` · act. ${esc(mem.actualizado)}` : ''}</span>
+        <span class="mem-view-meta">${esc(mem.autor || '')} · ${esc(mem.creado || '')}${mem.actualizado ? ` · ${_t('act. {f}').replace('{f}', esc(mem.actualizado))}` : ''}</span>
         <span class="mem-view-acciones">
           <button id="mem-editar" type="button">${icon('edit', 11)} Editar</button>
           <button id="mem-borrar" type="button" class="peligro">${icon('trash', 11)} Borrar</button>
@@ -250,11 +251,11 @@
         const destino = _memorias.find(m =>
           m.slug === b.dataset.link.toLowerCase().replace(/[^a-z0-9]+/g, '-') || m.titulo === b.dataset.link);
         if (destino) { _slugAbierta = destino.slug; _renderItems(); _renderViewer(); }
-        else toast(`No existe (todavía) la memoria "${b.dataset.link}"`, 'info');
+        else toast(_t('No existe (todavía) la memoria "{s}"').replace('{s}', b.dataset.link), 'info');
       }));
 
     v.querySelector('#mem-borrar').addEventListener('click', async () => {
-      if (!(await confirmar(`¿Borrar la memoria "${mem.titulo}"?`, { peligro: true, confirmText: 'Borrar' }))) return;
+      if (!(await confirmar(_t('¿Borrar la memoria "{t}"?').replace('{t}', mem.titulo), { peligro: true, confirmText: 'Borrar' }))) return;
       await fetch(`/api/projects/${_projectId}/memory/${_slugAbierta}`, { method: 'DELETE' });
       _slugAbierta = null;
       await _cargar(); _renderBody();
@@ -423,9 +424,9 @@
               <button class="mem-live-v ${_liveVista === 'mapa' ? 'activo' : ''}" data-v="mapa">Mapa</button>
             </div>
             <div class="mem-live-stats">
-              <span class="mem-live-stat"><i class="dot ${nTrab ? 'trab' : ''}"></i>${nTrab} trabajando</span>
-              <span class="mem-live-stat">${nAg} agente${nAg !== 1 ? 's' : ''}</span>
-              <span class="mem-live-stat">${nArch} archivo${nArch !== 1 ? 's' : ''}</span>
+              <span class="mem-live-stat"><i class="dot ${nTrab ? 'trab' : ''}"></i>${_t('{n} trabajando').replace('{n}', nTrab)}</span>
+              <span class="mem-live-stat">${_t('{n} agente(s)').replace('{n}', nAg)}</span>
+              <span class="mem-live-stat">${_t('{n} archivo(s)').replace('{n}', nArch)}</span>
             </div>
           </div>
           <div class="mem-live-cuerpo" id="mem-live-cuerpo"></div>
@@ -474,7 +475,7 @@
           const permisos = _permisosDe(st, f.path);
           const burbujas = permisos.map(p =>
             `<span class="mem-live-permiso" data-estado="${esc(p.estado)}"
-                   title="${esc(p.pide)} → ${esc(p.dueno)}: ${esc(p.detalle || '')}${p.respuesta ? ' · resp: ' + esc(p.respuesta) : ''}">${PEMOJI[p.estado] || '·'}</span>`).join('');
+                   title="${esc(p.pide)} → ${esc(p.dueno)}: ${esc(p.detalle || '')}${p.respuesta ? ' · ' + _t('resp: {r}').replace('{r}', esc(p.respuesta)) : ''}">${PEMOJI[p.estado] || '·'}</span>`).join('');
           return `<span class="mem-live-chip ${flashes.has(f.path) ? 'flash' : ''} ${f.writes ? 'write' : 'read'}"
                         title="${esc(f.path)} — ${f.writes}w/${f.reads}r, hace ${L.hace(f.hace_s)}">
             ${f.dueno ? '<i class="lock">🔒</i>' : ''}${esc(f.path.split('/').pop())}${f.writes > 1 ? `<i class="x">×${f.writes}</i>` : ''}${burbujas}

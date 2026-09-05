@@ -18,6 +18,8 @@
   const $ = (id) => document.getElementById(id);
   const esc = (s) => { const d = document.createElement('div'); d.textContent = String(s ?? ''); return d.innerHTML; };
 
+  const _t = (s) => (window.JarvisI18n && window.JarvisI18n.t) ? window.JarvisI18n.t(s) : s;
+
   const COLS = [
     { id: 'backlog', nombre: 'Backlog' },
     { id: 'running', nombre: 'En curso' },
@@ -146,7 +148,7 @@
     const tarea = (it.paso.tarea || '').replace(/Cuando termines.*$/i, '').trim();
     return `
       <article class="tk-card" data-wf="${esc(it.wfId)}" style="--i:${Math.min(i, 10)}">
-        <div class="tk-card-head"><span class="tk-card-titulo">${esc(it.paso.agente || `Paso ${it.idx + 1}`)}</span></div>
+        <div class="tk-card-head"><span class="tk-card-titulo">${esc(it.paso.agente || _t('Paso {n}').replace('{n}', it.idx + 1))}</span></div>
         ${tarea ? `<div class="tk-card-desc">${esc(tarea.slice(0, 140))}</div>` : ''}
         <div class="tk-card-meta">
           <span class="tk-badge wf">${icon('zap', 9)} ${esc(it.wfNombre.slice(0, 24))}</span>

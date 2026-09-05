@@ -54,6 +54,7 @@
   const ST_META = { lofi: 'estudiar', synth: 'nocturno', focus: 'flow', jazz: 'café', chill: 'relax', piano: 'calma' };
 
   const _esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const _t = (s) => (root.JarvisI18n && root.JarvisI18n.t) ? root.JarvisI18n.t(s) : s;
   const $ = (sel, ctx) => (ctx || document).querySelector(sel);
 
   // ── Estado ──
@@ -127,10 +128,10 @@
       if (_errEnEsteLoad) return;
       _errEnEsteLoad = true;
       _errSeguidos += 1;
-      const titulo = (_state && _state.track && _state.track.titulo) || 'Ese tema';
+      const titulo = (_state && _state.track && _state.track.titulo) || _t('Ese tema');
       if (typeof toast === 'function') {
         toast(_errSeguidos <= 5
-          ? `«${titulo.slice(0, 44)}» no se deja reproducir fuera de YouTube — saltando ▸`
+          ? _t('«{t}» no se deja reproducir fuera de YouTube — saltando ▸').replace('{t}', titulo.slice(0, 44))
           : 'Varios temas seguidos no se dejan reproducir — elegí otro de la lista');
       }
       if (_state) { _state = { track: _state.track, sonando: false, t: 0 }; _renderNow(); _renderMini(); }

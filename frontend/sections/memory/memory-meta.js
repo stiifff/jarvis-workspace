@@ -6,6 +6,8 @@
 
 (function (root) {
 
+  const _t = (s) => (root.JarvisI18n && root.JarvisI18n.t) ? root.JarvisI18n.t(s) : s;
+
   // Badges visuales de una memoria: estado no-vigente primero, después la
   // marca de lección (tags [leccion] = regla de prevención del enjambre).
   function badges(m) {
@@ -24,7 +26,7 @@
   function subLinea(m) {
     m = m || {};
     const partes = [m.autor || '—'];
-    if (m.actualizado) partes.push('act. ' + m.actualizado);
+    if (m.actualizado) partes.push(_t('act. {f}').replace('{f}', m.actualizado));
     else if (m.creado) partes.push(m.creado);
     const n = (m.links || []).length;
     if (n) partes.push(n + ' link' + (n !== 1 ? 's' : ''));
@@ -56,17 +58,17 @@
     const l = (salud && salud.lecciones) || null;
     if (!l || !Object.keys(l).length) return null;
     const partes = [];
-    partes.push((l.lecciones_memoria || 0) + ' lecciones cargadas');
+    partes.push(_t('{n} lecciones cargadas').replace('{n}', l.lecciones_memoria || 0));
     const sen = l.senales_pendientes || 0;
     const umb = l.umbral || 0;
     let alerta = false;
     if (!l.activo) {
-      partes.push('destilador OFF');
+      partes.push(_t('destilador OFF'));
     } else if (!l.api_ok && sen >= umb && umb > 0) {
-      partes.push('destilador trabado: ' + sen + '/' + umb + ' señales, sin API key');
+      partes.push(_t('destilador trabado: {n}/{m} señales, sin API key').replace('{n}', sen).replace('{m}', umb));
       alerta = true;
     } else {
-      partes.push('destilador: ' + sen + '/' + umb + ' señales');
+      partes.push(_t('destilador: {n}/{m} señales').replace('{n}', sen).replace('{m}', umb));
     }
     return { texto: partes.join(' · '), alerta: alerta };
   }
@@ -95,14 +97,13 @@
     const iny = a.inyecciones || 0;
     const lec = a.lecturas || 0;
     if (!iny && !lec) return null;
-    const partes = [(a.dias || 7) + 'd: ' + iny + ' inyectadas'];
-    let leidas = lec + ' leídas';
-    if (a.tasa_lectura !== null && a.tasa_lectura !== undefined) {
-      leidas += ' (' + Math.round(a.tasa_lectura * 100) + '%)';
-    }
+    const partes = [_t('{d}d: {n} inyectadas').replace('{d}', a.dias || 7).replace('{n}', iny)];
+    let leidas = (a.tasa_lectura !== null && a.tasa_lectura !== undefined)
+      ? _t('{n} leídas ({p}%)').replace('{n}', lec).replace('{p}', Math.round(a.tasa_lectura * 100))
+      : _t('{n} leídas').replace('{n}', lec);
     partes.push(leidas);
-    partes.push((a.lecturas_en_done || 0) + ' en pasos OK');
-    return { texto: 'Altímetro ' + partes.join(' · ') };
+    partes.push(_t('{n} en pasos OK').replace('{n}', a.lecturas_en_done || 0));
+    return { texto: _t('Altímetro') + ' ' + partes.join(' · ') };
   }
 
   const api = { badges, subLinea, problemasSalud, categoriasSalud, estadoLecciones, altimetro };

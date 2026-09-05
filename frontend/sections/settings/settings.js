@@ -534,7 +534,7 @@
     KeyJ: { mod: 'Ctrl', que: 'Panel → Jarvis' },
     Escape: { mod: null, que: 'Cerrar / salir de pantalla completa' },
   };
-  for (let i = 1; i <= 9; i++) _ATAJOS_FIJOS[`Digit${i}`] = { mod: 'Ctrl', que: `Saltar al proyecto ${i}` };
+  for (let i = 1; i <= 9; i++) _ATAJOS_FIJOS[`Digit${i}`] = { mod: 'Ctrl', que: _t('Saltar al proyecto {i}').replace('{i}', i) };
 
   // El code de teclado del binding, o null si está en un botón del mouse
   // (entonces no hay tecla que iluminar en el mapa).
@@ -742,7 +742,7 @@
 
     b.innerHTML =
       blk('banco', 'el workspace, en vivo', _BANCO, { wide: true }) +
-      blk('temas', `${temas.length} · ordenados por rueda de color`, espectro, { wide: true, key: 'Tema de color' }) +
+      blk('temas', `${temas.length} ${_t('· ordenados por rueda de color')}`, espectro, { wide: true, key: 'Tema de color' }) +
       blk('tonalidad', 'ajuste fino del tema', sliders, { key: 'Tonalidad' }) +
       blk('escala', 'qué tan grande se ve todo', zoom, { key: 'Escala de la app' }) +
       blk('interfaz', 'idioma y modo',

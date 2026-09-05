@@ -10,6 +10,7 @@
   let _data = null;
 
   const esc = (s) => { const d = document.createElement('div'); d.textContent = String(s ?? ''); return d.innerHTML; };
+  const _t = (s) => (window.JarvisI18n && window.JarvisI18n.t) ? window.JarvisI18n.t(s) : s;
 
   const _pane = () => document.getElementById('jw-pane-review');
 
@@ -57,7 +58,7 @@
     if (!ov || !_data) return;
 
     ov.querySelector('.rv-branch').innerHTML =
-      `en <b>${esc(_data.branch || '?')}</b> · ${esc(_data.ultimo || '')}`;
+      `${_t('en {branch}').replace('{branch}', '')}<b>${esc(_data.branch || '?')}</b> · ${esc(_data.ultimo || '')}`;
 
     const lista = ov.querySelector('.rv-archivos');
     const diffCont = ov.querySelector('.rv-diff');

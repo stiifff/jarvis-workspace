@@ -633,19 +633,18 @@ function conectarEventosWs() {
       if (data.type === 'conflicto_archivo') {
         // dos agentes sobre el mismo archivo: mismas notas graves de atención
         sonarEventoTarea('TASK_BLOCKED');
-        toast(`⚠ ${data.intruso_nombre} y ${data.dueno_nombre} sobre ${data.archivo}`, 'info');
+        toast(_sbT('⚠ {a} y {b} sobre {archivo}').replace('{a}', data.intruso_nombre).replace('{b}', data.dueno_nombre).replace('{archivo}', data.archivo), 'info');
       }
     } else if (data.type === 'sistema_huerfanos') {
       // Janitor (post-mortem segfault tmux 2026-07-02): procesos huérfanos
       // pesados de los proyectos quemando CPU sin terminal. No se matan solos
       // (pueden ser legítimos): se avisa para que el usuario decida.
       const n = (data.procesos || []).length;
-      toast(`⚠ ${n} proceso${n === 1 ? '' : 's'} huérfano${n === 1 ? '' : 's'} comiendo CPU `
-            + `en tus proyectos (sin terminal). Corré ~/limpiar.sh o revisalos con ps.`,
+      toast(_sbT('⚠ {n} proceso(s) huérfano(s) comiendo CPU en tus proyectos (sin terminal). Corré ~/limpiar.sh o revisalos con ps.').replace('{n}', n),
             'warning', 9000);
     } else if (data.type === 'cuenta_agregada') {
       // Configuración → Cuentas: el watcher detectó la cuenta nueva tras el login.
-      toast(`✓ Cuenta agregada: ${data.label || data.email || data.tipo}`, 'success');
+      toast(_sbT('✓ Cuenta agregada: {label}').replace('{label}', data.label || data.email || data.tipo), 'success');
       window.JarvisSettings?.onCuentaAgregada?.(data);
       window.JarvisSettings?.refrescar?.('cuentas');
     } else if (data.type === 'cuenta_watch_timeout') {
@@ -671,7 +670,7 @@ function conectarEventosWs() {
     if (event && event.code === 1013) {
       if (!_wsAvisoTope) {
         _wsAvisoTope = true;
-        toast('Demasiadas conexiones abiertas: cerrá alguna pestaña.', 'info');
+        toast(_sbT('Demasiadas conexiones abiertas: cerrá alguna pestaña.'), 'info');
       }
       setTimeout(() => { if (eventsWs && eventsWs.readyState !== WebSocket.OPEN) conectarEventosWs(); }, 30000);
       return;
@@ -2424,9 +2423,9 @@ async function _sbEjecutarAccion(accion, projId) {
       } catch { toast('Ruta: ' + p.ruta, 'info'); }
     } else if (accion === 'remove') {
       // Quitar del workspace SIN tocar la carpeta del disco
-      const mensaje = `Quitar "${p.nombre}" del workspace.\n\n` +
-                      `La carpeta ${p.ruta} y todo su contenido quedan intactos en el disco.\n` +
-                      `Podés volver a agregar el proyecto después si querés.`;
+      const mensaje = _sbT('Quitar «{nombre}» del workspace.').replace('{nombre}', p.nombre) + '\n\n' +
+                      _sbT('La carpeta {ruta} y todo su contenido quedan intactos en el disco.').replace('{ruta}', p.ruta) + '\n' +
+                      _sbT('Podés volver a agregar el proyecto después si querés.');
       if (!(await confirmar(mensaje, { titulo: 'Quitar del workspace', confirmText: 'Quitar' }))) return;
       await _sbBorrarProyecto(projId, { keepFolder: true });
     }
@@ -2445,7 +2444,7 @@ async function _sbBorrarProyecto(projId, opts = {}) {
   }
   // Solo avisar de errores de carpeta cuando SÍ querías borrarla.
   if (!keepFolder && !data.folder_deleted && data.folder_error) {
-    toast(`Proyecto quitado del workspace, pero hubo un problema con la carpeta: ${data.folder_error}. Podés borrarla manualmente desde WSL si querés.`, 'warning', 7000);
+    toast(_sbT('Proyecto quitado del workspace, pero hubo un problema con la carpeta: {err}. Podés borrarla manualmente desde WSL si querés.').replace('{err}', data.folder_error), 'warning', 7000);
   }
   // Si era el proyecto activo, mandar al primero disponible (o a home)
   if (String(projId) === String(projectId)) {
@@ -3295,7 +3294,7 @@ async function _traducirAIngles(texto) {
       if (d && d.text) return d.text.trim();
     }
   } catch { /* red caída */ }
-  _toastWarn('No pude traducir a inglés; va en español');
+  _toastWarn(_sbT('No pude traducir a inglés; va en español'));
   return texto;
 }
 
@@ -3569,8 +3568,8 @@ function agregarTarjetaTerminal(terminal) {
     if (_faseTerminales[id] === 'trabajando') {
       const nom = document.getElementById(`name-${id}`)?.dataset.nombre || `Terminal ${id}`;
       const ok = await confirmar(
-        `${nom} está trabajando ahora mismo. Eliminarla mata al agente y su trabajo sin commitear.`,
-        { titulo: '¿Eliminar la terminal?', confirmText: 'Eliminar', peligro: true },
+        _sbT('{nombre} está trabajando ahora mismo. Eliminarla mata al agente y su trabajo sin commitear.').replace('{nombre}', nom),
+        { titulo: _sbT('¿Eliminar la terminal?'), confirmText: 'Eliminar', peligro: true },
       );
       if (!ok) return;
     }
@@ -3917,7 +3916,7 @@ function _tlSync() {
       `<i class="${i < usadas ? 'u' : (i < usadas + sel ? 's' : '')}"></i>`).join('');
     cap.innerHTML = `<span class="tl-cap-segs">${segs}</span><span class="tl-cap-n">${usadas + sel}/${L.MAX_TERMINALES}</span>`
       + (lleno ? '<span class="tl-cap-lleno">límite alcanzado</span>' : '');
-    cap.title = `${usadas} en uso · ${sel} a crear · ${L.MAX_TERMINALES - usadas - sel} libres`;
+    cap.title = _sbT('{n} en uso · {m} a crear · {k} libres').replace('{n}', usadas).replace('{m}', sel).replace('{k}', L.MAX_TERMINALES - usadas - sel);
   }
   _tlRenderDist();
   _tlSyncScrollHint();
@@ -4230,7 +4229,7 @@ function _abrirQuickPicker() {
   const max = window.JarvisLauncherState?.MAX_TERMINALES ?? 12;
   // El tope de aquí es solo UX (evita abrir el picker cuando ya estás lleno);
   // el backend reimpone MAX_TERMINALES en el batch → 400 → el frontend muestra un toast.
-  if (terminales.size >= max) { toast(`Máximo ${max} terminales`, 'warning'); return; }
+  if (terminales.size >= max) { toast(_sbT('Máximo {n} terminales').replace('{n}', max), 'warning'); return; }
   window.QuickPicker?.abrir({
     proyecto: document.getElementById('project-title')?.textContent || '',
     onPick: _quickCrearTerminal,
@@ -4294,7 +4293,7 @@ async function _tlResolverDestino(raw) {
   });
   if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.detail || `HTTP ${res.status}`); }
   const proyecto = await res.json();
-  toast(`Workspace "${nombre}" creado.`, 'success');
+  toast(_sbT('Workspace «{nombre}» creado.').replace('{nombre}', nombre), 'success');
   cargarSidebar();
   return { targetId: proyecto.id, carpeta: null };
 }

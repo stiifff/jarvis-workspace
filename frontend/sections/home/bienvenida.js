@@ -107,7 +107,7 @@
     } catch (e) {
       boton.disabled = false;
       boton.textContent = 'Reintentar';
-      if (global.toast) toast(`No se pudo instalar: ${e.message}`, 'error');
+      if (global.toast) toast((window.JarvisI18n.t('No se pudo instalar: {msg}') || 'No se pudo instalar: {msg}').replace('{msg}', e.message), 'error');
     }
   }
 

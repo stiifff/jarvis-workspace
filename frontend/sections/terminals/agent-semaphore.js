@@ -25,6 +25,8 @@
 
   const _estados = new Map();   // terminalId → estado
 
+  const t = (s) => (global.JarvisI18n && global.JarvisI18n.t) ? global.JarvisI18n.t(s) : s;
+
   function _render() {
     const el = document.getElementById('jw-semaphore');
     if (!el) return;
@@ -36,7 +38,8 @@
     if (r.esperando)  partes.push(`<span class="jw-sem-it jw-sem-wait">◐ ${r.esperando}</span>`);
     if (r.error)      partes.push(`<span class="jw-sem-it jw-sem-err">✕ ${r.error}</span>`);
     el.innerHTML = partes.join('');
-    el.title = `${r.trabajando} trabajando · ${r.esperando} esperando · ${r.error} en error`;
+    el.title = t('{trab} trabajando · {esp} esperando · {err} en error')
+      .replace('{trab}', r.trabajando).replace('{esp}', r.esperando).replace('{err}', r.error);
     el.hidden = false;
   }
 

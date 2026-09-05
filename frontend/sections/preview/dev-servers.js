@@ -47,6 +47,8 @@
   //  que además escanea el scrollback del pane si el snapshot quedó vacío.)
   const _pure = { hostPuerto, total, etiqueta };
 
+  const _t = (s) => (root.JarvisI18n && root.JarvisI18n.t) ? root.JarvisI18n.t(s) : s;
+
   // ── A partir de acá, solo navegador ─────────────────────────────
   const _esBrowser = typeof document !== 'undefined';
 
@@ -120,7 +122,7 @@
     _btn.hidden = (n === 0);
     _btn.classList.toggle('jw-ds-vacio', n === 0);
     _btn.setAttribute('title', n
-      ? (n === 1 ? '1 localhost activo' : `${n} localhost activos`)
+      ? (n === 1 ? _t('1 localhost activo') : _t('{n} localhost activos').replace('{n}', n))
       : 'Ningún localhost activo');
   }
 
@@ -173,7 +175,9 @@
     row.className = 'jw-ds-row';
     row.setAttribute('role', 'menuitem');
     row.tabIndex = 0;
-    row.title = esDemo ? `Abrir el demo ${s.url} en el preview` : `Abrir ${s.url} en el preview`;
+    row.title = esDemo
+      ? _t('Abrir el demo {url} en el preview').replace('{url}', s.url)
+      : _t('Abrir {url} en el preview').replace('{url}', s.url);
 
     const dot = document.createElement('span');
     dot.className = 'jw-ds-dot' + (esDemo ? ' demo' : '');
@@ -202,7 +206,9 @@
     // no hay ningún proceso que matar (el 3000 es el workspace).
     x.title = esDemo ? 'Ocultar este demo (no cierra ningún proceso)'
                      : 'Cerrar este server (mata el proceso del puerto)';
-    x.setAttribute('aria-label', esDemo ? `Ocultar ${_pure.etiqueta(s)}` : `Cerrar ${_pure.hostPuerto(s.url)}`);
+    x.setAttribute('aria-label', esDemo
+      ? _t('Ocultar {etiqueta}').replace('{etiqueta}', _pure.etiqueta(s))
+      : _t('Cerrar {host}').replace('{host}', _pure.hostPuerto(s.url)));
     x.innerHTML = (typeof icon === 'function') ? icon('x', 13) : '×';
     x.addEventListener('click', (e) => { e.stopPropagation(); _cerrarUno(s); });
 
@@ -242,7 +248,7 @@
     // Ocultar un demo es inofensivo (no toca procesos) → sin confirmación.
     if (s.tipo !== 'demo') {
       const ok = (typeof confirmar === 'function')
-        ? await confirmar(`¿Cerrar el server de ${_pure.hostPuerto(s.url)}? Se va a terminar el proceso.`,
+        ? await confirmar(_t('¿Cerrar el server de {host}? Se va a terminar el proceso.').replace('{host}', _pure.hostPuerto(s.url)),
                           { titulo: 'Cerrar server', peligro: true, confirmText: 'Cerrar server' })
         : true;
       if (!ok) return;
@@ -262,7 +268,9 @@
     const conProceso = _servers.filter((s) => s.tipo !== 'demo').length;
     if (conProceso) {
       const ok = (typeof confirmar === 'function')
-        ? await confirmar(`¿Cerrar ${conProceso === 1 ? 'el localhost activo' : `los ${conProceso} localhost activos`}? Se van a terminar ${conProceso === 1 ? 'el proceso' : 'los procesos'}. Los demos solo se ocultan.`,
+        ? await confirmar(conProceso === 1
+            ? _t('¿Cerrar el localhost activo? Se va a terminar el proceso. Los demos solo se ocultan.')
+            : _t('¿Cerrar los {n} localhost activos? Se van a terminar los procesos. Los demos solo se ocultan.').replace('{n}', conProceso),
                           { titulo: 'Cerrar localhost', peligro: true, confirmText: 'Cerrar todos' })
         : true;
       if (!ok) return;

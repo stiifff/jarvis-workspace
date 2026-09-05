@@ -11,7 +11,7 @@
      [data-i18n-skip], terminales (.xterm), editor de código (.monaco-editor),
      <textarea>, <canvas>, <script>, <style> y los iframes (no se entra) quedan
      intactos.
-   - Persistencia: localStorage 'jarvis.lang' (default 'es').
+   - Persistencia: localStorage 'jarvis.lang' (default 'en').
 ═══════════════════════════════════════════════════════════════ */
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) module.exports = factory();
@@ -52,11 +52,12 @@
       var v = null;
       try { v = localStorage.getItem('jarvis.lang'); } catch (e) {}
       if (v === 'en' || v === 'es') return v;
-      // Sin preferencia guardada: seguir el idioma del SISTEMA (en el shell de
-      // escritorio WebView2 hereda el de Windows). El selector de ⚙→Apariencia
-      // persiste la elección y desde entonces manda él.
-      try { return /^es/i.test(navigator.language || 'es') ? 'es' : 'en'; }
-      catch (e) { return 'es'; }
+      // Sin preferencia guardada: INGLÉS por defecto — el idioma main del
+      // producto es el inglés (la mayoría de los usuarios vienen en inglés).
+      // Si el sistema es español no tuvimos hasta hoy forma de distinguir
+      // "usuario nuevo hispano" y esto ya se definió así. El selector de
+      // ⚙→Apariencia persiste la elección y desde entonces manda él.
+      return 'en';
     })();
     var WM_TXT = new WeakMap();   // textNode -> nodeValue original (es)
     var WM_ATTR = new WeakMap();  // element  -> { attr: valorOriginal }
