@@ -116,7 +116,8 @@
 .jr-search input:focus,.jr-search input:focus-visible{outline:none;box-shadow:none}
 
 /* ── Fuentes (fila de pills SOBRE el buscador): la seleccionada es la mesa
-   del buscador. En 'local' aparecen además la subida de música y el hint. ── */
+   del buscador. Solo las 3 pills — la subida de música vive en su propia CARD
+   .jr-upload dentro del pane local. ── */
 .jr-src{display:flex;align-items:center;gap:6px;padding:0 14px 8px;flex-wrap:wrap}
 /* Pill-ghost: borde line-2 en reposo, sin relleno; activa = señal acento-14
    + texto fg-0 (único momento en que la pill se tija de violeta). Altura y
@@ -128,21 +129,29 @@
 .jr-src-pill:active{transform:scale(.96)}
 .jr-src-pill.on,.jr-src-pill[aria-pressed="true"]{color:var(--ob-fg-0);border-color:var(--ob-accent-24);background:var(--ob-accent-14)}
 .jr-src-pill:focus-visible{outline:none;box-shadow:0 0 0 3px var(--ob-accent-24)}   /* anillo de señal, sin rectángulo */
-/* Subir música (fuente local): pill LABEL discreta — mono 10px caps, muted;
-   hover la enciende (fg-0 sobre bg-3) sin robarle el CTA al buscador. */
-.jr-src-subir{display:inline-flex;align-items:center;gap:5px;padding:6px 10px;
-  border:1px dashed var(--ob-line-2);border-radius:var(--radius-pill,999px);
-  color:var(--ob-fg-3);font:600 var(--text-2xs,10px) var(--font-mono);letter-spacing:var(--ls-caps);text-transform:uppercase;
-  cursor:pointer;transition:color var(--dur-1) var(--ease-out),background var(--dur-1) var(--ease-out),border-color var(--dur-1) var(--ease-out),transform var(--dur-1) var(--ease-out)}
-.jr-src-subir:hover{color:var(--ob-fg-0);background:var(--ob-bg-3)}
-.jr-src-subir:active{transform:scale(.96)}
-.jr-src-subir:focus-visible{outline:none;box-shadow:0 0 0 3px var(--ob-accent-24)}
-.jr-src-subir svg{width:11px;height:11px}
-/* Micro-nota en la fila ("Los archivos van a data/music"). Va prefijada con #jr-src
-   para respirar por encima del bloque .jr-src-hint de los hints (spotify.js inyecta
-   un <style id="jr-src-hint-css"> con igual clase y viene DESPUÉS en cascada). */
-#jr-src .jr-src-hint{display:inline;padding:0;border:0;background:transparent;
-  font:400 var(--text-2xs,10px) var(--font-ui);color:var(--ob-fg-4)}
+
+/* ── Subir música (fuente local): card empty-state accionable. Solo se
+   renderiza cuando la fuente activa es local (JS) — acá nada más se pinta
+   el vidrio: tenue bg-2 + sheen glass-hi arriba, borde dashed line-3.
+   CTA discreto: accent-08/24, se enciende al hover sin robarle el foco al
+   buscador. Mientras sube, el botón queda disabled. ── */
+.jr-upload{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;
+  padding:14px;text-align:center;
+  border:1px dashed var(--ob-line-3);border-radius:var(--radius-lg,12px);
+  background:linear-gradient(180deg, var(--ob-glass-hi), transparent 55%), var(--ob-bg-2);
+  box-shadow:inset 0 1px 0 var(--ob-glass-hi)}
+.jr-upload[hidden]{display:none}   /* display:flex de arriba pisaría el [hidden] del UA */
+.jr-upload button{display:inline-flex;align-items:center;justify-content:center;gap:7px;
+  padding:7px 13px;border:1px solid var(--ob-accent-24);border-radius:var(--radius-btn,7px);
+  background:var(--ob-accent-08);color:var(--ob-accent-fg);
+  font:600 var(--text-sm,12px) var(--font-ui);white-space:nowrap;cursor:pointer;
+  transition:background var(--dur-1) var(--ease-out),color var(--dur-1) var(--ease-out),border-color var(--dur-1) var(--ease-out),transform var(--dur-1) var(--ease-out)}
+.jr-upload button:hover:not(:disabled){background:var(--ob-accent-14);color:var(--ob-fg-0)}
+.jr-upload button:active:not(:disabled){transform:scale(.97)}
+.jr-upload button:focus-visible{outline:none;box-shadow:0 0 0 3px var(--ob-accent-24)}
+.jr-upload button:disabled{opacity:.55}   /* subiendo: la card queda; el input file lo maneja la JS */
+.jr-upload button svg{width:16px;height:16px}
+.jr-upload-note{font:400 var(--text-xs,11px) var(--font-ui);color:var(--ob-fg-3)}
 
 /* ── Hints de estado de fuente (Spotify → #jr-src-hints) — vidrio tenue, borde
    line-2, radio lg. El dot de la izquierda es el COLOR del caso (señal, no
@@ -152,6 +161,7 @@
    fuente emita esos casos. Todo prefijado con #: lo inyectado por spotify.js
    pega 0,1,0 en la cascada — acá no queda ninguno al descubierto. ── */
 #jr-src-hints{padding:10px 14px 0;display:flex;flex-direction:column;gap:8px}
+#jr-src-hints[hidden]{display:none}   /* display:flex de arriba pisa el [hidden] del UA */
 #jr-src-hints .jr-src-hint{--jr-hint-c:var(--ob-accent);position:relative;display:flex;align-items:center;gap:10px;
   padding:9px 12px;border:1px solid var(--ob-line-2);border-radius:var(--radius-lg,12px);
   background:linear-gradient(180deg, var(--ob-glass-hi), transparent 55%), var(--ob-bg-2);
@@ -163,11 +173,11 @@
 #jr-src-hints .jr-src-hint::before{content:"";flex:0 0 auto;width:7px;height:7px;border-radius:50%;
   background:var(--jr-hint-c);box-shadow:0 0 0 3px color-mix(in oklch, var(--jr-hint-c) 22%, transparent)}
 #jr-src-hints .jr-src-hint b{color:var(--ob-fg-0);font-weight:600}
-/* CTA "Conectá Spotify": .ob-btn no existe en tokens — este es su look de
-   señal: bg accent-08 / borde accent-24 reposo, accent-14 al hover. */
-#jr-src-hints .jr-src-hint-btn{margin-left:auto;flex:0 0 auto;padding:6px 12px;
-  border:1px solid var(--ob-accent-24);border-radius:var(--radius-btn,7px);
-  background:var(--ob-accent-08);color:var(--ob-fg-0);font:600 var(--text-xs,11px) var(--font-ui);cursor:pointer;
+/* CTA "Conectá Spotify": pill de señal — bg accent-08 / borde accent-24 en
+   reposo, accent-14 al hover. Chica y elegante (12px, 5px 12px). */
+#jr-src-hints .jr-src-hint-btn{margin-left:auto;flex:0 0 auto;padding:5px 12px;
+  border:1px solid var(--ob-accent-24);border-radius:var(--radius-pill,999px);
+  background:var(--ob-accent-08);color:var(--ob-fg-0);font:600 var(--text-sm,12px) var(--font-ui);cursor:pointer;
   transition:background var(--dur-1) var(--ease-out),border-color var(--dur-1) var(--ease-out),transform var(--dur-1) var(--ease-out)}
 #jr-src-hints .jr-src-hint-btn:hover{background:var(--ob-accent-14)}
 #jr-src-hints .jr-src-hint-btn:active{transform:scale(.97)}

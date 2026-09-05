@@ -58,9 +58,13 @@
     addq:  '<path d="M4 7h11M4 12h11M4 17h7M18 13v7M14.5 16.5h7"/>',
     volume:'<path d="M4 9h3l5-4v14l-5-4H4z" fill="currentColor" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/>',
     mute:  '<path d="M4 9h3l5-4v14l-5-4H4z" fill="currentColor" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M16 9.5l5 5M21 9.5l-5 5"/>',
+    upload:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M17 8l-5-5-5 5M12 3v12"/>',
   };
   const svg = (n, cls) => `<svg class="jr-ico ${cls || ''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${I[n]}</svg>`;
   const viz = (on) => `<span class="jr-viz${on ? ' on' : ''}"><i></i><i></i><i></i><i></i></span>`;
+  // Ícono de upload: window.icon('upload', 18) si la UI global ya lo tiene;
+  // si no (cargado 'new' devuelve ''), cae al svg local del set I.
+  const _upIco = () => (typeof root.icon === 'function' ? (root.icon('upload', 18) || svg('upload')) : svg('upload'));
 
   const ST_META = { lofi: 'estudiar', synth: 'nocturno', focus: 'flow', jazz: 'café', chill: 'relax', piano: 'calma' };
 
@@ -815,6 +819,14 @@
           <button class="jr-ibtn" id="jr-close" title="Cerrar">${svg('close')}</button></div>
         <div class="jr-src" id="jr-src"></div>
         <div class="jr-src-hints" id="jr-src-hints" hidden></div>
+        <!-- Subida de música (card SOLO con fuente local activa): entre los
+             hints y la lista. El input file es ÚNICO (vive acá desde el montaje;
+             la fila de pills NO lo duplica). -->
+        <div class="jr-upload" id="jr-upload" hidden>
+          <button type="button" id="jr-upload-btn">${_upIco()} ${_t('Subir música')}</button>
+          <span class="jr-upload-note">${_t('Los archivos van a data/music')}</span>
+          <input type="file" multiple accept="audio/*" id="jr-src-file" hidden>
+        </div>
         <label class="jr-search"><span>${svg('search')}</span><input id="jr-q" placeholder="Buscá música o pegá un link de YouTube…" spellcheck="false" autocomplete="off"></label>
         <div class="jr-now" id="jr-now"></div>
         <div class="jr-transport" id="jr-transport"></div>
@@ -851,6 +863,10 @@
     $('#jr-close').addEventListener('click', () => _toggle(false));
     catcher.addEventListener('click', () => _toggle(false));
     $('#jr-src').addEventListener('click', (e) => { const b = e.target.closest('[data-src]'); if (b) _setFuente(b.dataset.src); });
+    const upBtn = $('#jr-upload-btn');
+    if (upBtn) upBtn.addEventListener('click', () => { const fi = $('#jr-src-file'); if (fi) fi.click(); });
+    const upIn = $('#jr-src-file');
+    if (upIn) upIn.addEventListener('change', (ev) => { _subirLocal(ev.target && ev.target.files); if (ev.target) ev.target.value = ''; });
     const q = $('#jr-q'); let deb = null;
     q.addEventListener('input', () => { clearTimeout(deb); deb = setTimeout(() => _buscar(q.value, '#jr-pane-rel'), 350); if (q.value.trim()) _setPane('rel'); });
     q.addEventListener('keydown', (e) => { if (e.key === 'Enter') { clearTimeout(deb); _buscar(q.value, '#jr-pane-rel'); _setPane('rel'); } });
@@ -1246,6 +1262,7 @@
   async function _subirLocal(files) {
     const arr = files ? Array.from(files) : [];
     if (!arr.length) return;
+    const btn = $('#jr-upload-btn'); if (btn) btn.disabled = true;   // la card queda; el CSS pinta el estado
     try {
       const fd = new FormData();
       for (const file of arr) fd.append('archivos', file, file.name);
@@ -1257,6 +1274,7 @@
         toast(n ? _t('Se subieron {n} archivos a data/music').replace('{n}', String(n)) : _t('No se subió ningún archivo'));
       } else toast(data.error || _t('No se pudo subir la música'));
     } catch { if (typeof toast === 'function') toast(_t('No se pudo subir la música')); }
+    finally { if (btn) btn.disabled = false; }
     // Re-pinta lo que haya en el pane (búsqueda o biblioteca) para que se vea lo nuevo.
     const q = $('#jr-q'); const txt = (q && q.value.trim()) || '';
     const rel = $('#jr-pane-rel');
@@ -1355,14 +1373,10 @@
       const fs = _fuentes[id];
       return `<button type="button" class="jr-src-pill${id === _fuenteActiva ? ' on' : ''}" data-src="${id}" aria-pressed="${id === _fuenteActiva}">${_esc(fs.etiqueta_es)}</button>`;
     }).join('');
-    if (_fuenteActiva === 'local') {
-      html += `<label class="jr-src-subir" for="jr-src-file">${svg('note')} Subir música`
-        + `<input type="file" multiple accept="audio/*" id="jr-src-file" hidden></label>`
-        + `<span class="jr-src-hint">Los archivos van a data/music</span>`;
-    }
     row.innerHTML = html;
-    const fi = $('#jr-src-file');
-    if (fi) fi.addEventListener('change', (ev) => { _subirLocal(ev.target && ev.target.files); if (ev.target) ev.target.value = ''; });
+    // La subida de música NO vive en la fila de pills: es una card propia que
+    // se muestra SOLO cuando la fuente activa es 'local' (entre hints y lista).
+    const up = $('#jr-upload'); if (up) up.hidden = _fuenteActiva !== 'local';
     _renderHints();
     // Hook opcional de la fuente activa: al ENTRAR (o re-pintar) la fuente se
     // le da la palabra (spotify: verificar sesión → hint de login si no hay).
@@ -1387,11 +1401,16 @@
   const _hintsFuente = {};
   // `extra` opcional: {boton: 'Conectá Spotify'} → cada línea del hint (salvo
   // la de Premium, que pide otra cosa) se acompaña de un botón que llama al
-  // `login` de la fuente activa.
+  // `login` de la fuente activa. REPLACE, no append: una fuente solo puede
+  // tener UNA línea activa — si re-emite el MISMO contenido, no se pisa nada
+  // (evita parpadeos y duplicados por re-emisión tardía).
   function hintDeFuente(fid, texto, extra) {
     if (!fid) return;
     const txt = (typeof texto === 'string' && texto.trim()) ? texto : null;
-    if (txt) _hintsFuente[fid] = { txt: txt, boton: (extra && extra.boton) ? extra.boton : null };
+    const boton = (extra && extra.boton) ? extra.boton : null;
+    const prev = _hintsFuente[fid];
+    if (prev && prev.txt === txt && prev.boton === boton) return;
+    if (txt) _hintsFuente[fid] = { txt: txt, boton: boton };
     else delete _hintsFuente[fid];
     _renderHints();
   }
@@ -1401,11 +1420,15 @@
     const txt = h && h.txt;
     if (!txt) { cont.hidden = true; cont.innerHTML = ''; return; }
     cont.hidden = false; cont.innerHTML = '';
+    const vistas = [];   // dedupe: la MISMA línea emitida dos veces → una sola
     for (const linea of String(txt).split('\n')) {
+      const l = linea.trim();
+      if (!l || vistas.includes(l)) continue;
+      vistas.push(l);
       const b = document.createElement('div'); b.className = 'jr-src-hint';
-      const span = document.createElement('span'); span.textContent = linea.trim();
+      const span = document.createElement('span'); span.textContent = l;
       b.appendChild(span);
-      if (h && h.boton && !linea.trim().includes('Premium')) {
+      if (h && h.boton && !l.includes('Premium')) {
         const bt = document.createElement('button'); bt.type = 'button'; bt.className = 'jr-src-hint-btn';
         bt.textContent = h.boton;
         bt.addEventListener('click', () => {

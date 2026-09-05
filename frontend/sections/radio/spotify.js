@@ -140,13 +140,13 @@
     p.on('not_ready', () => { est.dispositivo = null; _emit('estado', _snap()); _notificar(); });
     p.on('account_error', () => { _sinPremium(); });
     p.on('initialization_error', () => { _sinPremium(); });
-    p.on('authentication_error', () => { _token = null; _tokenHasta = 0; _setAutorizado(false); _hint('Sesión de Spotify vencida', 'spotify:sesion'); });
+    p.on('authentication_error', () => { _token = null; _tokenHasta = 0; _setAutorizado(false); _hintSesion('Sesión de Spotify vencida'); });
     p.on('playback_error', () => _emit('error', { motivo: 'playback' }));
     p.on('player_state_changed', _onEstadoPlayer);
   }
   function _sinPremium() {
     est.premium = false; _emit('estado', _snap()); _notificar();
-    _hint('La reproducción completa de Spotify necesita una cuenta Premium — iniciá sesión con una cuenta Premium', 'spotify:premium');
+    _hintPremium('La reproducción completa de Spotify necesita una cuenta Premium — iniciá sesión con una cuenta Premium');
   }
   async function _asegurarPlayer() {
     await _pedirToken();   // si 401: sin sesión → cargar lo reporta
@@ -220,11 +220,11 @@
     if (data && data.error) {
       const err = String(data.error);
       if (/configurad|CLIENT_ID/i.test(err)) {
-        _hint('Spotify no está configurado', 'spotify:config');
+        _hintConfig('Spotify no está configurado');
       } else if (/sesi[oó]n|login|token|401|autoriz|auth/i.test(err)) {
         // OJO: el backend dice "Sin sesión de Spotify…" (con ó acentuada):
         // /sesion/ plano NO matchea y el hint quedaba muerto.
-        _hint('Sesión de Spotify no iniciada', 'spotify:sesion');
+        _hintSesion('Sesión de Spotify no iniciada');
         _pedirLogin();
       }
       return { resultados: [], token: null, error: err, necesitaLogin: !/configurad|CLIENT_ID/i.test(err) };
@@ -234,6 +234,9 @@
   }
 
   // ── hints: canal de radio.js si existe; si no, bloque .jr-src-hint propio ──
+  // UNA línea activa a la vez: 'sesion' y 'config' y 'premium' son mutuamente
+  // excluyentes (la sesión implica configurado y viceversa) — cada helper
+  // limpia a los demás antes de publicar (evita el doble hint/botón).
   const _hints = new Map();   // clave → texto
   function _hint(txt, clave) {
     _hints.set(clave || txt, txt);
@@ -242,13 +245,39 @@
   function _limpiarHint(clave) {
     if (_hints.delete(clave || '')) _renderHint();
   }
+  function _hintSesion(txt) {
+    _hints.delete('spotify:config'); _hints.delete('spotify:premium');
+    _hint(txt || 'Sesión de Spotify no iniciada', 'spotify:sesion');
+  }
+  function _hintConfig(txt) {
+    _hints.delete('spotify:sesion'); _hints.delete('spotify:premium');
+    _hint(txt || 'Spotify no está configurado', 'spotify:config');
+  }
+  function _hintPremium(txt) {
+    _hints.delete('spotify:sesion'); _hints.delete('spotify:config');
+    _hint(txt, 'spotify:premium');
+  }
   // ENTRADA a la fuente (pill, registro con preferencia, apertura del popover):
   // se verifica la sesión contra END_TOKEN — 401/404/red → hint de login AL
   // entrar (no solo tras un error de búsqueda); token OK → se limpia el hint.
+  // La PRECEDENCIA es por /login: si el token falla, se lo consulta para saber
+  // si el problema es que NO EXISTE el client id (config → sin botón, no hay
+  // nada que conectar) o que no hay sesión (sesión → un solo botón de login).
   function _alActivar() {
     _pedirToken()
       .then(() => { _limpiarHint('spotify:sesion'); _limpiarHint('spotify:config'); })
-      .catch(() => _hint('Sesión de Spotify no iniciada', 'spotify:sesion'));
+      .catch(async (e) => {
+        let config = false;
+        if (e && e.noSesion) {
+          try {
+            const res = await fetch(END_LOGIN, { credentials: 'same-origin' });
+            const d = await res.json();
+            config = /configurad|CLIENT_ID/i.test(String((d && d.error) || ''));
+          } catch {}
+        }
+        if (config) _hintConfig('Spotify no está configurado');
+        else _hintSesion('Sesión de Spotify no iniciada');
+      });
   }
   let _cssInyectado = false;
   function _css() {
@@ -287,8 +316,13 @@
   }
   function _renderHint() {
     const J = root.JarvisRadio;
-    if (J && typeof J.hintDeFuente === 'function') { try { J.hintDeFuente(ID, Array.from(_hints.values()).join('\n'), { boton: 'Conectá Spotify' }); return; } catch {} }
-    if (J && typeof J.fuenteHint === 'function') { try { J.fuenteHint(ID, Array.from(_hints.values()).join('\n'), true); return; } catch {} }
+    // UNA sola línea activa: config (sin botón — no hay nada que conectar),
+    // sesión (un solo botón de login) o premium (sin botón). La misma emisión
+    // con el mismo contenido la de-dupea radio.js (hintDeFuente REPLACE).
+    const esSesion = !!_hints.get('spotify:sesion');
+    const txt = _hints.get('spotify:config') || _hints.get('spotify:sesion') || _hints.get('spotify:premium') || '';
+    if (J && typeof J.hintDeFuente === 'function') { try { J.hintDeFuente(ID, txt, esSesion ? { boton: 'Conectá Spotify' } : undefined); return; } catch {} }
+    if (J && typeof J.fuenteHint === 'function') { try { J.fuenteHint(ID, txt, esSesion); return; } catch {} }
     _css();
     const pop = document.getElementById('jarvis-radio-pop');
     if (!pop) return;
@@ -300,18 +334,18 @@
       pivot.parentNode.insertBefore(cont, pivot);
     }
     cont.innerHTML = '';
-    _hints.forEach((txt) => {
+    if (txt) {
       const b = document.createElement('div'); b.className = 'jr-src-hint';
       const span = document.createElement('span'); span.textContent = txt;
       b.appendChild(span);
-      if (!txt.includes('Premium')) {
+      if (esSesion) {
         const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'jr-src-hint-btn';
         btn.textContent = 'Conectá Spotify';
         btn.addEventListener('click', () => { try { abrirLogin(); } catch {} });
         b.appendChild(btn);
       }
       cont.appendChild(b);
-    });
+    }
     if (root.JarvisI18n && typeof root.JarvisI18n.aplicar === 'function') {
       try { root.JarvisI18n.aplicar(cont); } catch {}
     }
@@ -375,10 +409,10 @@
       _cerrarModal();
       const err = (data && data.error) || 'sin-url';
       if (/configurad|CLIENT_ID/i.test(String(err))) {
-        _hint('Spotify no está configurado — poné SPOTIFY_CLIENT_ID en el .env', 'spotify:config');
+        _hintConfig('Spotify no está configurado — poné SPOTIFY_CLIENT_ID en el .env');
         if (typeof root.toast === 'function') root.toast('Spotify no está configurado — poné SPOTIFY_CLIENT_ID en el .env', 'error', 5000);
       } else {
-        _hint('Sesión de Spotify no iniciada', 'spotify:sesion');
+        _hintSesion('Sesión de Spotify no iniciada');
       }
       _notificar();
     }
@@ -400,7 +434,7 @@
       const winClosed = _authWin ? _authWin.closed : false;
       if (tries >= 90 || (winClosed && tries >= 15)) {
         clearInterval(_authTimer);
-        _cerrarModal(); _hint('Sesión de Spotify no iniciada', 'spotify:sesion');
+        _cerrarModal(); _hintSesion('Sesión de Spotify no iniciada');
       }
     }, 2000);
   }
