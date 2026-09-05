@@ -89,6 +89,14 @@ Preview your app in a live phone frame — add phone frames, web browsers or pro
   <img src="docs/images/mobile-studio-side.png" alt="Mobile Studio — the empty home and the studio side by side: iPhone 15 Pro frame, dock with phone, web, note" width="800">
 </p>
 
+### Memory, as a neuron graph
+
+The shared memory of the swarm, as living neurons — each memory is a node (size = connections), the memory itself pulses at the core. Zoom, pan, hover any neuron to see its title and links, or watch the synapses fire.
+
+<p align="center">
+  <img src="docs/images/memory-graph.png" alt="Memory graph — scattered neurons with a pulsing core, synaptic connections" width="800">
+</p>
+
 ### Live on Discord
 
 Windows only: the launcher (`Jarvis.exe`) pushes your fleet to Discord — live activity, agent count and uptime while the swarm works.
