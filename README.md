@@ -86,7 +86,7 @@ Preview your app in a live phone frame — add phone frames, web browsers or pro
 </p>
 
 <p align="center">
-  <img src="docs/images/mobile-studio-phone.png" alt="Mobile Studio — the empty home and the studio side by side: iPhone 15 Pro frame, dock with phone, web, note" width="800">
+  <img src="docs/images/mobile-studio-side.png" alt="Mobile Studio — the empty home and the studio side by side: iPhone 15 Pro frame, dock with phone, web, note" width="800">
 </p>
 
 ### Live on Discord
