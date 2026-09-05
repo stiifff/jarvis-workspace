@@ -1,26 +1,25 @@
-# sections/editor/ — editor de archivos (Monaco)
+# sections/editor/ — file editor (Monaco)
 
-Editor estilo IDE: árbol de archivos + Monaco. Espeja el patrón de `OrchestratorPanel`.
+IDE-style editor: file tree + Monaco. Mirrors the pattern of `OrchestratorPanel`.
 
-- **Archivos:** `editor.js`, `editor.css`
-- **Servido en:** `/static/sections/editor/`
-- **Global público (CONGELADO):** `window.JarvisEditor` —
+- **Files:** `editor.js`, `editor.css`
+- **Served at:** `/static/sections/editor/`
+- **Public global (FROZEN):** `window.JarvisEditor` —
   `abrirArchivo / cerrarTab / guardarActivo / estaAbierto /
   refrescarArbol / openPalette / openSearch / init / onProjectChanged`.
-  Consumir SOLO eso desde otras secciones; no usar los internos.
-- **Monaco:** se carga lazy desde CDN (cloudflare), no hay assets locales.
+  Consume ONLY that from other sections; don't reach into internals.
+- **Monaco:** loaded lazy from CDN (cloudflare), no local assets.
 
-## Editor standalone (desde 2026-06 rediseño)
-- **`GET /editor?project=N`** sirve `shell/editor-standalone.html` — página autónoma con el
-  mismo pane del editor (mismos IDs que el dock interno). Útil para abrir el editor en una
-  pestaña separada del navegador.
-- El botón **`#jw-dock-external`** en el dock (visible solo cuando la pestaña activa es
-  `editor`) navega a esta ruta en nueva pestaña.
-- Si se modifica el pane del editor en `workspace.html`, replicar los cambios en
-  `editor-standalone.html` (se mantiene como copia verbatim de IDs).
+## Standalone editor
+- **`GET /editor?project=N`** serves `shell/editor-standalone.html` — standalone page with the
+  same editor pane (same IDs as the internal dock). Useful to open the editor in a separate tab.
+- The **`#jw-dock-external`** button in the dock (visible only when the active tab is
+  `editor`) navigates to this route in a new tab.
+- If the editor pane in `workspace.html` changes, replicate the changes in
+  `editor-standalone.html` (it's kept as a verbatim copy of IDs).
 
-## Verificación
-Smoke manual en `localhost:3000` (un agente headless no abre navegador): abrir un
-archivo, editar, guardar (Ctrl+S), renombrar/borrar en el árbol, command palette.
-Verificar también `localhost:3000/editor?project=<id>` en pestaña separada.
-Subir `?v=N` de `editor.js`/`editor.css` en `shell/workspace.html` tras cada cambio.
+## Verification
+Manual smoke on `localhost:3000` (a headless agent doesn't open a browser): open a
+file, edit, save (Ctrl+S), rename/delete in the tree, command palette.
+Also verify `localhost:3000/editor?project=<id>` in a separate tab.
+Bump `?v=N` of `editor.js`/`editor.css` in `shell/workspace.html` after each change.

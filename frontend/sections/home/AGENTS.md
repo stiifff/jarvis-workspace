@@ -1,11 +1,11 @@
 # sections/home/ — landing
 
-Página de inicio (lista de proyectos / entrada al workspace).
+Home page (project list / entry to the workspace).
 
-- **Archivos:** `home.js`, `home.css`
-- **Servido en:** `/static/sections/home/` — referenciado desde `frontend/index.html`
-  (que se sirve en `GET /`, NO bajo `/static`).
-- Al cambiar, subir el `?v=N` en `index.html` (no en `workspace.html`).
+- **Files:** `home.js`, `home.css`
+- **Served at:** `/static/sections/home/` — referenced from `frontend/index.html`
+  (which is served at `GET /`, NOT under `/static`).
+- On change, bump the `?v=N` in `index.html` (not in `workspace.html`).
 
-## Verificación
-Smoke manual en `localhost:3000/` (la home), no en `/workspace`.
+## Verification
+Manual smoke at `localhost:3000/` (the home), not at `/workspace`.

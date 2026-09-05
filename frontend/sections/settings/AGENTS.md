@@ -1,93 +1,86 @@
-# sections/settings/ — pantalla de configuración
+# sections/settings/ — settings screen
 
-Overlay full-screen que cubre el workspace cuando el usuario toca ⚙ (`#jw-gear`).
-Rediseño **"Liquid Glass · Datasheet"** (2026-07-19), que reemplaza al
-"Observatorio": aquel había cambiado el *tema* sobre la misma estructura genérica
-(nav lateral + filas idénticas con toggle); este cambia la **estructura**.
+Full-screen overlay covering the workspace when the user taps ⚙ (`#jw-gear`).
+**"Liquid Glass · Datasheet"** redesign, which replaced the "Observatory": that one had changed the
+*theme* over the same generic structure (side nav + identical rows with toggle); this one changes the
+**structure**.
 
-- **Archivos:** `settings.js`, `settings.css`
-- **Servido en:** `/static/sections/settings/`
-- **Global público:** `window.JarvisSettings` con `init(pid)`, `onProjectChanged(pid)`,
-  `open(seccion?)`, `close()`, `isOpen()`, `refrescar(seccion?)` y
-  `onCuentaAgregada(data)`. Invocar solo vía esta API.
-- **Prototipo de referencia:** `frontend/preview-settings/` (sirve en
-  `/static/preview-settings/`) — ahí está el detalle de las decisiones de diseño
-  y **qué no reintroducir**.
+- **Files:** `settings.js`, `settings.css`
+- **Served at:** `/static/sections/settings/`
+- **Public global:** `window.JarvisSettings` with `init(pid)`, `onProjectChanged(pid)`,
+  `open(seccion?)`, `close()`, `isOpen()`, `refrescar(seccion?)` and
+  `onCuentaAgregada(data)`. Invoke only via this API.
 
-## Anatomía
+## Anatomy
 
-Una **sola losa de vidrio** (`.sx-slab`, marco ANCLADO de 1120×790: no cambia de
-tamaño entre secciones) con el rail lateral y el cuerpo unidos por una línea de
-pelo. El cuerpo es una **ficha técnica**: cada bloque (`.sx-blk`) se anuncia con
-su **banda** (`.sx-blk-l`: rótulo mono + pista + regla hasta el canto) y después
-el contenido ocupa TODO el ancho. Cero tarjetas anidadas, cero grid de tarjetas
-idénticas.
+One **glass slab** (`.sx-slab`, ANCHORED frame 1120×790: doesn't change size between sections)
+with the side rail and the body joined by a hairline. The body is a **data sheet**: each block
+(`.sx-blk`) announces itself with its **band** (`.sx-blk-l`: mono label + track + rule to the
+edge) and then the content takes the FULL width. Zero nested cards, zero grid of identical cards.
 
-La banda es **sticky**: al scrollear queda pegada arriba y `settings.js` le pone
-`.fija` (mide contra el techo del scrollport en un rAF), que enciende la repisa
-y sube el rótulo a `--ob-fg-0` — el "estás acá" de la sección. El flag
-`{ wide: true }` de `blk()` ya no hace nada (era para romper la canaleta lateral
-que se eliminó en 2026-07-22); no hace falta pasarlo en bloques nuevos.
+The band is **sticky**: when scrolling it stays pinned on top and `settings.js` puts `.fija`
+(measured against the scrollport ceiling in an rAF), which lights the shelf and lifts the label
+to `--ob-fg-0` — the "you are here" of the section. The `{ wide: true }` flag of `blk()` does
+nothing anymore (it was for the side channel removed in the redesign); no need to pass it on
+new blocks.
 
-| Sección | id | Forma |
+| Section | id | Shape |
 |---|---|---|
-| Voz | `voz` | La tecla como objeto físico (keycap) + ruta de la señal + dictado y avisos |
-| Teclado | `atajos` | **Mapa de teclado real**: lo iluminado está ocupado, click para reasignar |
-| Apariencia | `apariencia` | Banco de pruebas vivo + los 24 temas como **espectro** + tonalidad + idioma |
-| Cuentas | `cuentas` | **Conmutador**: un CLI por fila, sus cuentas como botones de un selector |
-| Extensiones | `skills` | Rack denso (markup `.ps-*` heredado, re-vestido) |
-| Memoria | `memoria` | **Consola**: pulso, altímetro, cuadros por categoría, recientes, lecciones |
-| Workflows | `workflows` | Línea de tiempo con el track de pasos |
+| Voice | `voz` | The key as a physical object (keycap) + signal path + dictation & alerts |
+| Keyboard | `atajos` | **Real keyboard map**: lit = occupied, click to reassign |
+| Appearance | `apariencia` | Live test bench + the 24 themes as **spectrum** + tonality + language |
+| Accounts | `cuentas` | **Switchboard**: one CLI per row, its accounts as buttons of a selector |
+| Extensions | `skills` | Dense rack (inherited `.ps-*` markup, re-skinned) |
+| Memory | `memoria` | **Console**: pulse, altimeter, boxes per category, recent, lessons |
+| Workflows | `workflows` | Timeline with the step track |
 
-El rail muestra el **valor vivo** de cada sección (la tecla, el tema, cuántas
-cuentas / plugins / memorias / workflows) — se ve la configuración sin entrar.
-Los cuatro que dependen del server los trae `_cargarResumen()` al abrir.
+The rail shows the **live value** of each section (the key, the theme, how many
+accounts / plugins / memories / workflows) — you see the config without entering.
+The four server-dependent ones are fetched by `_cargarResumen()` on open.
 
-## Reglas duras
+## Hard rules
 
-- **Máximo DOS capas con `backdrop-filter`** (velo + losa). Lo de adentro es
-  faux-glass con gradientes.
-- **El vidrio ELEVA, no hunde**: las superficies salen del escalón de card
-  (`--ob-bg-2/3`, tokens locales `--sx-slab-*`, `--sx-well`), **nunca de
-  `--ob-bg-void`** — en los temas más oscuros (tinta L≈9%, neón) eso dejaba un
-  pozo negro y leer cansaba.
-- **`--ob-fg-4` es solo disabled/placeholder**: ningún texto de esta pantalla
-  baja de `--ob-fg-3`.
-- **Nada de color hardcodeado** (24 temas + filtro de tonalidad).
-- **Nada de `animation-fill-mode: forwards`/`both` en los ancestros de la banda**:
-  un transform retenido (aunque sea la matriz identidad) le rompe el
-  `position: sticky` a lo de adentro. Por eso `.sx-in > *` usa `backwards`.
-- **El espectro de temas no anima layout al pasar el mouse**: hover =
-  previsualizar en el banco (variables `--bk-*` inline; NO tocar el `data-theme`
-  del documento, eso cambiaría el tema de verdad); el despliegue (`flex-grow`) es
-  la respuesta al **click**. `contain: layout paint style` encierra el recálculo.
-- **Fuera el serif italic display** de la UI de producto.
+- **Max TWO layers with `backdrop-filter`** (veil + slab). Everything inside is
+  faux-glass with gradients.
+- **Glass RAISES, doesn't sink**: surfaces come off the card step
+  (`--ob-bg-2/3`, local tokens `--sx-slab-*`, `--sx-well`), **never from
+  `--ob-bg-void`** — on the darkest themes (ink L≈9%, neon) that left a black hole
+  and reading tired.
+- **`--ob-fg-4` is only disabled/placeholder**: no text on this screen goes below `--ob-fg-3`.
+- **No hardcoded color** (24 themes + tonality filter).
+- **No `animation-fill-mode: forwards`/`both` on the band's ancestors**:
+  a retained transform (even identity matrix) breaks `position: sticky` inside.
+  That's why `.sx-in > *` uses `backwards`.
+- **The theme spectrum doesn't animate layout on hover**: hover = preview on the bench
+  (`--bk-*` inline vars; NOT touching the document's `data-theme`, that would change the
+  theme for real); the grow (`flex-grow`) is the **click** response.
+  `contain: layout paint style` encloses the recalc.
+- **No serif italic display** in product UI.
 
-## Puentes con el motor real (no renombrar)
+## Bridges with the real engine (don't rename)
 
-- El keycap de Voz y los botones de reasignar **son `.set-keybind[data-id]`**: el
-  motor de captura de `workspace.js` los busca por esa clase y les reescribe el
-  `innerHTML` mientras captura (`.settings-keybind-listening` / `-hint`). El valor
-  va en `.settings-kbd`.
-- Extensiones conserva el markup `.ps-*` que cablea `window.JarvisSkills.montar()`;
-  se re-viste por CSS, no se reescribe.
-- El modal de alta de cuenta (`.cta-alta-*`) mantiene su DOM y sus **4 flujos**
-  (manual, device-code, pegar código, callback) + el aborto al cerrar.
-- Esc cede a los sub-modales (`#modal-skill-md`, `.cta-alta-overlay`,
-  `.ob-confirm-overlay`) y al buscador con texto.
+- The Voice keycap and reassign buttons **are `.set-keybind[data-id]`**: the
+  capture engine in `workspace.js` looks them up by that class and rewrites their
+  `innerHTML` while capturing (`.settings-keybind-listening` / `-hint`). The value
+  lives in `.settings-kbd`.
+- Extensions keeps the `.ps-*` markup wired by `window.JarvisSkills.montar()`;
+  re-skinned via CSS, not rewritten.
+- The account-linking modal (`.cta-alta-*`) keeps its DOM and its **4 flows**
+  (manual, device-code, paste code, callback) + abort on close.
+- Esc yields to sub-modals (`#modal-skill-md`, `.cta-alta-overlay`,
+  `.ob-confirm-overlay`) and to the search box with text.
 
 ## i18n
 
-Los textos nuevos viven en `shared/i18n-dict.js` (bloque "Configuración ·
-rediseño Liquid Glass"). Todo string nuevo de esta pantalla entra ahí o el modo
-inglés queda mezclado.
+New texts live in `shared/i18n-dict.js` (block "Configuración · Liquid Glass redesign").
+Every new string of this screen goes there or English mode gets mixed.
 
-## Verificación
+## Verification
 
-Smoke en `localhost:3000` con `?qa=1` (observador): abrir con ⚙, recorrer las 7
-secciones, buscar un ajuste y verificar el salto+pulso, cambiar tema y tonalidad
-(que `--ob-accent` computado cambie y persista), reasignar un atajo. **No tocar
-"Usar" de una cuenta en QA: cambia la cuenta activa del CLI de verdad.** Subir el
-`?v=N` de `settings.js`/`.css` (y de `i18n-dict.js` si se tocó) en
-`shell/workspace.html`. Tests: todas las suites de `frontend/**/__tests__` +
-`python -m pytest backend/tests/`.
+Smoke at `localhost:3000` with `?qa=1` (observer): open with ⚙, walk all 7 sections,
+search a setting and verify the jump+pulse, change theme and tonality
+(that computed `--ob-accent` changes and persists), reassign a shortcut. **Don't touch
+"Usar" of an account in QA: it changes the CLI's active account for real.** Bump the
+`?v=N` of `settings.js`/`.css` (and `i18n-dict.js` if touched) in
+`shell/workspace.html`. Tests: all `frontend/**/__tests__` suites +
+`python -m pytest plotspace/tests/`.

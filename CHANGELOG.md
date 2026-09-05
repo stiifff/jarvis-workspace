@@ -1,21 +1,20 @@
 # Changelog
 
-Las novedades del aviso de actualización se **auto-detectan del git** (los commits
-nuevos, agrupados por área). Este archivo es solo el respaldo por si algún día no
-hay git. Formato: `## X.Y.Z` + bullets `- …`, más nuevo arriba.
+The update notice's news are **auto-detected from git** (new commits, grouped by area). This file
+is only a fallback for the case git goes away. Format: `## X.Y.Z` + bullets `- …`, newest first.
 
 ## 1.7.2
 - Install: one command per OS (`install.sh` on Linux/macOS, `install.ps1` on Windows). Full app; Windows leaves Jarvis.bat on the Desktop.
 
 ## 1.7.1
-- Sin token de acceso: abrís `http://localhost:3000` y entrás. El default sigue siendo 127.0.0.1.
+- No access token: you open `http://localhost:3000` and you're in. The default remains 127.0.0.1.
 
 ## 1.7.0
-- Voz: primer arranque pide una clave gratis de Groq y la tecla (o Mouse 1–4) para dictar.
-- Cuentas: un CLI ya logueado en el sistema (Grok, Claude, …) aparece sin pulsar Conectar.
-- Terminales: la rueda llega a Grok y otros TUI en buffer normal; al redimensionar ya no quedan restos de texto.
+- Voice: first run asks for a free Groq key and the key (or Mouse 1–4) to dictate with.
+- Accounts: a CLI already logged in on the system (Grok, Claude, …) shows up without pressing Connect.
+- Terminals: the mouse wheel reaches Grok and other TUIs in normal buffer; resizing no longer leaves text leftovers.
 
 ## 1.5.0
-- Interfaz: el aviso de actualización muestra qué trae cada versión, agrupado por área.
-- Motor: reinicio en el lugar (re-exec) — no se pierde el chat de los agentes al actualizar.
-- Seguridad: transcripción de voz con límite de tamaño y archivos temporales aislados.
+- Interface: the update notice shows what each version brings, grouped by area.
+- Engine: restart in place (re-exec) — agent chats survive updates.
+- Security: voice transcription with size limit and isolated temp files.

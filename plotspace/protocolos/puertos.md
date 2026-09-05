@@ -1,20 +1,16 @@
 <!-- JARVIS_PUERTOS_START -->
-## 🔌 Regla de puertos (Jarvis)
+## 🔌 Port rule (Jarvis)
 
-El **puerto 3000 está PROHIBIDO**: ahí corre Jarvis Workspace (el dashboard
-que te está orquestando). Levantar cualquier cosa en el 3000 lo rompe.
+**Port 3000 is FORBIDDEN**: that's where Jarvis Workspace runs (the dashboard orchestrating you). Running anything on 3000 breaks it.
 
-Antes de levantar CUALQUIER servidor (dev server, API, preview, http.server):
+Before running ANY server (dev server, API, preview, http.server):
 
-1. Mirá qué puertos ya están ocupados:
+1. See which ports are already in use:
 
        ss -tlnp 2>/dev/null || lsof -iTCP -sTCP:LISTEN -P -n
 
-2. Elegí un puerto LIBRE que no pise ninguno de los ocupados (para dev
-   servers usá el rango 5000-5999 u 8081-8999 si está libre).
-3. Pasale el puerto explícito al comando (`--port`, `-p`, `PORT=`); no
-   confíes en el default de la herramienta.
+2. Pick a FREE port that doesn't clash with any in use (for dev servers use the 5000-5999 or 8081-8999 range if free).
+3. Pass the port explicitly to the command (`--port`, `-p`, `PORT=`); don't trust the tool's default.
 
-NUNCA mates un proceso de un puerto que no levantaste vos: puede ser
-Jarvis, otro agente o un preview en uso.
+NEVER kill a process on a port you didn't start: it can be Jarvis, another agent or a preview in use.
 <!-- JARVIS_PUERTOS_END -->

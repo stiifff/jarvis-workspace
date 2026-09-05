@@ -1,68 +1,26 @@
 <!-- JARVIS_LIVE_START -->
-## 🔴 Coordinación del enjambre — `.jarvis/jv`
+## 🔴 Swarm coordination — `.jarvis/jv`
 
-Trabajás con otros agentes sobre el MISMO árbol. No leas archivos de estado
-para enterarte: preguntá cuando haga falta.
+You work with other agents on the SAME tree. Don't read state files to find out: ask when you need to.
 
-    .jarvis/jv estado      qué tocan los otros y qué te llegó
-    .jarvis/jv inbox       tus mensajes nuevos (NO leas .jarvis/MAILBOX.md entero)
-    .jarvis/jv msg "<agente>" "<texto>"    dejarle un aviso (NO lo interrumpe)
-    .jarvis/jv ask "<agente>" "<pregunta>" preguntarle y ESPERAR la respuesta
-    .jarvis/jv claim "<simbolo|archivo|carpeta>"   reservar TU zona
-    .jarvis/jv commit -m "<mensaje>"       commitear SOLO lo tuyo, por hunk
+    .jarvis/jv estado      what the others are touching and what arrived for you
+    .jarvis/jv inbox       your new messages (do NOT read .jarvis/MAILBOX.md whole)
+    .jarvis/jv msg "<agent>" "<text>"    leave a notice (does NOT interrupt)
+    .jarvis/jv ask "<agent>" "<question>"  ask and WAIT for the answer
+    .jarvis/jv claim "<symbol|file|folder>"  reserve YOUR zone
+    .jarvis/jv commit -m "<message>"      commit only YOUR work, by hunk
 
-Las reglas que sí importan:
+The rules that matter:
 
-1. **Reclamá tu zona antes de empezar**: `jv claim` sobre las funciones, ids o
-   archivos que vas a tocar. Se reclama por NOMBRE, nunca por número de línea
-   (las líneas se mueven). Lo que nadie reclamó se te concede al instante; si
-   necesitás algo más sobre la marcha, también.
-2. **Nunca reescribas un archivo entero** que no sea tuyo (`Write` sobre algo
-   existente). Editá por zona: dos agentes en zonas distintas del mismo
-   archivo conviven bien, pero una sobrescritura con tu copia vieja le borra
-   el trabajo al otro sin dejar rastro. Jarvis te frena si pasa.
-3. **No borres ni renombres lo que otro reclamó.** Jarvis te lo va a frenar
-   antes de escribir, con el nombre del dueño. Si de verdad tiene que irse,
-   avisale por `jv msg` y que lo adapte él — sacarlo de golpe le rompe el
-   código sin que se entere. (Usar su función está perfecto; nadie te frena.)
-4. **Commiteá con `jv commit`**: stagea solo lo tuyo, hunk por hunk. `git add`
-   a secas se lleva el trabajo sin commitear del otro que vive en ese archivo.
+1. **Claim your zone before starting**: `jv claim` on the functions, ids or files you're about to touch. Claim by NAME, never by line number (lines move). Whatever nobody claimed is granted on the spot; if you need more on the fly, claim it too.
+2. **Never rewrite a whole file** that isn't yours (`Write` over something existing). Edit by zone: two agents in different zones of the same file coexist fine, but a full overwrite with your stale copy erases the other's work without a trace. Jarvis stops you if it happens.
+3. **Don't delete or rename what another agent claimed.** Jarvis stops you before writing, naming the owner. If it really must go, leave them a `jv msg` and let them adapt it — yanking it out breaks their code without them knowing. (Using their function is fine; nobody stops you.)
+4. **Commit with `jv commit`**: stages only your stuff, hunk by hunk. Bare `git add` sweeps in the other's uncommitted work that lives in the same file.
+5. **`msg` leaves the notice; `ask` is what INTERRUPTS.** A `jv msg` lands in the other's inbox and they pick it up when they resume: it does NOT wake them (if they already closed their task, they keep resting). If you need a reaction NOW use `jv ask`, and if you're handing off work start the message with `HANDOFF` — those two do wake them. This exists because most messages landed on agents whose task was already closed, burning a whole turn for nothing. And the recipient is **another terminal, by its EXACT name**: writing to `@jarvis` or "the system" reaches NOBODY.
+6. **A dead agent 💀 is not coming back.** If `jv estado` marks one like that, its territory is free and the guard won't block you on its files: don't ask its permission nor wait for it. And a **⚠ Inheritance** you see is someone's uncommitted work from an agent that left — nobody's coming for it: if you touch one of those files, commit it yourself with a message saying what it is.
+7. **Commit before closing your task.** Real finished work left uncommitted in this tree is work another agent sweeps or inherits. What does NOT get committed: localhost trials, mockups, screenshots and build artifacts — those go to `.gitignore`, not to a commit.
+8. **Your task is YOUR task — don't glom onto someone else's.** You verify YOUR work; theirs only if its owner asks you to or your task depends on it, and once. Acks (OK/thanks/received/"verified, all good") get NO reply: each message burns the other a whole turn. Cap: 2 of your messages per thread with the same agent on the same subject — after that decide alone with what you have, and if the disagreement matters leave it in a memory. The mailbox is not a chat: most of its traffic ends up being cross-checks and courtesy — one message per fact, and it's done, or it goes to a memory.
+9. **Never wait for someone else's commit.** Intertwined uncommitted in the same file? `jv commit` stages ONLY your hunks (uses real provenance): commit NOW and continue. Asking «commit first and tell me» waits an average of an HOUR, when the tool solves it alone.
 
-5. **`msg` deja el aviso; `ask` es el que INTERRUMPE.** Un `jv msg` cae en el
-   inbox del otro y se lo lleva cuando retome: **NO lo despierta** (si ya cerró
-   su tarea, sigue tranquilo). Si necesitás que reaccione AHORA usá `jv ask`, y
-   si le estás pasando trabajo empezá el mensaje con `HANDOFF` — esos dos sí lo
-   despiertan. Se hizo así porque el 38% de los mensajes caía en agentes con la
-   tarea ya cerrada y les quemaba un turno entero para nada.
-   Y el destinatario es **otra terminal, por su nombre EXACTO**: escribirle a
-   `@jarvis` o "al sistema" no le llega a NADIE (36 mensajes murieron así).
-
-6. **Un agente 💀 caído no va a volver.** Si `jv estado` te lo marca así, su
-   territorio ya está libre y el guard no te bloquea por sus archivos: no le
-   pidas permiso ni lo esperes. Y si te aparece una **⚠ Herencia**, eso es
-   trabajo sin commitear de alguien que se fue — nadie lo va a venir a buscar:
-   si tocás uno de esos archivos, commitealo vos con un mensaje que diga qué es.
-
-7. **Commiteá antes de cerrar tu tarea.** Trabajo real terminado que queda sin
-   commitear en este árbol es trabajo que otro barre o hereda. Lo que NO se
-   commitea: pruebas de localhost, mockups, capturas y artefactos de build —
-   eso va al `.gitignore`, no a un commit.
-
-8. **Tu tarea es TU tarea — no te empecines con la del otro.** Verificás TU
-   trabajo; el ajeno solo si su dueño te lo pide o tu tarea depende de él, y
-   UNA sola vez. Los acuses (OK/gracias/recibido/"verificado, todo bien") NO
-   se contestan: cada mensaje le quema al otro un turno entero. Tope:
-   2 mensajes tuyos por hilo con el mismo agente sobre el mismo tema — después
-   decidís solo con lo que hay, y si el desacuerdo importa lo dejás en una
-   memoria. (Medido acá: 74 mensajes entre DOS agentes en un feature, la
-   mayoría re-verificaciones cruzadas y cortesía.)
-
-9. **Jamás esperes el commit ajeno.** ¿Quedaron entrelazados sin commitear en
-   el mismo archivo? `jv commit` stagea SOLO tus hunks (usa la provenance
-   real): commiteá YA y seguí con lo tuyo. Pedir «commiteá primero y avisame»
-   es esperar en promedio UNA HORA (la entrega idle del mailbox tarda eso)
-   algo que la herramienta resuelve sola.
-
-`.jarvis/LIVE.md` sigue existiendo (quién es dueño de qué, permisos y
-reservas) por si querés el detalle, pero `jv estado` te da lo que necesitás.
+`.jarvis/LIVE.md` still exists (who owns what, permissions, reservations) if you want the detail, but `jv estado` gives you what you need.
 <!-- JARVIS_LIVE_END -->

@@ -1,93 +1,93 @@
-# sections/orchestrator/ — panel del orquestador
+# sections/orchestrator/ — orchestrator panel
 
-UI del chat con el orquestador (mensajes, estado, mic). La **lógica** de envío,
-grabación y TTS la provee el shell (`workspace.js`) vía callbacks `window._orchOn*`.
+UI of the orchestrator chat (messages, state, mic). The **logic** for sending,
+recording and TTS lives in the shell (`workspace.js`) via callbacks `window._orchOn*`.
 
-- **Archivos:** `orchestrator.js`, `orchestrator.css`
-- **Servido en:** `/static/sections/orchestrator/`
-- **Global público:** `window.jarvisPanel` (la instancia del panel). El shell
-  agrega mensajes y cambia estado vía la instancia directa
+- **Files:** `orchestrator.js`, `orchestrator.css`
+- **Served at:** `/static/sections/orchestrator/`
+- **Public global:** `window.jarvisPanel` (the panel instance). The shell adds
+  messages and changes state via the instance directly
   (`jarvisPanel.addMessage(...)` / `jarvisPanel.setSphereState(state)`).
-- **Consume del shell:** `window._orchOnSend`, `_orchOnMicHold`, `_orchOnMicRelease`,
-  `_orchGetFiles`, `_orchOnHeaderAction` (los define `workspace.js`). No reimplementar
-  acá la lógica de red/voz: solo UI.
+- **Consumes from the shell:** `window._orchOnSend`, `_orchOnMicHold`, `_orchOnMicRelease`,
+  `_orchGetFiles`, `_orchOnHeaderAction` (defined in `workspace.js`). Don't reimplement
+  network/voice logic here: this is UI only.
 
-## Chrome del orquestador (rediseño CONSTELACIÓN 2026-07-04)
-Diseño elegido por el usuario entre 4 conceptos (galería `/static/preview-orquestador/`,
-concepto D4). Jarvis es el **nodo central de una red neuronal viva** que reacciona a la voz.
-- **Constelación** (`<canvas class="orch-net">`, fondo del panel): ~62 nodos de posición fija
-  (PRNG determinista) unidos por aristas; el central late. Al escuchar, ondas radiales recorren
-  la red y encienden nodos, y la red vira a cian. La reactividad a la voz REAL viene de
-  `window._orchVoiceLevel` + `_orchVoiceBins` (0..64), que **publica `workspace.js`** desde el
-  AnalyserNode del PTT (`_iniciarWaveform`). El rAF vive en `_initConstellation()`; respeta
-  `prefers-reduced-motion` y se apaga si el panel está oculto (`clientWidth===0`).
-- **Header**: la marca **Jarvis** (orbe + serif italic) va centrada y prominente ARRIBA. Sin chip
-  de estado ("EN REPOSO"), sin botones de historial/nueva-sesión sueltos — esas acciones viven en
-  el menú `⋯` (`onHeaderAction('new-thread'|'history'|'export'|'workflows'|'clear-history')`).
-  El estado se comunica por el color de la constelación + el `.orch-orb` (`data-state` sobre
-  `.orch-panel`: idle/listening/processing/responding). El **menú `⋯` y sus opciones** son
-  **LIQUID GLASS** (2026-07-06): base OPACA `background-color` (NO `background-image` gradiente:
-  con `backdrop-filter` no se pinta) + aurora + canto + gloss (`::before`) + bisel; item-hover =
-  lozenge de vidrio líquido. **`.orch-panel > header` lleva `z-index:40`** para que el menú
-  desplegado pinte SOBRE los mensajes/hero — antes lo tapaban (mismo `z-index:1` + más tarde en el
-  DOM ganaban al `z-index:300` del menú, atrapado en el contexto del header). Ver
-  [[orquestador-liquid-glass-menu-chips]].
-- **Hero** (empty state, `.orch-empty`): eyebrow "Red de agentes" + saludo GIGANTE serif
-  "¿Qué hacemos, señor?" que pisa la red + 3 quick actions **LIQUID GLASS** (`.orch-hero-chip`:
-  translúcido de doble capa + gloss `::before` + bisel; hover = canto de acento + halo) (→ `onQuickReply`). El saludo escala
-  con el ANCHO del panel (`container-type: inline-size` + `cqw`; `max-width` en `cqw`, NO en `%`
-  —el `%` se ataba al padre encogido y lo partía). Al llegar el 1er mensaje se reemplaza por el
-  chat (`_syncConv()` togglea `data-conv` → atenúa la red para legibilidad).
-- **El saludo ES el hero, NO una burbuja** (`_isHeroState()`): `workspace.js` inyecta el saludo de
-  bienvenida como un MENSAJE (`setMessages([{content:'¿Qué hacemos, señor?'}])` / `nuevoThread`). Un
-  chat que es SOLO ese saludo se renderiza como el HERO (constelación brillante + saludo gigante),
-  hasta que haya un turno REAL del usuario. Detecta por `id` `'welcome-*'` o por contenido (ES/EN).
-  Sin esto el hero NO se veía nunca en la app real (siempre había el mensaje de bienvenida). El
-  saludo del hero SÍ se traduce por idioma (es DOM normal, no burbuja con `data-i18n-skip`).
-- **Estado de voz del hero** (`_updateHeroVoice`, togglea `.orch-empty[data-voice]`): con el hero
-  a la vista, al ESCUCHAR el saludo se reemplaza por "Te estoy escuchando…" + el transcript en
-  vivo (lo lee del `$textarea`, donde `workspace.js` vuelca el STT parcial — NO toca el pipeline
-  de voz); al PROCESAR → "Pensando". Reacciona a `setSphereState`. El eco del transcript corre en
-  un rAF que se corta solo si el nodo se desconecta (hero → chat).
-- **Telemetría** (`.orch-telemetry`, ABAJO, FUNDIDA con el composer como una sola base de instrumentos
-  — sin border-top/backdrop propios): `● RED <nodos> · AGENTES <pasos> · COSTO $`, con micro-punto vivo
-  (`.orch-tl-net-dot`) que late. El costo lo refresca `_refrescarUso()` (→ `#orch-tl-cost`); AGENTES =
-  pasos pending/running.
-- **Composer** (rediseño ELITE 2026-07-06 — SIN el rectángulo de foco): barra INTEGRADA a la superficie
-  del panel, NO una caja/píldora encajonada. `.orch-input-box` flex row (iconos adjuntar/mención/slash ·
-  `$textarea` · enviar) sin borde ni ring: el foco se marca con una **hairline de acento** que se enciende
-  de centro→afuera (`.orch-input-box::after`, la firma de movimiento), NUNCA con un rectángulo alrededor.
-  **CLAVE:** `.orch-textarea:focus` mata explícitamente el focus-ring GLOBAL de teclado (`shared/tokens.css`
-  `:where(...textarea...):focus-visible` le dibuja un `box-shadow` rectangular = EL "rectángulo" que el
-  usuario rechaza como AI slop). El campo NO muestra scrollbar (`scrollbar-width:none` + `::-webkit-scrollbar`):
-  al crecer el texto hasta `max-height`, el scroll sigue al cursor SIN barra. SIN selector de idioma ni botón
-  de mic (voz por PTT global). STT parcial cian itálico vía `.orch-textarea.live-transcript`. Grabando
-  (`[data-recording]`) → la hairline vira a cian y respira (sin caja). Ver [[orquestador-composer-sin-rectangulo]].
-- **i18n ES⇆EN**: todo el chrome se escribe en español y traduce vía `shared/i18n-dict.js`
-  (el motor observa el DOM). El contenido dinámico del chat lleva `data-i18n-skip`.
-- **Chat editorial** (rediseño ELITE 2026-07-06 — menos cajas): **Jarvis habla SIN burbuja-caja**
-  (`background:none`, texto directo anclado por su ORBE-avatar glowing + `text-shadow` para legibilidad
-  sobre la red, que baja a `.30` con `data-conv`). Usuario = píldora de vidrio violeta SUTIL SIN borde
-  duro (bisel superior `inset`, no marco). Action-plan con borde en gradiente (padding-box/border-box).
-  La razón: el usuario rechaza los rectángulos/cajas (AI slop) — el chat elimina las cajas donde puede.
-- Al agregar lógica de estado, usar `setSphereState(state)` con los valores definidos.
+## Orchestrator chrome (CONSTELLATION redesign)
+Jarvis is the **central node of a living neural network** that reacts to voice.
+- **Constellation** (`<canvas class="orch-net">`, panel background): ~62 fixed-position nodes
+  (deterministic PRNG) joined by edges; the center pulses. When listening, radial waves cross
+  the network and light up nodes, and the network shifts to cyan. Real voice reactivity comes
+  from `window._orchVoiceLevel` + `_orchVoiceBins` (0..64), **published by `workspace.js`** from
+  the PTT's AnalyserNode (`_iniciarWaveform`). The rAF lives in `_initConstellation()`;
+  respects `prefers-reduced-motion` and stops when the panel is hidden (`clientWidth===0`).
+- **Header**: the **Jarvis** brand (orb + serif italic) is centered and prominent on TOP. No idle
+  status chip, no loose history/new-session buttons — those live in the `⋯` menu
+  (`onHeaderAction('new-thread'|'history'|'export'|'workflows'|'clear-history')`).
+  State is communicated by the constellation color + the `.orch-orb` (`data-state` on
+  `.orch-panel`: idle/listening/processing/responding). The **`⋯` menu and its options** are
+  **LIQUID GLASS**: OPAQUE `background-color` base (NOT gradient `background-image`:
+  with `backdrop-filter` it doesn't paint) + aurora + edge + gloss (`::before`) + bevel;
+  item-hover = liquid glass lozenge. **`.orch-panel > header` carries `z-index:40`** so the open
+  menu paints OVER messages/hero — before, they covered it (same `z-index:1`, later in the DOM,
+  they won over the `z-index:300` menu trapped in the header context).
+- **Hero** (empty state, `.orch-empty`): eyebrow "Agent network" + HUGE serif greeting
+  "¿Qué hacemos, señor?" over the network + 3 **LIQUID GLASS** quick actions (`.orch-hero-chip`:
+  translucent double layer + gloss `::before` + bevel; hover = accent edge + halo) (→ `onQuickReply`). The greeting scales
+  with the panel WIDTH (`container-type: inline-size` + `cqw`; `max-width` in `cqw`, NOT `%`
+  — the `%` stuck to the shrunk parent and split it). On the 1st message the greeting is
+  replaced by the chat (`_syncConv()` toggles `data-conv` → dims the network for legibility).
+- **The greeting IS the hero, NOT a bubble** (`_isHeroState()`): `workspace.js` injects the
+  welcome greeting as a MESSAGE (`setMessages([{content:'¿Qué hacemos, señor?'}])` / `nuevoThread`). A
+  chat that is ONLY that greeting renders as the HERO (bright constellation + giant greeting),
+  until a REAL user turn arrives. Detects by `id` `'welcome-*'` or by content (EN).
+  Without this the hero never showed in the real app (the welcome message always existed). The
+  hero greeting IS translated by language (it's normal DOM, not a `data-i18n-skip` bubble).
+- **Hero voice state** (`_updateHeroVoice`, toggles `.orch-empty[data-voice]`): with the hero
+  visible, while LISTENING the greeting swaps to "Te estoy escuchando…" + live transcript
+  (read from the `$textarea`, where `workspace.js` dumps partial STT — doesn't touch the voice
+  pipeline); while PROCESSING → "Pensando". Reacts to `setSphereState`. The transcript echo runs
+  in an rAF that stops itself if the node disconnects (hero → chat).
+- **Telemetry** (`.orch-telemetry`, BOTTOM, FUSED with the composer as a single instrument base
+  — no own border-top/backdrop): `● RED <nodes> · AGENTES <steps> · COST $`, with a live micro-dot
+  (`.orch-tl-net-dot`) that pulses. Cost is refreshed by `_refrescarUso()` (→ `#orch-tl-cost`); AGENTES =
+  pending/running steps.
+- **Composer** (ELITE redesign — no focus rectangle): bar INTEGRATED to the panel surface,
+  NOT a box/pill. `.orch-input-box` flex row (attach/mention/slash icons ·
+  `$textarea` · send) with no border or ring: focus is marked with an **accent hairline** that
+  lights up center→outward (`.orch-input-box::after`, the signature motion), NEVER a rectangle
+  around the field. **KEY:** `.orch-textarea:focus` explicitly kills the global keyboard
+  focus-ring (`shared/tokens.css` `:where(...textarea...):focus-visible` draws a rectangular
+  `box-shadow` = THE "rectangle" rejected as AI slop). The field shows no scrollbar
+  (`scrollbar-width:none` + `::-webkit-scrollbar`): as text grows to `max-height`, the scroll
+  follows the cursor WITHOUT a bar. NO language selector, no mic button (voice is global PTT).
+  Partial STT cyan italic via `.orch-textarea.live-transcript`. Recording
+  (`[data-recording]`) → the hairline turns cyan and breathes (no box). See the
+  shared memory notes (`.jarvis/memory/`) for the background.
+- **i18n ES⇆EN**: all chrome is written in Spanish and translated via `shared/i18n-dict.js`
+  (the engine observes the DOM). Dynamic chat content carries `data-i18n-skip`.
+- **Editorial chat** (fewer boxes): **Jarvis speaks WITHOUT a bubble-box**
+  (`background:none`, raw text anchored by its glowing ORB-avatar + `text-shadow` for legibility
+  over the network, which dims to `.30` with `data-conv`). User = subtle violet glass pill WITHOUT
+  hard border (top inset bevel, not frame). Action-plan with gradient border (padding-box/border-box).
+  The reason: rectangles/boxes are dismissed as AI slop — the chat removes boxes where it can.
+- When adding state logic, use `setSphereState(state)` with the defined values.
 
-## Responsive: panel lateral ↔ pantalla completa (2026-07-04)
-`.orch-panel` es CONTENEDOR de consulta (`container-type:inline-size`): el layout
-florece con el ANCHO DEL PANEL, no del viewport, así se adapta igual angosto o
-fullscreen. Al tocar el chrome, respetá los tiers (`orchestrator.css`, sección
-RESPONSIVE al final):
-- **base (angosto, dock ~300-320px)**: chat compacto — es el estado por defecto, NO lo rompas.
-- **≥600cqw**: la conversación se centra en una columna de lectura (los `.orch-messages > *`
-  toman `max-width` + `margin-inline:auto`) y el composer se vuelve una barra centrada
-  (sus hijos toman `max-width`). Sin esto, a full width las burbujas se estiran de punta a
-  punta y el composer deja el placeholder a la izq / el botón al borde.
-- **≥960cqw (fullscreen)**: editorial d4 pleno (más aire, input tipo pill).
-- El saludo escala fluido `clamp(2.05rem … 5.4rem)` por `cqw` (antes topaba en 3.4rem).
-- **Maximizable**: `panel.js` incluye `'jarvis'` en `MAXIMIZABLE` → el ⤢ "Pantalla completa"
-  del dock aparece en el tab Jarvis y lo despliega a `fixed inset:0`. La constelación (canvas)
-  se re-dimensiona sola vía ResizeObserver.
+## Responsive: side panel ↔ fullscreen
+`.orch-panel` is a CONTAINER query (`container-type:inline-size`): the layout
+blooms with the PANEL width, not the viewport, so it adapts equally narrow or
+fullscreen. When touching the chrome, respect the tiers (`orchestrator.css`,
+RESPONSIVE section at the end):
+- **base (narrow, dock ~300-320px)**: compact chat — the default state, don't break it.
+- **≥600cqw**: the conversation centers in a reading column (`.orch-messages > *`
+  take `max-width` + `margin-inline:auto`) and the composer becomes a centered bar
+  (its children take `max-width`). Without this, at full width bubbles stretch edge to
+  edge and the composer leaves the placeholder at the left / button at the edge.
+- **≥960cqw (fullscreen)**: full editorial (more air, pill-style input).
+- The greeting scales fluid `clamp(2.05rem … 5.4rem)` by `cqw` (previously capped at 3.4rem).
+- **Maximizable**: `panel.js` includes `'jarvis'` in `MAXIMIZABLE` → the ⤢ "Fullscreen"
+  dock action appears on the Jarvis tab and expands it to `fixed inset:0`. The constellation
+  (canvas) re-sizes itself via ResizeObserver.
 
-## Verificación
-Smoke manual en `localhost:3000`: enviar mensaje, ver respuesta, estado del orbe en header,
-mic. Subir `?v=N` de `orchestrator.js`/`.css` en `shell/workspace.html`.
+## Verification
+Manual smoke at `localhost:3000`: send a message, see the answer, orb state in header,
+mic. Bump `?v=N` of `orchestrator.js`/`.css` in `shell/workspace.html`.

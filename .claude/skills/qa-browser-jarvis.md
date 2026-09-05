@@ -1,44 +1,42 @@
 ---
 name: qa-browser-jarvis
-description: Cómo verificar Jarvis Workspace en browser real (Playwright) y correr todos sus tests. Usala antes de dar por terminado cualquier cambio de frontend.
+description: How to verify Jarvis Workspace in a real browser (Playwright) and run all its tests. Use it before closing any frontend change.
 ---
 
-# QA en browser de Jarvis Workspace
+# Browser QA for Jarvis Workspace
 
 ## Server
-- Corre en `http://localhost:3000`. Verificá si ya está vivo ANTES de levantar otro:
-  `curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/` → 200 = vivo, usalo y NO lo mates.
-- Si tocaste **backend** (Python): **NO REINICIES EL SERVER.** uvicorn corre SIN
-  --reload a propósito: la actualización la aplica EL USUARIO desde el banner
-  "Actualizar ahora" de la UI (con canary de arranque + bump automático de VERSION).
-  Verificá tu cambio SIN reiniciar:
-  1. `python -m pytest plotspace/tests/ -q` — pytest importa el código de DISCO
-     (tu cambio corre ahí, no hace falta el server).
-  2. `python -c "import plotspace.main"` — smoke de arranque: caza SyntaxError,
-     imports rotos y deps faltantes (lo mismo que chequea el canary del updater).
-  3. Si necesitás pegarle a la superficie HTTP real: instancia efímera en un
-     puerto libre 5000-5999 (regla de puertos), y matala al terminar.
-  **PROHIBIDO `pkill -f uvicorn` + relanzar a mano**, y también
-  `scripts/reiniciar-server.sh` (es herramienta del usuario, no de agentes).
-- Si tocaste **frontend**: NO hace falta reiniciar — pero SÍ bumpear el `?v=N` del archivo
-  en `workspace.html` (o `index.html`); regla monotónica: valor actual + 1.
+- Runs on `http://localhost:3000`. Check if it's alive BEFORE starting another:
+  `curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/` → 200 = alive, use it and DON'T kill it.
+- If you touched **backend** (Python): **DO NOT RESTART THE SERVER.** uvicorn runs WITHOUT
+  --reload on purpose: the update is applied by the USER from the "Update now" banner in the UI
+  (with a startup canary + automatic VERSION bump). Verify your change WITHOUT restarting:
+  1. `python -m pytest plotspace/tests/ -q` — pytest imports the code from DISK
+     (your change runs there, the server isn't needed).
+  2. `python -c "import plotspace.main"` — startup smoke: catches SyntaxError,
+     broken imports and missing deps (same as the updater canary checks).
+  3. If you really need the live HTTP surface: ephemeral instance on a free port in 5000-5999
+     (port rule), and kill it when done.
+  **FORBIDDEN: `pkill -f uvicorn` + relaunch manually**, and likewise
+  `scripts/reiniciar-server.sh` (it's a user tool, not an agent one).
+- If you touched **frontend**: no restart needed — but DO bump the `?v=N` of the file
+  in `workspace.html` (or `index.html`); monotonic rule: current value + 1.
 
-## Playwright en este entorno (WSL sin sudo)
-- `playwright` ya está en el venv; chromium cacheado (`chromium-1148`).
-- Faltan libs NSS del sistema → exportá `LD_LIBRARY_PATH=/tmp/nsslibs/extracted/usr/lib/x86_64-linux-gnu`
-  (si /tmp se limpió: `apt-get download libnss3 && dpkg-deb -x *.deb /tmp/nsslibs/extracted`).
-- En headless, WebGL va por SwiftShader: los FPS bajos durante drags son artefacto
-  del entorno, no jank real — verificá que el width siga al cursor síncrono.
-- **Modo observador OBLIGATORIO al abrir el workspace**: agregá `&qa=1` a la URL
-  (`http://localhost:3000/workspace?id=N&qa=1`). Con ese flag las terminales se
-  attachean read-only + ignore-size (sin `-d`): tu página NO desplaza el attach
-  del usuario, NO le redimensiona la ventana tmux al tamaño de tu viewport
-  headless y NO puede tipear. Sin el flag, CADA navegación tuya le roba la
-  sesión al usuario y le deja las terminales congeladas / con el scrollback
-  triturado (la "quinta capa" de [[tmux-size-clamping]]). Si tu QA necesita
-  tipear en una terminal, no lo hagas por el browser: `tmux send-keys` directo.
+## Playwright
+- `playwright` lives in the venv. If Chromium can't launch, install the missing system
+  libraries (e.g. `libnss3` on Debian/Ubuntu family) — the smoke test skips itself when
+  Chromium is unavailable.
+- In headless, WebGL goes through SwiftShader: low FPS during drags is an environment
+  artifact, not real jank — verify the width follows the cursor synchronously.
+- **MANDATORY observer mode when opening the workspace**: add `&qa=1` to the URL
+  (`http://localhost:3000/workspace?id=N&qa=1`). With that flag terminals attach
+  read-only + ignore-size (no `-d`): your page does NOT steal the user's attach, does NOT
+  resize the tmux window to your headless viewport and cannot type. Without the flag, EVERY
+  navigation of yours steals the session from the user and leaves terminals frozen / with
+  shredded scrollback (the fifth layer of the tmux size-clamping note). If your QA needs to
+  type in a terminal, don't do it through the browser: `tmux send-keys` directly.
 
-## Tests (correr TODOS antes de dar por bueno un cambio)
+## Tests (run ALL before declaring a change good)
 ```bash
 node frontend/sections/panel/__tests__/panel-state.test.js
 node frontend/sections/panel/__tests__/strip.test.js
@@ -51,18 +49,18 @@ node frontend/sections/preview/__tests__/preview-url.test.js
 node frontend/shared/__tests__/themes.test.js
 source venv/bin/activate && python -m pytest plotspace/tests/ -q
 ```
-Y `node --check <archivo>` por cada JS tocado.
+And `node --check <file>` for every JS touched.
 
-## Selectores clave del workspace (post rediseño violeta 2026-06)
-- Franja proyectos: `#jw-strip` (Ctrl+B togglea `body.jw-strip-off`)
-  - `.sb-new-ghost` — botón "Nuevo workspace" que abre el modal Agregar proyecto (`#modal-new-terminal`)
-- Barra: `#jw-bar` · toggle dock `#jw-dock-toggle` · tuerquita `#jw-gear`
-  - Centro: breadcrumb `<nav class="gh-crumb-center">` "Jarvis Workspace › proyecto"
-  - **NO existe `#btn-new-terminal`** (eliminado en rediseño)
+## Key workspace selectors (post violet redesign)
+- Project strip: `#jw-strip` (Ctrl+B toggles `body.jw-strip-off`)
+  - `.sb-new-ghost` — the "New workspace" button that opens the Add-project modal (`#modal-new-terminal`)
+- Top bar: `#jw-bar` · dock toggle `#jw-dock-toggle` · gear `#jw-gear`
+  - Center: breadcrumb `<nav class="gh-crumb-center">` "Jarvis Workspace › project"
+  - **`#btn-new-terminal` does NOT exist** (removed in the redesign)
 - Dock: `#jw-dock` + `.jw-tab[data-tab=preview|jarvis|editor|tasks|review|mobile]`
-  + `.jw-pane[data-pane=...]` · splitter `#jw-dock-splitter` · maximizar `#jw-dock-max` (solo editor/preview)
-  · abrir editor standalone `#jw-dock-external` (solo tab editor)
-- Quick picker: `Ctrl+\\` → `.qp-overlay`; filas `.qp-row`
-- Temas: `html[data-theme=<nombre>]` (default violeta = sin atributo); cambiar via `JarvisThemes.aplicar('<nombre>')`
-- API JS en consola: `JarvisDock.open/setTab/notify/isOpen/activeTab`, `WebPreview.setUrl/detectar`, `JarvisSettings.open`, `JarvisThemes.aplicar/actual`
-- Regla de oro: 0 errores rojos en consola al final de cualquier recorrido (warnings OK).
+  + `.jw-pane[data-pane=...]` · splitter `#jw-dock-splitter` · maximize `#jw-dock-max` (editor/preview only)
+  · open editor standalone `#jw-dock-external` (editor tab only)
+- Quick picker: `Ctrl+\\` → `.qp-overlay`; rows `.qp-row`
+- Themes: `html[data-theme=<name>]` (default violet = no attribute); change via `JarvisThemes.aplicar('<name>')`
+- JS API in console: `JarvisDock.open/setTab/notify/isOpen/activeTab`, `WebPreview.setUrl/detectar`, `JarvisSettings.open`, `JarvisThemes.aplicar/actual`
+- Golden rule: 0 red errors in console at the end of any walkthrough (warnings OK).

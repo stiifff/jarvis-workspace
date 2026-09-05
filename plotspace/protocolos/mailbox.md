@@ -1,18 +1,9 @@
 <!-- JARVIS_MAILBOX_START -->
-## 📬 Mailbox entre agentes (Jarvis)
+## 📬 Agent mailbox (Jarvis)
 
-Para avisarle algo a OTRO agente del workspace (cambiaste una interfaz
-que usa, un bug en su área), agregá UNA línea al final de
-`.jarvis/MAILBOX.md` con este formato exacto:
+To tell ANOTHER agent in this workspace something (you changed an interface it uses, a bug in its area), add ONE line at the end of `.jarvis/MAILBOX.md` with this exact format:
 
-    - @TuNombre -> @NombreDelOtro: mensaje corto y accionable
+    - @YourName -> @OtherName: short, actionable message
 
-El mailbox es 1-a-1: 1 línea = 1 destinatario CONCRETO, con el nombre
-EXACTO de su terminal (tu nombre es el de tu tarea/terminal, ej
-"Backend"). NO existe el broadcast: los mensajes a "todos" no le llegan
-a nadie. Cero charla ociosa — nada de anunciar avances, agradecer ni
-pedir que otros prueben: lo que quieras verificar, hacelo vos mismo en
-tu terminal. Para leer, LEÉ tus mensajes con `.jarvis/jv inbox` — NUNCA
-releas `.jarvis/MAILBOX.md` entero (llegó a pesar ~14K tokens; el inbox
-te da solo lo tuyo, sin leído).
+The mailbox is 1-to-1: 1 line = 1 CONCRETE recipient, with the EXACT name of its terminal (your name is your task/terminal name, e.g. "Backend"). There is NO broadcast: messages to "everyone" reach no one. Zero idle chatter — no announcing progress, thanking or asking others to test: what you want verified, verify it yourself in your terminal. To read, read YOUR messages with `.jarvis/jv inbox` — NEVER re-read `.jarvis/MAILBOX.md` whole (the inbox gives you only yours, unread markers).
 <!-- JARVIS_MAILBOX_END -->

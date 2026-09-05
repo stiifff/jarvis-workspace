@@ -1,79 +1,74 @@
-# frontend/ — mapa para agentes
+# frontend/ — map for agents
 
-Frontend vanilla (HTML/CSS/JS, sin frameworks ni build). Organizado **por sección**:
-todo lo de una sección vive en su carpeta, con su `.js` y `.css` juntos.
+Vanilla frontend (HTML/CSS/JS, no frameworks, no build). Organized **by section**:
+everything of a section lives in its folder, with its `.js` and `.css` together.
 
 ```
 frontend/
-├── index.html          # home, servido en GET /
-├── shell/              # armazón del workspace (NO es una sección)
-│   ├── workspace.html  # servido en GET /workspace
-│   └── workspace.js    # "pegamento": arranca todo, WebSockets, navegación, TTS
+├── index.html          # home, served on GET /
+├── shell/              # workspace shell (NOT a section)
+│   ├── workspace.html  # served on GET /workspace
+│   └── workspace.js    # "glue": boots everything, WebSockets, navigation, TTS
 ├── shared/
-│   ├── tokens.css      # ★ SISTEMA DE DISEÑO canónico (--ob-*) + utilidades — ver abajo
-│   ├── ui.js           # ★ icon() / toast() / confirmar() / pedirTexto() / cliLogo() globales
-│   ├── themes.js       # ★ sistema de temas (html[data-theme], localStorage jarvis.theme)
-│   ├── icons/          # logos de CLIs vendoreados (lobehub 1.91.0): claude, codex, gemini…
-│   ├── base.css        # reset, layout base + estilos del shell/terminales
-│   └── __tests__/themes.test.js  # suite Node para lógica pura de temas
+│   ├── tokens.css      # ★ CANONICAL DESIGN SYSTEM (--ob-*) + utilities — see below
+│   ├── ui.js           # ★ global icon() / toast() / confirmar() / pedirTexto() / cliLogo()
+│   ├── themes.js       # ★ theme system (html[data-theme], localStorage jarvis.theme)
+│   ├── icons/          # vendored CLI logos (lobehub 1.91.0): claude, codex, gemini…
+│   ├── base.css        # reset, base layout + shell/terminal styles
+│   └── __tests__/themes.test.js  # Node suite for pure theme logic
 └── sections/
     ├── home/           # landing (home.js + home.css)
-    ├── terminals/      # grilla de terminales (terminal.js, terminal-layout.js)
-    ├── orchestrator/   # panel del orquestador (orchestrator.js + .css)
-    ├── editor/         # editor de archivos Monaco (editor.js + .css)
-    └── mobile-preview/ # preview Expo en marco de teléfono
+    ├── terminals/      # terminal grid (terminal.js, terminal-layout.js)
+    ├── orchestrator/   # orchestrator panel (orchestrator.js + .css)
+    ├── editor/         # file editor Monaco (editor.js + .css)
+    └── mobile-preview/ # Expo preview in a phone frame
 ```
 
-## Serving (importante)
-Todo `frontend/` se monta en `/static`. Una sección se sirve bajo
-`/static/sections/<nombre>/<archivo>`. Al cambiar JS o CSS, **subir el `?v=N`**
-de su `<link>`/`<script>` en `shell/workspace.html` (o `index.html` para home).
+## Serving (important)
+All of `frontend/` is mounted at `/static`. A section is served under
+`/static/sections/<name>/<file>`. When you change JS or CSS, **bump the `?v=N`**
+of its `<link>`/`<script>` in `shell/workspace.html` (or `index.html` for home).
 
-## Sistema de diseño "Obsidian Glass" (OBLIGATORIO)
+## "Obsidian Glass" design system (MANDATORY)
 
-`shared/tokens.css` es la ÚNICA fuente de verdad de tokens. Dirección completa:
-`docs/redesign/PLAN_REDISENO_UI.md`. Reglas duras:
+`shared/tokens.css` is the ONLY source of truth for tokens. Hard rules:
 
-- **Colores**: SIEMPRE `var(--ob-*)` (oklch). Nunca hex/oklch literales de chrome.
-  Los nombres legacy (`--bg-app`, `--sb-*`, `--hc-*`, `--violet`…) son alias de
-  compatibilidad — no usarlos en código nuevo.
-- **El color es SEÑAL, no decoración**: violeta = vida/acento (agente pensando,
-  foco, CTA); verde/ámbar/rojo = SOLO estados; cian = info/voz; **magenta =
-  de la aurora de Home**. El glow nace de un borde de 1px o texto, jamás
-  de rellenar bloques.
-- **Texto**: piso `--ob-fg-2` para texto normal (AA). `--ob-fg-3` solo íconos y
-  labels grandes; `--ob-fg-4` solo disabled/placeholder.
-- **Tipografía**: `--font-ui` (Inter) UI · `--font-display` (Instrument Serif,
-  SOLO italic ≥20px) momentos editoriales · `--font-mono` (JetBrains Mono) datos;
-  labels técnicos en mono UPPERCASE + `--ls-caps`. Tamaños SOLO de la escala
-  `--text-*`.
-- **Performance (hay xterm.js en vivo)**: `backdrop-filter` SOLO en plano-2
-  (modales, menús flotantes, header) y máx 2 visibles; PROHIBIDO en contenedores
-  de terminales. Animaciones infinitas SOLO transform/opacity/box-shadow.
-  No animar width/height de paneles.
-- **Prohibido**: emojis como íconos (usar `icon()` de shared/ui.js), `alert()`/
-  `confirm()`/`prompt()` nativos (usar `toast()`/`confirmar()`/`pedirTexto()`),
-  fuentes sci-fi, scanlines, clip-path en contenedores con scroll.
-- **Utilidades**: `.ob-glass` (vidrio plano-2), `.ob-edge` (borde-gradiente
-  plano-1), `.ob-pip[data-state]` (estado que respira), `.skeleton`,
-  `.ob-spinner`, `.ob-label`; motion con `--dur-1/2/3` + `--ease-out/snap`.
+- **Colors**: ALWAYS `var(--ob-*)` (oklch). Never hex/oklch literals in chrome.
+  Legacy names (`--bg-app`, `--sb-*`, `--hc-*`, `--violet`…) are compatibility aliases —
+  don't use them in new code.
+- **Color is SIGNAL, not decoration**: violet = life/accent (agent thinking,
+  focus, CTA); green/amber/red = ONLY states; cyan = info/voice; **magenta =
+  the Home aurora**. Glow comes from a 1px border or text, never from filled blocks.
+- **Text**: floor `--ob-fg-2` for normal text (AA). `--ob-fg-3` only icons and
+  big labels; `--ob-fg-4` only disabled/placeholder.
+- **Typography**: `--font-ui` (Inter) UI · `--font-display` (Instrument Serif,
+  ONLY italic ≥20px) editorial moments · `--font-mono` (JetBrains Mono) data;
+  technical labels in mono UPPERCASE + `--ls-caps`. Sizes ONLY from the `--text-*` scale.
+- **Performance (live xterm.js)**: `backdrop-filter` ONLY on plane-2
+  (modals, floating menus, header), max 2 visible; FORBIDDEN in terminal containers.
+  Infinite animations ONLY transform/opacity/box-shadow. Never animate panel width/height.
+- **Forbidden**: emojis as icons (use `icon()` from shared/ui.js), native `alert()`/
+  `confirm()`/`prompt()` (use `toast()`/`confirmar()`/`pedirTexto()`),
+  sci-fi fonts, scanlines, clip-path on scrolling containers.
+- **Utilities**: `.ob-glass` (plane-2 glass), `.ob-edge` (plane-1 gradient border),
+  `.ob-pip[data-state]` (breathing state), `.skeleton`, `.ob-spinner`, `.ob-label`;
+  motion via `--dur-1/2/3` + `--ease-out/snap`.
 
-## Temas y logos (desde 2026-06 rediseño violeta)
+## Themes and logos
 
-- **`shared/themes.js`** expone `window.JarvisThemes` con `aplicar(nombre)`, `actual()`,
-  `init()`, `TEMAS` (array de 7), `normalizarTema`. `DEFAULT_TEMA = 'violeta'`. El tema se
-  escribe en `html[data-theme=<nombre>]`; el default violeta NO pone atributo. Testeado en
+- **`shared/themes.js`** exposes `window.JarvisThemes` with `aplicar(nombre)`, `actual()`,
+  `init()`, `TEMAS` (array), `normalizarTema`. `DEFAULT_TEMA = 'violeta'`. The theme is
+  written to `html[data-theme=<name>]`; the violet default sets no attribute. Tested in
   `shared/__tests__/themes.test.js`.
-- **`shared/icons/`** — SVGs de CLIs (lobehub 1.91.0): `claude-color.svg`, `codex-color.svg`,
-  `gemini-color.svg`, `opencode.svg`, `qwen-color.svg`, etc. Agregar nuevos CLIs aquí.
-- **`window.cliLogo(tipo, size)`** en `shared/ui.js` — helper que devuelve `<img>` del logo
-  correspondiente (o fallback texto si no existe). Usarlo en cualquier lugar que muestre el
-  tipo de CLI (cards, launcher, picker rápido).
-- **Acento/fondos**: SOLO via `var(--ob-*)` en `tokens.css`, incluyendo los overrides de tema
-  bajo `[data-theme=<nombre>]`. Nunca hardcodear hex en secciones nuevas.
+- **`shared/icons/`** — CLI SVGs (lobehub 1.91.0): `claude-color.svg`, `codex-color.svg`,
+  `gemini-color.svg`, `opencode.svg`, `qwen-color.svg`, etc. Add new CLIs here.
+- **`window.cliLogo(tipo, size)`** in `shared/ui.js` — helper returning `<img>` of the logo
+  (or text fallback if missing). Use anywhere a CLI type is shown (cards, launcher, quick picker).
+- **Accent/backgrounds**: ONLY via `var(--ob-*)` in `tokens.css`, including theme overrides
+  under `[data-theme=<name>]`. Never hardcode hex in new sections.
 
-## Reglas
-- No introducir frameworks, npm ni node como dependencia de runtime.
-- Cada sección expone un global y consume solo la superficie pública de las otras
-  (ver el `AGENTS.md` de cada carpeta). No tocar internals de otra sección.
-- `workspace.js` (shell) cablea las secciones entre sí; es el único que conoce a todas.
+## Rules
+- No frameworks, npm or node as runtime dependency.
+- Each section exposes one global and consumes only the public surface of the others
+  (see the `AGENTS.md` of each folder). Don't touch another section's internals.
+- `workspace.js` (shell) wires sections together; it's the only one that knows all of them.
