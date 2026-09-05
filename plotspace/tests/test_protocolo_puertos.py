@@ -26,7 +26,7 @@ def _leer(tmp_path):
 
 def test_protocolo_menciona_la_regla():
     assert '3000' in PROTOCOLO
-    assert 'PROHIBIDO' in PROTOCOLO
+    assert 'FORBIDDEN' in PROTOCOLO
     assert 'ss -tlnp' in PROTOCOLO
     assert PROTOCOLO.startswith(PROTOCOLO_MARKER_START)
     assert PROTOCOLO.endswith(PROTOCOLO_MARKER_END)

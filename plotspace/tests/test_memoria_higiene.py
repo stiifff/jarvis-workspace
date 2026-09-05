@@ -195,11 +195,11 @@ def test_archivadas_fuera_del_recall():
 def test_protocolo_v3_jerarquia_de_autoridad():
     """Cuando dos fuentes chocan, el agente tiene un algoritmo, no una duda."""
     p = mem.PROTOCOLO
-    assert 'JERARQUÍA' in p
-    assert 'código actual' in p          # (1) el código manda
+    assert 'AUTHORITY HIERARCHY' in p
+    assert 'current code' in p          # (1) el código manda
     assert 'lapida' in p or 'lápida' in p
-    assert 'verificá' in p               # (5) verificar, no adivinar
-    assert 'te mintió' in p              # corregirla es parte de tu tarea
+    assert 'verify against' in p.lower()  # (5) verificar, no adivinar
+    assert 'lied to you' in p           # corregirla es parte de tu tarea
 
 
 def test_protocolo_v2_incluye_campos_y_reglas_nuevas():
@@ -208,8 +208,8 @@ def test_protocolo_v2_incluye_campos_y_reglas_nuevas():
     assert 'estado: vigente' in p
     assert 'lapida' in p
     assert 'leccion' in p
-    assert 'UN hecho' in p              # una memoria = un hecho accionable
-    assert 'personales' in p            # prohibido linkear memorias personales del CLI
+    assert 'one actionable fact' in p.lower()   # una memoria = un hecho accionable
+    assert 'personal memories' in p     # prohibido linkear memorias personales del CLI
 
 
 def test_asegurar_inyecta_en_claude_md_y_agents_md():
@@ -269,4 +269,4 @@ def test_protocolo_manda_a_grepear_el_index_no_leerlo_entero():
     from plotspace.routers import memory as mem
     p = mem.PROTOCOLO.lower()
     assert 'grep' in p
-    assert 'entero' in p
+    assert 'whole' in p

@@ -135,9 +135,9 @@ def test_construir_avisos_resumen_acotado():
 
 def test_protocolo_ya_no_instruye_broadcast():
     assert '@todos' not in PROTOCOLO
-    assert '1 destinatario' in PROTOCOLO
+    assert '1 CONCRETE recipient' in PROTOCOLO
     # La guía nueva: probá/verificá en TU terminal, sin avisar al resto.
-    assert 'tu terminal' in PROTOCOLO.lower()
+    assert 'your terminal' in PROTOCOLO.lower()
 
 
 def test_protocolo_no_promete_entrega_en_vivo():
@@ -150,7 +150,7 @@ def test_protocolo_no_promete_entrega_en_vivo():
     assert 'entrega el mensaje en vivo' not in p
     # La guía correcta: el canal es por archivo, el receptor LEE el MAILBOX.
     assert 'mailbox.md' in p
-    assert ('leé' in p) or ('revis' in p)
+    assert ('read your messages' in p)
 
 
 # ─── leer_lineas_nuevas (lectura incremental robusta del MAILBOX) ─────────────
@@ -374,7 +374,7 @@ def test_protocolo_manda_a_leer_con_jv_inbox_no_el_archivo_entero():
     pagaba ~14K tokens por lectura (el archivo llegó a 58 KB)."""
     p = PROTOCOLO.lower()
     assert 'jv inbox' in p
-    assert 'entero' in p
+    assert 'whole' in p
     assert 'antes de cada commit' not in p
 
 

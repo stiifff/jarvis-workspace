@@ -381,7 +381,7 @@ def test_protocolo_explica_que_msg_no_despierta():
     extrañan de que el otro no reaccione. Y avisa que `@jarvis` no es destinatario
     (36 de los 54 mensajes huérfanos medidos iban ahí)."""
     from plotspace.core.agent_live import PROTOCOLO
-    assert 'NO lo despierta' in PROTOCOLO
+    assert 'does NOT wake' in PROTOCOLO
     assert 'jv ask' in PROTOCOLO and 'HANDOFF' in PROTOCOLO
     assert '@jarvis' in PROTOCOLO
 
@@ -390,15 +390,15 @@ def test_protocolo_dice_que_hacer_con_un_muerto_y_su_herencia():
     """Sin esto, el agente ve el 💀 y no sabe si esperarlo; y ve la herencia y no
     sabe que es suya para commitear. La marca sin instrucción no sirve de nada."""
     from plotspace.core.agent_live import PROTOCOLO
-    assert '💀' in PROTOCOLO and 'no va a volver' in PROTOCOLO
-    assert 'Herencia' in PROTOCOLO
+    assert '💀' in PROTOCOLO and 'is not coming back' in PROTOCOLO
+    assert 'Inheritance' in PROTOCOLO
 
 
 def test_protocolo_fija_que_se_commitea_y_que_no():
     """El pedido explícito del usuario: commitear SIEMPRE el trabajo real antes
     de cerrar, y NUNCA las pruebas/mockups/artefactos."""
     from plotspace.core.agent_live import PROTOCOLO
-    assert 'Commiteá antes de cerrar' in PROTOCOLO
+    assert 'Commit before closing' in PROTOCOLO
     assert 'mockups' in PROTOCOLO and 'gitignore' in PROTOCOLO.lower()
 
 
@@ -747,9 +747,9 @@ def test_protocolo_corta_el_ping_pong_de_verificacion():
     cortesía — cada uno despierta un turno entero y muchos re-corren la suite
     completa sobre commits del otro. El protocolo tiene que ponerle tope."""
     from plotspace.core.agent_live import PROTOCOLO
-    assert 'TU tarea' in PROTOCOLO
-    assert 'acuses' in PROTOCOLO.lower()
-    assert '2 mensajes' in PROTOCOLO
+    assert 'YOUR task' in PROTOCOLO
+    assert 'acks' in PROTOCOLO.lower()
+    assert '2 of your messages' in PROTOCOLO
 
 
 def test_protocolo_prohibe_esperar_el_commit_ajeno():
@@ -757,5 +757,5 @@ def test_protocolo_prohibe_esperar_el_commit_ajeno():
     commiteaste» — con la entrega idle promediando UNA HORA, eso es un agente
     parado. jv commit (hunks por provenance) lo resuelve sin esperar a nadie."""
     from plotspace.core.agent_live import PROTOCOLO
-    assert 'esperes el commit' in PROTOCOLO.lower()
+    assert 'never wait for someone' in PROTOCOLO.lower()
     assert 'jv commit' in PROTOCOLO
