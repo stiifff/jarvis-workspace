@@ -1533,14 +1533,18 @@ async def probe_embebibilidad(url: str = ''):
 
 @router.get("/preview/buscar")
 async def preview_buscar(q: str = '', modo: str = 'yt', token: str = ''):
-    """Búsqueda de YouTube de la Radio (server-side, sin API keys).
+    """Búsqueda de la Radio (server-side, sin API keys).
 
     modo 'yt' parsea el ytInitialData de la página de resultados de YouTube
     vía httpx; modo 'ytmas' (token = el `token` que devolvió una tanda
     anterior) trae la tanda SIGUIENTE de esa misma búsqueda — el "mostrar más"
     de los dots de la Radio; modo 'ytrel' (q = id de video) trae los
     relacionados REALES de un video vía youtubei/v1/next — las continuaciones
-    de la Radio. Su ÚNICO consumidor es la Radio (sections/radio/radio.js).
+    de la Radio. `modo=local` busca en la biblioteca local de música
+    (core/musica_local.py, data/music) y `modo=spotify` en Spotify con el
+    token del usuario (core/spotify_api.py); ambos usan `q` como filtro y
+    devuelven el MISMO shape (id/url/titulo/canal/duracion/thumb, sin vistas).
+    Su ÚNICO consumidor es la Radio (sections/radio/radio.js).
 
     (Hasta 2026-07-26 servía además los modos 'web' —DuckDuckGo scrapeado con
     el Chromium de Playwright— y 'twitch' para serp.html, el buscador viejo del
@@ -1554,18 +1558,22 @@ async def preview_buscar(q: str = '', modo: str = 'yt', token: str = ''):
     from plotspace.core import web_search
     consulta = (q or '').strip()
     cont = (token or '').strip()
-    if modo not in ('yt', 'ytmas', 'ytrel'):
-        raise HTTPException(status_code=400, detail='modo inválido (yt|ytmas|ytrel)')
+    if modo not in ('yt', 'ytmas', 'ytrel', 'local', 'spotify'):
+        raise HTTPException(status_code=400,
+                            detail='modo inválido (yt|ytmas|ytrel|local|spotify)')
     if modo == 'ytmas':
         if not cont:
             raise HTTPException(status_code=400, detail='falta el parámetro token')
         if len(cont) > 4000:
             raise HTTPException(status_code=400, detail='token demasiado largo')
-    else:
+    elif modo in ('yt', 'ytrel', 'spotify'):
         if not consulta:
             raise HTTPException(status_code=400, detail='falta el parámetro q')
         if len(consulta) > 200:
             raise HTTPException(status_code=400, detail='consulta demasiado larga')
+    elif len(consulta) > 200:
+        # modo=local: sin q se lista TODO (el filtro es opcional)
+        raise HTTPException(status_code=400, detail='consulta demasiado larga')
     try:
         if modo == 'yt':
             # Solo videos reproducibles EMBEBIDOS ("inline"): la Radio los
@@ -1578,12 +1586,29 @@ async def preview_buscar(q: str = '', modo: str = 'yt', token: str = ''):
             pagina = await web_search.buscar_youtube_mas(cont)
             return {'resultados': await web_search.filtrar_embebibles(pagina['resultados']),
                     'token': pagina.get('token'), 'error': None}
+        elif modo == 'local':
+            from plotspace.core import musica_local
+            items = await asyncio.to_thread(musica_local.listar, '', consulta)
+            return {'resultados': [{k: it[k] for k in ('id', 'url', 'titulo', 'canal',
+                                                       'duracion', 'thumb')} for it in items],
+                    'token': None, 'error': None}
+        elif modo == 'spotify':
+            from plotspace.core import spotify_api
+            return {'resultados': await spotify_api.buscar(consulta),
+                    'token': None, 'error': None}
         else:   # 'ytrel'
             resultados = await web_search.filtrar_embebibles(
                 await web_search.relacionados_youtube(consulta))
         return {'resultados': resultados, 'error': None}
     except web_search.BusquedaError as e:
         return {'resultados': [], 'error': str(e)}
+    except Exception as e:
+        from plotspace.core import musica_local, spotify_api
+        # Los errores catalogables de las fuentes propias (música local,
+        # Spotify) van al MISMO shape que BusquedaError: {resultados, error}.
+        if isinstance(e, (musica_local.MusicaError, spotify_api.SpotifyError)):
+            return {'resultados': [], 'error': str(e)}
+        raise
 
 
 # Pricing de claude-haiku-4-5: $1.00 input / $5.00 output por millón de tokens

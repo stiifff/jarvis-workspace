@@ -104,6 +104,14 @@
     return t;
   }
 
+  // Fuente efectiva de una pista: la propia (los tracks de fuentes nuevas la
+  // traen en `.fuente`) o 'youtube' por defecto — los tracks viejos persistidos
+  // no la tenían. `def` permite otro default.
+  function fuenteDe(t, def) {
+    const f = t && t.fuente;
+    return (typeof f === 'string' && f) ? f : (def || 'youtube');
+  }
+
   function elegir(estado, track) {
     return { track, sonando: true, t: 0 };
   }
@@ -216,7 +224,7 @@
   }
 
   const _pure = {
-    ESTACIONES, crearEstado, conPosicion, pistaDeResultado, pistaDeUrl, claveCancion, elegir, alternar, urlEmbed, serializar, deserializar,
+    ESTACIONES, crearEstado, conPosicion, pistaDeResultado, pistaDeUrl, claveCancion, fuenteDe, elegir, alternar, urlEmbed, serializar, deserializar,
     crearLista, siguienteIdx, anteriorIdx, saltarA, pistaEn, loQueViene, porDelante, anexar, mezclarCola,
   };
 

@@ -19,6 +19,14 @@ test('crearEstado arranca vacío, en pausa y en el segundo 0', () => {
   assert.deepStrictEqual(R.crearEstado(), { track: null, sonando: false, t: 0 });
 });
 
+test('fuenteDe: la pista manda, default youtube y def propio', () => {
+  assert.strictEqual(R.fuenteDe({ id: 'x', fuente: 'local' }), 'local');
+  assert.strictEqual(R.fuenteDe({ id: 'x' }), 'youtube');          // tracks viejos emitidos son youtube
+  assert.strictEqual(R.fuenteDe(null), 'youtube');
+  assert.strictEqual(R.fuenteDe({ id: 'x' }, 'spotify'), 'spotify');
+  assert.strictEqual(R.fuenteDe({ fuente: '' }), 'youtube');       // vacío = ausente
+});
+
 test('pistaDeResultado normaliza un resultado del backend', () => {
   const r = { id: 'abc123', url: 'https://www.youtube.com/watch?v=abc123', titulo: 'lofi', canal: 'Lofi Girl', thumb: 'http://x/t.jpg', duracion: 'EN VIVO' };
   assert.deepStrictEqual(R.pistaDeResultado(r), {

@@ -30,7 +30,7 @@ from fastapi import WebSocket, WebSocketDisconnect
 
 from plotspace.core.database import init_db, get_db
 from plotspace.core.events import broadcaster
-from plotspace.routers import cuentas, fs, live, memory, mobile_preview, review, orchestrator, plugins, projects, projects_files, system, tasks, terminals, voice, workspace
+from plotspace.routers import cuentas, fs, live, memory, mobile_preview, radio, review, orchestrator, plugins, projects, projects_files, system, tasks, terminals, voice, workspace
 
 # Referencias a los background tasks del startup: asyncio solo guarda weakrefs
 # a las tasks, así que sin esto el GC podía recogerlas a mitad de ejecución.
@@ -535,6 +535,7 @@ app.include_router(memory.router)
 app.include_router(review.router)
 app.include_router(system.router)   # /api/system: versión + reinicio in-app (re-exec in place)
 app.include_router(cuentas.router)  # /api/cuentas: vincular/switchear cuentas de CLIs
+app.include_router(radio.router)    # /api/radio: fuentes de la Radio (música local + Spotify)
 
 # ─── Host / Origin (anti DNS-rebinding y CSRF). No hay token de acceso. ──────
 

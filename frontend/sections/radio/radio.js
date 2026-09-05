@@ -9,6 +9,12 @@
 // workspace, sobrevive cambios de proyecto/pestaña y se REANUDA sola tras un
 // reinicio, lo más rápido posible, desde el segundo donde quedó (boot temprano).
 //
+// MULTI-FUENTE (V1): el buscador del popover tiene un pill de FUENTE (YouTube,
+// Local, y las que registren otros agentes: spotify/streams). Cada fuente
+// registra SU player y SUS endpoints vía window.JarvisRadio.registrarFuente()
+// (firma documentada abajo). `_cmd` despacha comandos al player de la pista
+// que está sonando: el resto del código no sabe de dónde sale el audio.
+//
 // El Web Preview YA NO tiene Radio: cuando reproducís un video de YouTube ahí,
 // se HANDOFF a esta Radio global (adopta la pista + arma la cola de relacionados
 // y sigue). La única vez que la Radio se para es mientras se ve Twitch.
@@ -18,11 +24,16 @@
 (function (root) {
   if (root.JarvisRadio) return;
 
-  const KEY = 'jarvis.preview.radio';
+  const KEY = 'jarvis.preview.radio';           // estado de la pista (reanudación)
+  const SRCKEY = 'jarvis.preview.radio.src';    // fuente activa del buscador (persistida)
   const YT_ORIGINS = ['https://www.youtube.com', 'https://www.youtube-nocookie.com'];
   const BUSCAR = '/api/orchestrator/preview/buscar?modo=yt&q=';
   const REL = '/api/orchestrator/preview/buscar?modo=ytrel&q=';   // relacionados REALES (q = id de video)
   const MAS = '/api/orchestrator/preview/buscar?modo=ytmas&token=';   // tanda SIGUIENTE de una búsqueda
+  // Fuente LOCAL (backend en paralelo): búsqueda/biblioteca/upload de audio.
+  const BUSCAR_LOCAL = '/api/orchestrator/preview/buscar?modo=local&q=';
+  const LISTAR_LOCAL = '/api/radio/local/listar?carpeta=';
+  const SUBIR_LOCAL = '/api/radio/local/subir';
 
   const RY = () => (root.WebPreviewRadio && root.WebPreviewRadio._pure) || null;
 
@@ -80,16 +91,55 @@
   let _errSeguidos = 0;      // racha de tracks NO reproducibles (freno anti-tormenta de saltos)
   let _errEnEsteLoad = false; // ya se manejó UN error de esta carga (de-dupe del doble handshake)
 
+  // ── Fuentes de música (registro multi-fuente) ──────────────────────────────
+  // Cada fuente aporta su buscador y su player; el resto de la Radio es
+  // agnóstico. Registrar la tuya con window.JarvisRadio.registrarFuente({...})
+  // (firma EXACTA documentada en la parte pública, abajo). `_intFuente()` es la
+  // fuente ACTUAL del buscador; `_fuenteDe(t)` la fuente efectiva de una pista
+  // (el track trae `.fuente`; tracks viejos persistidos = youtube).
+  const _fuentes = {};          // id → fuente {id, etiqueta_es, etiqueta_en, buscar, mas, relacionados, player}
+  const _ordenFuentes = [];     // orden de registro (el de las pills)
+  let _fuenteActiva = 'youtube';
+  const _intFuente = () => _fuentes[_fuenteActiva] || _fuentes.youtube || null;
+  const _fuenteDe = (t, def) => { const r = RY(); return (r && r.fuenteDe) ? r.fuenteDe(t, def) : (((t && t.fuente) || def || 'youtube')); };
+  const _filas = (data, fid) => ((data && data.resultados) || []).map((r) => _track(r, fid)).filter(Boolean);
+
   function _leer() { try { return JSON.parse(localStorage.getItem(KEY) || 'null'); } catch { return null; } }
   function _guardar() { try { const r = RY(); if (r) localStorage.setItem(KEY, JSON.stringify(r.serializar(_state))); } catch {} }
-  function _track(r) {
+  // Normaliza una fila del backend de la fuente `fuente` (o la fuente de la fila)
+  // a una pista de la Radio. Defaults de thumb/url SOLO para youtube: una pista
+  // local trae su `url` (archivo) y su `thumb` si los hay; nunca se asume
+  // i.ytimg. El `.fuente` queda grabado en el track (viaja con él a la persistencia).
+  function _track(r, fuente) {
     if (!r || !r.id) return null;
+    const f = fuente || r.fuente || _fuenteActiva || 'youtube';
+    const yt = f === 'youtube';
     return { id: r.id, titulo: r.titulo || '', canal: r.canal || '', canalId: r.canalId || null,
-      thumb: r.thumb || `https://i.ytimg.com/vi/${r.id}/hqdefault.jpg`, dur: r.duracion || r.dur || '',
-      vistas: r.vistas || '', url: r.url || `https://www.youtube.com/watch?v=${r.id}` };
+      thumb: r.thumb || (yt ? `https://i.ytimg.com/vi/${r.id}/hqdefault.jpg` : ''),
+      dur: r.duracion || r.dur || '', vistas: r.vistas || '',
+      url: r.url || (yt ? `https://www.youtube.com/watch?v=${r.id}` : ''), fuente: f };
   }
 
-  // ── Motor de audio (iframe persistente colgado de <body>) ──
+  // ── Motor de audio: un player por fuente ────────────────────────────────────
+  // `_cmd(func, args)` es el ROUTER: despacha al player de la pista que está
+  // sonando (_state.track.fuente), con el vocabulario de YouTube
+  // (playVideo/pauseVideo/seekTo/setVolume/mute/unMute). Los players conocen
+  // ese vocabulario y lo traducen a su motor (postMessage iframe / <audio>).
+  function _cmd(func, args) {
+    const t = _state && _state.track;
+    const p = _playerDe(t);
+    if (p && p.cmd) p.cmd(func, args || []);
+  }
+  function _playerDe(t) {
+    const fid = _fuenteDe(t);
+    return _players[fid] || _players.youtube || null;
+  }
+  const _players = {};   // fuente id → player {cargar(track,{autoplay,start}), cmd(func,args), onMensaje(e), destroy()}
+
+  // Player YouTube: iframe persistente colgado de <body> (el de SIEMPRE — no se
+  // toca su comportamiento, solo se lo envuelve). El iframe lo crea
+  // `_asegurarAudio` y el src lo arma `_src` (urlEmbed). El double-handshake
+  // del postMessage y onError siguen iguales.
   function _asegurarAudio() {
     if (_audio && _audio.isConnected) return _audio;
     const f = document.createElement('iframe');
@@ -106,41 +156,76 @@
   function _saludar() {
     try {
       _audio?.contentWindow?.postMessage(JSON.stringify({ event: 'listening', id: 'jarvis-radio', channel: 'widget' }), 'https://www.youtube.com');
-      _cmd('addEventListener', ['onError']);
+      _ytCmd('addEventListener', ['onError']);
     } catch {}
   }
-  function _cmd(func, args) { try { _audio?.contentWindow?.postMessage(JSON.stringify({ event: 'command', func, args: args || [] }), 'https://www.youtube.com'); } catch {} }
+  function _ytCmd(func, args) { try { _audio?.contentWindow?.postMessage(JSON.stringify({ event: 'command', func, args: args || [] }), 'https://www.youtube.com'); } catch {} }
   function _asegurarListeners() { if (_msgOn) return; _msgOn = true; window.addEventListener('message', _onMensaje); }
 
-  function _onMensaje(e) {
-    if (!YT_ORIGINS.includes(e.origin)) return;
-    if (!_audio || e.source !== _audio.contentWindow) return;
-    let d = e.data; if (typeof d === 'string') { try { d = JSON.parse(d); } catch { return; } }
-    if (!d) return;
-    // Track NO reproducible: 101/150 = el dueño no permite reproducirlo fuera
-    // de YouTube (VEVO/sellos), 100 = borrado/privado. SOLO esos códigos son
-    // fatales (2/5 pueden ser transitorios y saltaban de más). El handshake se
-    // manda DOS veces a propósito → el error puede llegar duplicado: _errEnEsteLoad
-    // de-dupea a UN error por carga (el duplicado tardío saltaba temas BUENOS).
-    if (d.event === 'onError') {
-      const code = Number(d.info);
-      if (![100, 101, 150].includes(code)) return;
-      if (_errEnEsteLoad) return;
-      _errEnEsteLoad = true;
-      _errSeguidos += 1;
-      const titulo = (_state && _state.track && _state.track.titulo) || _t('Ese tema');
-      if (typeof toast === 'function') {
-        toast(_errSeguidos <= 5
-          ? _t('«{t}» no se deja reproducir fuera de YouTube — saltando ▸').replace('{t}', titulo.slice(0, 44))
-          : 'Varios temas seguidos no se dejan reproducir — elegí otro de la lista');
+  // Player LOCAL: <audio> invisible colgado de <body> (misma idea que el
+  // iframe). Los events del media element mapean a los MISMOS canales que usa
+  // _onMensaje: timeupdate→currentTime, durationchange→duración, play/pause →
+  // playerState 1/2, ended→0 (fin), error→onError fatal.
+  let _audioLocal = null;
+  function _asegurarAudioLocal() {
+    if (_audioLocal && _audioLocal.isConnected) return _audioLocal;
+    const a = document.createElement('audio');
+    a.id = 'jarvis-radio-audio-local'; a.preload = 'metadata';
+    a.playsInline = true; a.setAttribute('playsinline', ''); a.hidden = true;
+    for (const ev of ['timeupdate', 'durationchange', 'play', 'pause', 'ended', 'error']) a.addEventListener(ev, _evLocal);
+    document.body.appendChild(a);
+    _audioLocal = a;
+    return a;
+  }
+  function _evLocal(e) {
+    const t = _state && _state.track;
+    if (_fuenteDe(t) !== 'local') return;   // el audio anterior quedó atrás: sus events son basura
+    const a = e.currentTarget;
+    if (e.type === 'error') { _handleError(150); return; }
+    const info = {};
+    if (isFinite(a.duration) && a.duration > 0) info.duration = a.duration;
+    if (isFinite(a.currentTime) && a.currentTime > 0) info.currentTime = a.currentTime;
+    if (e.type === 'play') info.playerState = 1;
+    else if (e.type === 'pause') info.playerState = 2;
+    else if (e.type === 'ended') info.playerState = 0;
+    if (info.playerState != null || info.duration != null || info.currentTime != null) _handleInfo(info);
+  }
+  const _playerLocal = {
+    cargar(track, opts) {
+      if (!track.url) { setTimeout(() => _handleError(150), 0); return; }
+      const a = _asegurarAudioLocal();
+      const start = Number((opts && opts.start) || 0);
+      if (a.getAttribute('src') !== track.url) {
+        a.pause(); a.src = track.url;   // cambiar src destronca la anterior
+        if (start > 1) a.addEventListener('loadedmetadata', () => { try { a.currentTime = start; } catch {} }, { once: true });
       }
-      if (_state) { _state = { track: _state.track, sonando: false, t: 0 }; _renderNow(); _renderMini(); }
-      if (_errSeguidos <= 5) _next();
-      return;
-    }
-    if (d.event !== 'infoDelivery' || !d.info) return;
+      a.muted = _muted; a.volume = Math.max(0, Math.min(1, _vol / 100));
+      if (opts && opts.autoplay === false) { a.pause(); return; }
+      if (_twitch) { a.pause(); return; }
+      const pr = a.play(); if (pr && pr.catch) pr.catch(() => _armarGesto());
+    },
+    cmd(func, args) {
+      const a = _audioLocal; if (!a || !a.isConnected) return;
+      const n = Number(args && args[0]);
+      if (func === 'playVideo') { const pr = a.play(); if (pr && pr.catch) pr.catch(() => {}); }
+      else if (func === 'pauseVideo') a.pause();
+      else if (func === 'seekTo') { if (isFinite(n)) { try { a.currentTime = n; } catch {} } }
+      else if (func === 'setVolume') { a.volume = Math.max(0, Math.min(1, (isFinite(n) ? n : _vol) / 100)); }
+      else if (func === 'mute') a.muted = true;
+      else if (func === 'unMute') a.muted = false;
+    },
+    onMensaje() {},
+    destroy() { const a = _audioLocal; if (!a) return; a.pause(); a.removeAttribute('src'); try { a.load(); } catch {} },
+  };
+
+  // ── Estado del player: mensajes/errores compartidos YouTube + Local ─────────
+  // (el iframe manda por window 'message'; el <audio> por events) — misma
+  // máquina de estado: duración, posición, fin/repeat/auto-avance y la racha de
+  // reprodudores NO reproducibles (_errSeguidos). El error de youtube dice la
+  // verdad sin maquillaje (101/150 = el dueño no lo deja sonar fuera); el local
+  // no tiene ese problema: mensaje genérico.
+  function _handleInfo(info) {
     const r = RY(); if (!r) return;
-    const info = d.info;
     if (typeof info.duration === 'number' && info.duration > 0) _dur = info.duration;
     if (typeof info.currentTime === 'number' && info.currentTime > 0) {
       _state = r.conPosicion(_state, info.currentTime);
@@ -159,12 +244,47 @@
     }
     const now = Date.now(); if (now - _saveTs > 3000) { _saveTs = now; _guardar(); }
   }
+  // Track NO reproducible. YouTube: 101/150 = el dueño no permite reproducirlo
+  // fuera de YouTube (VEVO/sellos), 100 = borrado/privado; SOLO esos códigos son
+  // fatales (2/5 pueden ser transitorios y saltaban de más). El handshake se
+  // manda DOS veces a propósito → el error puede llegar duplicado: _errEnEsteLoad
+  // de-dupea a UN error por carga (el duplicado tardío saltaba temas BUENOS).
+  // Local: cualquier error es fatal (archivo quebrado / faltante / sin soporte).
+  function _handleError(code) {
+    if (![100, 101, 150].includes(code)) return;
+    if (_errEnEsteLoad) return;
+    _errEnEsteLoad = true;
+    _errSeguidos += 1;
+    const esLocal = _fuenteDe(_state && _state.track) === 'local';
+    const titulo = (_state && _state.track && _state.track.titulo) || 'Ese tema';
+    if (typeof toast === 'function') {
+      toast(_errSeguidos <= 5
+        ? (esLocal
+            ? _t('No se pudo reproducir — saltando ▸')
+            : _t('«{t}» no se deja reproducir fuera de YouTube — saltando ▸').replace('{t}', titulo.slice(0, 44)))
+        : _t('Varios temas seguidos no se dejan reproducir — elegí otro de la lista'));
+    }
+    if (_state) { _state = { track: _state.track, sonando: false, t: 0 }; _renderNow(); _renderMini(); }
+    if (_errSeguidos <= 5) _next();
+  }
+  // Mensajes del iframe YouTube (único que usa window 'message'). Solo cuando
+  // la pista sonando es youtube: si tocó Local quedan fuera (no romper nada).
+  function _onMensaje(e) {
+    if (!YT_ORIGINS.includes(e.origin)) return;
+    if (!_audio || e.source !== _audio.contentWindow) return;
+    if (_fuenteDe(_state && _state.track) !== 'youtube') return;
+    let d = e.data; if (typeof d === 'string') { try { d = JSON.parse(d); } catch { return; } }
+    if (!d) return;
+    if (d.event === 'onError') { _handleError(Number(d.info)); return; }
+    if (d.event !== 'infoDelivery' || !d.info) return;
+    _handleInfo(d.info);
+  }
 
   function _armarGesto() {
     if (_gestoOn) return; _gestoOn = true;
     const g = () => {
       document.removeEventListener('pointerdown', g, true); document.removeEventListener('keydown', g, true); _gestoOn = false;
-      if (!_intent || !_audio || !_state || !_state.track) return;
+      if (!_intent || !_state || !_state.track) return;   // NO depender del iframe: vale para cualquier fuente
       _intent = false; _cmd('playVideo'); if (!_muted) { _cmd('unMute'); _cmd('setVolume', [_vol]); }
     };
     document.addEventListener('pointerdown', g, true); document.addEventListener('keydown', g, true);
@@ -184,12 +304,14 @@
   // música nunca se corte al llegar al final de lo que se ve.
   function play(track, { auto = false } = {}) {
     const r = RY(); if (!r || !track || !track.id) return;
+    const prevP = _playerDe(_state && _state.track);
+    const p = _playerDe(track);
     _state = r.elegir(_state, track); _booted = true;
     _played.add(track.id);   // marcá como reproducida (para no volver a encolarla)
     const kc = _clave(track); if (kc) _playedClaves.add(kc);   // ...ni a la misma canción con otro id
     _cur = 0; _dur = _parseDur(track.dur); _seeking = false; _renderSeek();   // reset del progreso
-    _asegurarAudio().src = _src(track, { autoplay: !_twitch, start: 0 });
-    if (_twitch) _cmd('pauseVideo');
+    if (prevP && prevP !== p && prevP.destroy) prevP.destroy();   // otra fuente: apagá la anterior
+    if (p && p.cargar) p.cargar(track, { autoplay: !_twitch, start: 0 });
     _guardadoPeriodico(); _guardar(); _renderNow(); _renderMini(); _marcarActiva(!!auto);
     if (r.porDelante(_pl) < 4) _rellenarCola();
   }
@@ -199,8 +321,12 @@
   function _reproducirDeLista(items, i, fuente) {
     const r = RY(); if (!r) return;
     _pl = r.crearLista(items, i);
-    _plFuente = fuente ? Object.assign({}, fuente) : { tipo: 'rel' };
-    const t = r.pistaEn(_pl, _pl.idx); if (t) play(t);
+    const t = r.pistaEn(_pl, _pl.idx);
+    // `fuente` es el box._fuente de donde vino la lista; su `.fuente` (la mesa
+    // en la que vive esa lista) viaja en `_plFuente` para continuarla después.
+    _plFuente = fuente ? Object.assign({}, fuente) : { tipo: 'rel', fuente: (t && t.fuente) || 'youtube' };
+    if (!_plFuente.fuente && t) _plFuente.fuente = t.fuente || 'youtube';
+    if (t) play(t);
   }
   // Reproducir algo SUELTO (handoff del preview, reanudación tras reinicio):
   // no hay lista todavía → la playlist nace con esa pista y se llena con sus
@@ -208,7 +334,7 @@
   function _reproducirSuelto(track) {
     const r = RY(); if (!r || !track) return;
     _pl = r.crearLista([track], 0);
-    _plFuente = { tipo: 'rel' };
+    _plFuente = { tipo: 'rel', fuente: track.fuente || 'youtube' };
     play(track);
   }
   // Siembra la playlist con una pista que YA está sonando (reanudación tras un
@@ -217,7 +343,7 @@
   function _sembrarPlaylist(track) {
     const r = RY(); if (!r || !track || !track.id) return;
     _pl = r.crearLista([track], 0);
-    _plFuente = { tipo: 'rel' };
+    _plFuente = { tipo: 'rel', fuente: track.fuente || 'youtube' };
     _rellenarCola();
   }
   // Salta a un índice de la playlist actual (avance, retroceso, click en la cola).
@@ -229,9 +355,10 @@
     return true;
   }
 
-  // Handoff desde el Web Preview: adopta lo que se puso a sonar ahí. NO abre el
-  // popover (el usuario lo abre cuando quiere) — solo pasa a sonar en la Radio.
-  function adopt(raw) { const t = _track(raw); if (t) { if (!_mounted) _montar(); _reproducirSuelto(t); } }
+  // Handoff desde el Web Preview: adopta lo que se puso a sonar ahí (SIEMPRE
+  // YouTube — el preview no tiene fuente local). NO abre el popover (el usuario
+  // lo abre cuando quiere) — solo pasa a sonar en la Radio.
+  function adopt(raw) { const t = _track(raw, 'youtube'); if (t) { if (!_mounted) _montar(); _reproducirSuelto(t); } }
 
   function _alternar() {
     const r = RY(); if (!r || !_state || !_state.track) return;
@@ -272,15 +399,20 @@
   const _clave = (t) => { const r = RY(); return (r && r.claveCancion && t) ? r.claveCancion(t.titulo, t.canal) : ''; };
 
   // Una BÚSQUEDA (o el listado de un canal/estación) es una lista con fuente:
-  // guarda la consulta y el `token` de continuación de YouTube para poder traer
-  // la tanda siguiente cuando el usuario toca los dots (o cuando la música
-  // llega al final de lo que se ve).
+  // guarda la consulta y el `token` de continuación (de la fuente: para YouTube
+  // es el de la tanda siguiente; la fuente local no tiene continuación) para
+  // poder traer la tanda siguiente cuando el usuario toca los dots (o cuando la
+  // música llega al final de lo que se ve). Usa SIEMPRE la fuente activa del
+  // buscador (_intFuente): buscar/continuar le pertenecen a esa mesa.
   async function _buscar(q, into) {
     q = (q || '').trim();
     const box = $(into); if (!box) return;
+    const f = _intFuente(); if (!f) return;
+    const fid = f.id;
     if (!q) {   // input vacío → volver a mostrar la playlist que está sonando
       _buscando = false;
       if (_pl.items.length) _renderPlaylistEn(box);
+      else if (fid === 'local') { _listarLocal(box); return; }
       else { box.innerHTML = '<div class="jr-hint">Buscá música o elegí una estación.</div>'; box._items = []; box._fuente = null; }
       return;
     }
@@ -288,47 +420,49 @@
     box.innerHTML = '<div class="jr-hint">Buscando…</div>';
     const q0 = q;
     try {
-      const res = await fetch(BUSCAR + encodeURIComponent(q));
-      const data = await res.json();
+      const data = await f.buscar(q0);
       const input = $('#jr-q'); if (input && input.value.trim() !== q0) return;   // el usuario siguió tipeando
-      _renderFilas(box, (data.resultados || []).map(_track).filter(Boolean), data.error,
-        { tipo: 'busqueda', q: q0, token: data.token || null });
-    } catch { _renderFilas(box, [], 'No se pudo buscar'); }
+      _renderFilas(box, _filas(data, fid), data.error,
+        { tipo: 'busqueda', q: q0, token: data.token || null, fuente: fid });
+    } catch { _renderFilas(box, [], 'No se pudo buscar', { tipo: 'busqueda', q: q0, token: null, fuente: fid }); }
   }
 
   // ── Continuaciones: de dónde salen las pistas que se suman por ABAJO ────────
   // Dos vías, según de dónde vino la lista:
   //   · búsqueda/canal/estación → la tanda SIGUIENTE de esa misma consulta
-  //     (modo ytmas + token de continuación de YouTube). Más de lo que buscaste,
-  //     sin repetir lo que ya se ve.
+  //     (fuente.mas + token de continuación). Más de lo que buscaste, sin
+  //     repetir lo que ya se ve.
   //   · relacionados (o búsqueda agotada) → los relacionados REALES de la última
-  //     pista de la lista (ytrel), con fallback a buscar por canal/título.
+  //     pista de la lista (fuente.relacionados), con fallback a buscar por
+  //     canal/título EN LA MISMA FUENTE.
   // Devuelve pistas ya normalizadas; el dedupe fino lo hace `anexar` (por id y
   // por CANCIÓN) contra la lista destino.
   async function _traerMas(fuente, ultima) {
     const nuevas = [];
-    if (fuente && fuente.token) {
+    const fid = (fuente && fuente.fuente) || _fuenteDe(ultima);
+    const f = _fuentes[fid] || _intFuente();
+    if (f && fuente && fuente.token) {
       try {
-        const data = await (await fetch(MAS + encodeURIComponent(fuente.token))).json();
+        const data = await f.mas(fuente.token);
         fuente.token = data.token || null;   // token de la tanda que sigue (o fin)
-        for (const r of (data.resultados || [])) { const t = _track(r); if (t) nuevas.push(t); }
+        for (const r of (data.resultados || [])) { const t = _track(r, fid); if (t) nuevas.push(t); }
       } catch { fuente.token = null; }
       if (nuevas.length) return nuevas;
     }
-    if (!ultima || !ultima.id) return nuevas;
+    if (!f || !ultima || !ultima.id) return nuevas;
     let data = null;
-    try { data = await (await fetch(REL + encodeURIComponent(ultima.id))).json(); } catch { data = null; }
+    try { data = await f.relacionados(ultima.id); } catch { data = null; }
     for (const r of (data && data.resultados) || []) {
-      const t = _track(r); if (!t || _played.has(t.id)) continue;
+      const t = _track(r, fid); if (!t || _played.has(t.id)) continue;
       const k = _clave(t); if (k && _playedClaves.has(k)) continue;
       nuevas.push(t);
     }
     if (nuevas.length) return nuevas;
     const q = (ultima.canal || ultima.titulo || '').trim(); if (!q) return nuevas;
     try {
-      data = await (await fetch(BUSCAR + encodeURIComponent(q))).json();
-      for (const r of (data.resultados || [])) {
-        const t = _track(r); if (!t || _played.has(t.id)) continue;
+      const data2 = await f.buscar(q);
+      for (const r of (data2.resultados || [])) {
+        const t = _track(r, fid); if (!t || _played.has(t.id)) continue;
         const k = _clave(t); if (k && _playedClaves.has(k)) continue;
         nuevas.push(t);
       }
@@ -360,17 +494,19 @@
   }
 
   // Canal: sus videos vía búsqueda por el nombre del canal (mismo endpoint) —
-  // esa lista también es una cola con continuación (token).
+  // esa lista también es una cola con continuación (token). Usa la MESA de
+  // donde vino el track: si el buscador está en otra fuente, el canal se
+  // pregunta igual (el pane de canal es de esa lista, no del buscador).
   async function _cargarCanal(track) {
     const list = $('#jr-cv-list'); if (!list) return;
     list.innerHTML = '<div class="jr-hint">Cargando el canal…</div>'; list._items = []; list._fuente = null;
+    const f = _intFuente() || _fuentes.youtube;
+    const fid = f.id;
     const q = (track.canal || track.titulo || '').trim();
     try {
-      const res = await fetch(BUSCAR + encodeURIComponent(q));
-      const data = await res.json();
-      _renderFilas(list, (data.resultados || []).map(_track).filter(Boolean),
-        data.error || 'No se pudieron traer los videos del canal',
-        { tipo: 'canal', q, token: data.token || null });
+      const data = await f.buscar(q);
+      _renderFilas(list, _filas(data, fid), data.error || 'No se pudieron traer los videos del canal',
+        { tipo: 'canal', q, token: data.token || null, fuente: fid });
     } catch { _renderFilas(list, [], 'No se pudo cargar el canal'); }
   }
 
@@ -567,6 +703,17 @@
       'Más música relacionada': 'More related music', 'Más del canal': 'More from this channel',
       'Más como': 'More like',
       'No hay más por ahora': 'Nothing more for now',
+      'Fuente': 'Source',
+      'YouTube': 'YouTube', 'Local': 'Local', 'Spotify': 'Spotify', 'Streams': 'Streams',
+      'Subir música': 'Upload music',
+      'Los archivos van a data/music': 'Files go to data/music',
+      'No se pudo subir la música': "Couldn't upload the music",
+      'Se subieron {n} archivos a data/music': 'Uploaded {n} files to data/music',
+      'No se subió ningún archivo': 'No files were uploaded',
+      'No se pudo cargar la música local': "Couldn't load local music",
+      'Nada en data/music todavía': 'Nothing in data/music yet',
+      'No se pudo reproducir — saltando ▸': "Couldn't play — skipping",
+      'Sesión de Spotify no iniciada': 'Spotify session not started',
       'YouTube · videos del canal': 'YouTube · channel videos', 'Canal': 'Channel', 'vistas': 'views',
       'estudiar': 'study', 'nocturno': 'night', 'café': 'coffee', 'calma': 'calm',
     });
@@ -594,6 +741,7 @@
           <span class="jr-title">Radio <span class="jr-livewrap" id="jr-live" hidden><span class="jr-eq on"><i></i><i></i><i></i></span> EN VIVO</span></span>
           <button class="jr-ibtn" id="jr-min" title="Minimizar">${svg('chevup')}</button>
           <button class="jr-ibtn" id="jr-close" title="Cerrar">${svg('close')}</button></div>
+        <div class="jr-src" id="jr-src"></div>
         <label class="jr-search"><span>${svg('search')}</span><input id="jr-q" placeholder="Buscá música o pegá un link de YouTube…" spellcheck="false" autocomplete="off"></label>
         <div class="jr-now" id="jr-now"></div>
         <div class="jr-transport" id="jr-transport"></div>
@@ -629,6 +777,7 @@
     $('#jr-min').addEventListener('click', () => _toggle(false));
     $('#jr-close').addEventListener('click', () => _toggle(false));
     catcher.addEventListener('click', () => _toggle(false));
+    $('#jr-src').addEventListener('click', (e) => { const b = e.target.closest('[data-src]'); if (b) _setFuente(b.dataset.src); });
     const q = $('#jr-q'); let deb = null;
     q.addEventListener('input', () => { clearTimeout(deb); deb = setTimeout(() => _buscar(q.value, '#jr-pane-rel'), 350); if (q.value.trim()) _setPane('rel'); });
     q.addEventListener('keydown', (e) => { if (e.key === 'Enter') { clearTimeout(deb); _buscar(q.value, '#jr-pane-rel'); _setPane('rel'); } });
@@ -648,6 +797,7 @@
     });
 
     _volInitUI(); _seekInitUI();
+    _renderFuentes();
     _renderEstaciones();
     _renderNow(); _renderMini(); _renderPaneChrome();
 
@@ -655,7 +805,8 @@
     if (!_state) {
       const r = RY(); _state = r ? r.deserializar(_leer()) : { track: null, sonando: false, t: 0 };
       if (_state.track) {
-        _asegurarAudio().src = _src(_state.track, { autoplay: false, start: _state.t });
+        const p = _playerDe(_state.track);
+        if (p && p.cargar) p.cargar(_state.track, { autoplay: false, start: _state.t });
         _guardadoPeriodico();
         _sembrarPlaylist(_state.track);   // la cola arranca con lo que quedó cued
       }
@@ -671,7 +822,7 @@
     $('#jarvis-radio-mini').classList.toggle('abierto', _open);
     $('#jr-mini-chev') && ($('#jr-mini-chev').innerHTML = svg(_open ? 'chevup' : 'chevdown'));
     if (_open) {
-      _alinear(); requestAnimationFrame(_segThumb);
+      _alinear(); requestAnimationFrame(_segThumb); _renderFuentes();   // re-fresca pills (registros tardíos)
       const rel = $('#jr-pane-rel');   // al abrir, Relacionados muestra lo que viene
       if (rel && _pane === 'rel' && !_buscando && !rel._esPl && _pl.items.length) _renderPlaylistEn(rel);
       const q = $('#jr-q'); if (q) setTimeout(() => q.focus(), 30);
@@ -744,14 +895,24 @@
     const t = _state && _state.track, son = _state && _state.sonando;
     const live = $('#jr-live'); if (live) live.hidden = !(t && son);
     if (!t) { now.classList.remove('playing'); now.innerHTML = `<span class="jr-art ghost"></span><span class="jr-ninfo"><span class="jr-eyebrow">Lista para sonar</span><span class="jr-ntitle">Nada sonando todavía.</span></span>`; _renderTransport(); return; }
+    const fid = _fuenteDe(t);
+    const fu = _fuentes[fid];
+    const nomFuente = fu ? fu.etiqueta_es : 'Local';
+    // Canal (botón "Ver canal") es solo YouTube: el <audio> local no tiene canal.
+    const chanlink = fid === 'youtube'
+      ? `<button class="jr-chanlink" id="jr-chanlink" title="Ver el canal"><span class="jr-av"></span><span>${_esc(t.canal || 'YouTube')}</span><span class="jr-vercanal">Ver canal</span></button>`
+      : `<span class="jr-chanlink" title=""><span class="jr-av"></span><span>${_esc(nomFuente)}</span></span>`;
+    const chipFuente = fid === 'youtube'
+      ? (t.vistas ? `<span class="jr-chip">${svg('eye')}<b>${_esc(t.vistas)}</b></span>` : `<span class="jr-chip">${svg('eye')}<b>YouTube</b></span>`)
+      : `<span class="jr-chip">${svg('note')}<b>${_esc(nomFuente)}</b></span>`;
     now.innerHTML =
       `<span class="jr-art">${t.thumb ? `<img src="${_esc(t.thumb)}" alt="" onerror="this.remove()">` : ''}${viz(!!son)}</span>`
       + `<span class="jr-ninfo"><span class="jr-eyebrow">Reproduciendo</span>`
       + `<span class="jr-ntitle">${_esc(t.titulo)}</span>`
-      + `<button class="jr-chanlink" id="jr-chanlink" title="Ver el canal"><span class="jr-av"></span><span>${_esc(t.canal || 'YouTube')}</span><span class="jr-vercanal">Ver canal</span></button>`
+      + chanlink
       + `<span class="jr-chips">`
-      +   (t.vistas ? `<span class="jr-chip">${svg('eye')}<b>${_esc(t.vistas)}</b></span>` : `<span class="jr-chip">${svg('eye')}<b>YouTube</b></span>`)
-      +   (t.dur ? `<span class="jr-chip">${svg('clock')}<b>${_esc(t.dur)}</b></span>` : '')
+      + chipFuente
+      + (t.dur ? `<span class="jr-chip">${svg('clock')}<b>${_esc(t.dur)}</b></span>` : '')
       + `</span></span>`;
     now.classList.toggle('playing', !!son);   // pulso del glow de la carátula al ritmo
     _renderTransport();
@@ -977,19 +1138,93 @@
   async function _estacion(q) {
     _setPane('rel');
     const box = $('#jr-pane-rel'); if (box) box.innerHTML = '<div class="jr-hint">Sintonizando…</div>';
+    const f = _intFuente() || _fuentes.youtube;
+    const fid = f.id;
     try {
-      const res = await fetch(BUSCAR + encodeURIComponent(q));
-      const data = await res.json();
-      const items = (data.resultados || []).map(_track).filter(Boolean);
-      const fuente = { tipo: 'estacion', q, token: data.token || null };
+      const data = await f.buscar(q);
+      const items = _filas(data, fid);
+      const fuente = { tipo: 'estacion', q, token: data.token || null, fuente: fid };
       _renderFilas(box, items, data.error, fuente);
       // La estación ES la cola: suena la primera y siguen las de abajo, en orden.
       if (items[0]) { _buscando = false; _reproducirDeLista(items, 0, fuente); if (box) { box._items = _pl.items; box._esPl = true; } _marcarActiva(false); }
     } catch { _renderFilas(box, [], 'No se pudo sintonizar'); }
   }
 
+  // ── Fuente LOCAL: biblioteca + subida de archivos ───────────────────────────
+  // `_listarLocal` muestra los archivos de audio de data/music (listado viejo
+  // de la mesa local, sin búsqueda). `_subirLocal` manda archivos al backend
+  // (multipart) y re-pinta la lista actual.
+  async function _listarLocal(box) {
+    if (!box) return;
+    _buscando = true;
+    box.innerHTML = '<div class="jr-hint">Buscando…</div>';
+    try {
+      const res = await fetch(LISTAR_LOCAL);
+      const data = await res.json();
+      _renderFilas(box, _filas(data, 'local'), data.error || 'Nada en data/music todavía',
+        { tipo: 'listar', fuente: 'local' });
+    } catch { _renderFilas(box, [], 'No se pudo cargar la música local'); }
+  }
+  async function _subirLocal(files) {
+    const arr = files ? Array.from(files) : [];
+    if (!arr.length) return;
+    try {
+      const fd = new FormData();
+      for (const file of arr) fd.append('archivos', file, file.name);
+      const res = await fetch(SUBIR_LOCAL, { method: 'POST', body: fd });
+      const data = await res.json();
+      if (typeof toast !== 'function') return;
+      if (res.ok && !data.error) {
+        const n = (data.archivos || []).length;
+        toast(n ? _t('Se subieron {n} archivos a data/music').replace('{n}', String(n)) : _t('No se subió ningún archivo'));
+      } else toast(data.error || _t('No se pudo subir la música'));
+    } catch { if (typeof toast === 'function') toast(_t('No se pudo subir la música')); }
+    // Re-pinta lo que haya en el pane (búsqueda o biblioteca) para que se vea lo nuevo.
+    const q = $('#jr-q'); const txt = (q && q.value.trim()) || '';
+    const rel = $('#jr-pane-rel');
+    if (txt && rel) _buscar(txt, '#jr-pane-rel');
+    else if (rel && _fuenteActiva === 'local') { _buscando = false; _listarLocal(rel); }
+  }
+
+  // ── Selección de fuente (pills sobre el buscador) ───────────────────────────
+  // La fuente activa mueve SOLO el buscador (y por ahí las continuaciones de
+  // las listas que se vean desde ahí). Lo que ya suena sigue hasta que el
+  // usuario toque otra pista: cada track lleva su `.fuente`.
+  function _setFuente(id) {
+    if (!_fuentes[id] || id === _fuenteActiva) return;
+    _fuenteActiva = id;
+    try { localStorage.setItem(SRCKEY, id); } catch {}
+    _renderFuentes();
+    const rel = $('#jr-pane-rel');
+    if (rel) { rel.innerHTML = ''; rel._items = []; rel._fuente = null; rel._esPl = false; }
+    const q = $('#jr-q'); const txt = q ? q.value.trim() : '';
+    if (txt) _buscar(txt, '#jr-pane-rel');
+    else if (rel) {
+      _buscando = false;
+      if (id === 'local') _listarLocal(rel);
+      else if (_pl.items.length) _renderPlaylistEn(rel);
+      else rel.innerHTML = '<div class="jr-hint">Buscá música o elegí una estación.</div>';
+    }
+  }
+  function _renderFuentes() {
+    const row = $('#jr-src'); if (!row) return;
+    let html = _ordenFuentes.map((id) => {
+      const fs = _fuentes[id];
+      return `<button type="button" class="jr-src-pill${id === _fuenteActiva ? ' on' : ''}" data-src="${id}" aria-pressed="${id === _fuenteActiva}">${_esc(fs.etiqueta_es)}</button>`;
+    }).join('');
+    if (_fuenteActiva === 'local') {
+      html += `<label class="jr-src-subir" for="jr-src-file">${svg('note')} Subir música`
+        + `<input type="file" multiple accept="audio/*" id="jr-src-file" hidden></label>`
+        + `<span class="jr-src-hint">Los archivos van a data/music</span>`;
+    }
+    row.innerHTML = html;
+    const fi = $('#jr-src-file');
+    if (fi) fi.addEventListener('change', (ev) => { _subirLocal(ev.target && ev.target.files); if (ev.target) ev.target.value = ''; });
+  }
+
   // ── Vista de canal ──
   function _abrirCanal(track) {
+    if (_fuenteDe(track) !== 'youtube') return;   // solo YouTube tiene canal; Local no
     _inChannel = true; $('#jr-browse').hidden = true;
     const ch = $('#jr-channel'); ch.hidden = false;
     ch.innerHTML =
@@ -1021,7 +1256,10 @@
     if (!st || !st.track || !st.sonando) return;
     _booted = true; _state = st; _intent = true; _played.add(st.track.id);
     const kb = _clave(st.track); if (kb) _playedClaves.add(kb);
-    _asegurarAudio().src = _src(st.track, { autoplay: true, start: st.t });
+    // El track guardado conoce su fuente: se reanuda con SU player (iframe o
+    // <audio>), nunca a ciegas con YouTube.
+    const p = _playerDe(st.track);
+    if (p && p.cargar) p.cargar(st.track, { autoplay: true, start: st.t });
     _armarGesto(); _guardadoPeriodico();
     _sembrarPlaylist(st.track);
     _renderNow(); _renderMini();
@@ -1034,9 +1272,106 @@
     if (!_mounted && _tries < 40) { _tries++; setTimeout(init, 120); }   // el header puede tardar
   }
 
+  // ── Registro de fuentes + API pública ───────────────────────────────────────
+  // registrarFuente() es la superficie ESTABLE para los demás agentes (spotify/
+  // streams). Cada fuente aporta SU buscador (buscar/mas/relacionados) y SU
+  // player. Las etiquetas son las de las pills del popover. No romper la firma:
+  // otros agentes ya la usan.
+  //
+  // ─────────────────────── FIRMA ESTABLE DEL API ───────────────────────────────
+  // window.JarvisRadio.registrarFuente({
+  //   id, etiqueta_es, etiqueta_en, buscar, mas, relacionados, player
+  // })
+  //
+  //   id: string úNICO de la fuente ('youtube' | 'local' | 'spotify' | ...).
+  //       Idempotente: re-registrar un id ya visto NO pisa (devolver el ya
+  //       registrado). El id viaja en cada track como `track.fuente` y se
+  //       persiste: es la clave del player correcto al reanudar.
+  //   etiqueta_es / etiqueta_en: strings de la pill del popover (fallback al
+  //       id). La i18n las traduce con las claves 'YouTube'/'Local'/'Spotify'/
+  //       'Streams' — registrá la tuya también en radio.js _i18n() o quedará
+  //       en ES.
+  //   buscar(q): Promise<{resultados, token?, error?}> — búsqueda de texto
+  //       libre. `resultados` = filas {id, url, titulo, canal, duracion, thumb}
+  //       ya normalizables por la Radio; `token` = marca de continuación (o
+  //       null/undefined = no hay más).
+  //   mas(token): Promise<{resultados, token?, error?}> — la tanda SIGUIENTE
+  //       de la búsqueda anterior (recibe el `token` que devolvió buscar()).
+  //       Sin continuación: Promise.resolve({resultados: []}).
+  //   relacionados(id): Promise<{resultados, error?}> — relacionados de una
+  //       pista (id = el id de la fila). Sin relacionados o la fuente de V1
+  //       no los tiene: Promise.resolve({resultados: []}).
+  //   player: { cargar(track, {autoplay, start}), cmd(func, args),
+  //             onMensaje(e), destroy() } — el adaptador del reproductor:
+  //     · cargar(track, {autoplay, start}): empieza a sonar `track` (o lo
+  //       deja cueado si autoplay=false; start>1 reanuda en ese segundo).
+  //     · cmd(func, args): vocabulario fijo de YouTube —
+  //       'playVideo'|'pauseVideo'|'seekTo'([sec])|'setVolume'([0-100])|
+  //       'mute'|'unMute'. Traducí a tu motor.
+  //     · onMensaje(e): recibí los eventos del player como infoDelivery
+  //       {duration, currentTime, playerState(0=fin,1=play,2=pausa)} y
+  //       onError {info: código}: son los canales que usa la Radio para el
+  //       seek, repeat, auto-avance y la racha de errores.
+  //     · destroy(): pausá y liberá TU player cuando la Radio salta a otra
+  //       fuente (p.ej. <audio>.pause() + src=""; el iframe de youtube usa
+  //       pauseVideo y se queda montado).
+  // ─────────────────────────────────────────────────────────────────────────────
+  function registrarFuente(esp) {
+    if (!esp || typeof esp.id !== 'string' || !esp.id) return null;
+    if (_fuentes[esp.id]) return _fuentes[esp.id];   // idempotente: re-registrar no pisa
+    const f = {
+      id: esp.id,
+      etiqueta_es: (esp.etiqueta_es || esp.id),
+      etiqueta_en: (esp.etiqueta_en || esp.etiqueta_es || esp.id),
+      buscar: (typeof esp.buscar === 'function') ? esp.buscar : async () => ({ resultados: [] }),
+      mas: (typeof esp.mas === 'function') ? esp.mas : async () => ({ resultados: [] }),
+      relacionados: (typeof esp.relacionados === 'function') ? esp.relacionados : async () => ({ resultados: [] }),
+      player: esp.player || null,
+    };
+    _fuentes[f.id] = f; _ordenFuentes.push(f.id);
+    _renderFuentes();
+    return f;
+  }
+
+  // Fuente 'youtube' (defecto): busca/mas/rel + player iframe postMessage. Su
+  // comportamiento es EXACTAMENTE el de siempre — solo quedó envuelto en el
+  // adaptador de player.
+  registrarFuente({
+    id: 'youtube', etiqueta_es: 'YouTube', etiqueta_en: 'YouTube',
+    buscar: async (q) => { try { return await (await fetch(BUSCAR + encodeURIComponent(q))).json(); } catch { return { resultados: [], error: 'No se pudo buscar' }; } },
+    mas: async (token) => { try { return await (await fetch(MAS + encodeURIComponent(token))).json(); } catch { return { resultados: [], token: null }; } },
+    relacionados: async (id) => { try { return await (await fetch(REL + encodeURIComponent(id))).json(); } catch { return { resultados: [], error: 'No se pudo buscar' }; } },
+    player: {
+      cargar(track, opts) {
+        _asegurarAudio().src = _src(track, Object.assign({ autoplay: !_twitch, start: 0 }, opts || {}));
+        if (_twitch) _ytCmd('pauseVideo');
+      },
+      cmd: (func, args) => _ytCmd(func, args),
+      onMensaje: (e) => _onMensaje(e),
+      destroy: () => { _ytCmd('pauseVideo', []); },
+    },
+  });
+
+  // Fuente 'local': archivos de audio del workspace (data/music). Busca con
+  // modo=local (backend en paralelo); la subida es UI directa a /api/radio/
+  // local/subir. MAS/REL de V1 no tienen continuación real: la cola sigue por
+  // lo que haya abajo de la lista y, si se agota, el fallback de `_traerMas`
+  // busca por título en la misma fuente (dedupe por id/canción).
+  registrarFuente({
+    id: 'local', etiqueta_es: 'Local', etiqueta_en: 'Local',
+    buscar: async (q) => { try { return await (await fetch(BUSCAR_LOCAL + encodeURIComponent(q))).json(); } catch { return { resultados: [], error: 'No se pudo buscar' }; } },
+    mas: async () => ({ resultados: [], token: null }),
+    relacionados: async () => ({ resultados: [] }),
+    player: _playerLocal,
+  });
+
+  // Fuente activa persistida (respetala al abrir; si no está registrada,
+  // queda el default youtube).
+  try { const s = localStorage.getItem(SRCKEY); if (s && _fuentes[s]) _fuenteActiva = s; } catch {}
+
   // `play` público = poner algo a sonar desde afuera (mismo camino que el
   // handoff del preview: nace una playlist con esa pista y sigue por relacionados).
-  root.JarvisRadio = { init, open, close, play: adopt, adopt, pauseForTwitch, resumeAfterTwitch, estado: () => _state };
+  root.JarvisRadio = { init, open, close, play: adopt, adopt, pauseForTwitch, resumeAfterTwitch, estado: () => _state, registrarFuente, fuentes: () => _ordenFuentes.slice() };
 
   // Boot ASAP (resume) + montaje de UI cuando el DOM esté listo.
   if (document.readyState === 'loading') {

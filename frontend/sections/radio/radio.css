@@ -115,6 +115,22 @@
 /* Mata el focus-ring global de tokens.css (:where(...input...):focus-visible) → sin rectángulo */
 .jr-search input:focus,.jr-search input:focus-visible{outline:none;box-shadow:none}
 
+/* ── Fuentes (fila de pills SOBRE el buscador): la seleccionada es la mesa
+   del buscador. En 'local' aparecen además la subida de música y el hint. ── */
+.jr-src{display:flex;align-items:center;gap:6px;padding:0 14px 8px;flex-wrap:wrap}
+.jr-src-pill{padding:4px 10px;border:1px solid var(--ob-line-1);border-radius:var(--radius-pill,999px);
+  background:var(--ob-bg-2);color:var(--ob-fg-3);font:500 var(--text-2xs,10px) var(--font-ui);
+  cursor:pointer;transition:color .18s,background .18s,border-color .18s,transform .18s}
+.jr-src-pill:hover{color:var(--ob-fg-1);border-color:var(--ob-line-2)}
+.jr-src-pill.on{color:var(--ob-accent-fg);border-color:var(--ob-accent-24);background:var(--ob-accent-14)}
+.jr-src-subir{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;
+  border:1px dashed var(--ob-line-2);border-radius:var(--radius-pill,999px);
+  color:var(--ob-fg-2);font:500 var(--text-2xs,10px) var(--font-ui);cursor:pointer;
+  transition:color .18s,border-color .18s,background .18s}
+.jr-src-subir:hover{color:var(--ob-accent-fg);border-color:var(--ob-accent-24);background:var(--ob-accent-08)}
+.jr-src-subir svg{width:11px;height:11px}
+.jr-src-hint{font:400 var(--text-2xs,10px) var(--font-ui);color:var(--ob-fg-4)}
+
 .jr-now{display:flex;gap:14px;padding:0 16px 14px}
 .jr-now .jr-art{width:118px;height:118px;border-radius:var(--radius-xl,16px);
   box-shadow:var(--shadow-2), 0 0 34px -8px var(--ob-accent-glow), inset 0 0 0 1px oklch(100% 0 0 / .08)}
