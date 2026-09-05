@@ -148,7 +148,7 @@ async def spotify_token():
 
 @router.get("/spotify/estado")
 async def spotify_estado():
-    """{login: bool, configurado: bool} — la Radio usa esto para mostrar
+    """{configurado: bool, sesion: bool} — la Radio usa esto para mostrar
     "iniciá sesión" en vez de un aviso de error genérico al buscar."""
     config = bool(sp.client_id())
     sesion = sp.token_valido() if config else False

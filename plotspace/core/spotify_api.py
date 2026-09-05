@@ -11,46 +11,75 @@ acá NO hay token management de app, todo es la cuenta del usuario.
 
 Credenciales: SPOTIFY_CLIENT_ID (requerido) + SPOTIFY_CLIENT_SECRET (opcional;
 sin secret el PKCE es válido con el client_id a secas). Se leen del entorno
-(plotspace/.env lo carga main.py con load_dotenv) — NUNCA se commitean.
+(plotspace/.env lo carga main.py con load_dotenv) y, como fallback, de
+data/.env (la app instalada guarda ahí sus claves) — NUNCA se commitean.
 
 Consumidor: routers/radio.py (/api/radio/spotify/*) y el endpoint
 GET /api/orchestrator/preview/buscar?modo=spotify (routers/orchestrator.py).
 """
 
+import asyncio
 import base64
 import hashlib
 import json
 import os
 import secrets
-import threading
 import time
+import weakref
 from urllib.parse import urlencode
 
 import httpx
+from dotenv import dotenv_values
 
 from plotspace.core.datadir import ruta_data
 
 _AUTHORIZE_URL = 'https://accounts.spotify.com/authorize'
 _TOKEN_URL = 'https://accounts.spotify.com/api/token'
 _API_URL = 'https://api.spotify.com/v1/search'
+_SCOPES = 'streaming user-read-playback-state'
 
 
 class SpotifyError(Exception):
     """Spotify no se pudo: sin sesión, sin config, saturado, respuesta rara."""
 
 
-# Clausura para buscar/refresh: un refresh a la vez (los dos pisan el archivo
-# de token y un doble fetch de tracks en paralelo con el token venciéndose
-# podría dejar estado inconsistente).
-_lock = threading.Lock()
+# Un refresh a la vez (ambos pisan el archivo de token y un doble fetch de
+# tracks en paralelo con el token venciéndose podría dejar estado
+# inconsistente). Es un asyncio.Lock POR EVENT LOOP: un threading.Lock
+# común bloquea el loop entero cuando dos corrutinas compiten en espera de
+# un await (la primera cuelga porque la segunda no suelta el GIL del loop).
+_locks_refresh = weakref.WeakKeyDictionary()
+
+
+def _lock_refresh() -> asyncio.Lock:
+    loop = asyncio.get_running_loop()
+    lock = _locks_refresh.get(loop)
+    if lock is None:
+        lock = _locks_refresh[loop] = asyncio.Lock()
+    return lock
+
+
+def _env_archivo() -> dict:
+    """Valores de data/.env (la app instalada guarda ahí sus claves; env del
+    proceso manda). Vacío si no existe el archivo o no se puede leer."""
+    try:
+        return dotenv_values(ruta_data('.env'))
+    except (OSError, ValueError):
+        return {}
 
 
 def client_id() -> str:
-    return os.environ.get('SPOTIFY_CLIENT_ID', '').strip()
+    v = os.environ.get('SPOTIFY_CLIENT_ID', '').strip()
+    if v:
+        return v
+    return (_env_archivo().get('SPOTIFY_CLIENT_ID') or '').strip()
 
 
 def client_secret() -> str:
-    return os.environ.get('SPOTIFY_CLIENT_SECRET', '').strip()
+    v = os.environ.get('SPOTIFY_CLIENT_SECRET', '').strip()
+    if v:
+        return v
+    return (_env_archivo().get('SPOTIFY_CLIENT_SECRET') or '').strip()
 
 
 # ─── Persistencia (data/, 0600) ──────────────────────────────────────────────
@@ -111,6 +140,7 @@ def url_login(base_url: str) -> str:
         'client_id': cid,
         'response_type': 'code',
         'redirect_uri': redirect_uri,
+        'scope': _SCOPES,
         'code_challenge': challenge,
         'code_challenge_method': 'S256',
         'state': state,
@@ -165,10 +195,13 @@ def token_valido() -> bool:
 
 
 async def refresh() -> dict:
-    """Refresca con el refresh_token guardado (lock simple: 1 a la vez).
-    Devuelve el token nuevo; SpotifyError si no hay sesión válida."""
-    with _lock:
+    """Refresca con el refresh_token guardado (lock asyncio: 1 a la vez y con
+    re-chequeo — si otro esperó y ya refrescó, NO pisa con un segundo POST).
+    Devuelve el token vigente; SpotifyError si no hay sesión válida."""
+    async with _lock_refresh():
         t = _leer_token() or {}
+        if t.get('expires_at', 0) > time.time() + 30:
+            return t          # otro refrescó mientras esperábamos: usar el suyo
         ref = (t.get('refresh_token') or '').strip()
         if not ref:
             raise SpotifyError('Sin sesión de Spotify — iniciá sesión en ⚙ → Radio')

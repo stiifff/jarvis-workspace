@@ -182,6 +182,20 @@
 #jr-src-hints .jr-src-hint-btn:hover{background:var(--ob-accent-14)}
 #jr-src-hints .jr-src-hint-btn:active{transform:scale(.97)}
 #jr-src-hints .jr-src-hint-btn:focus-visible{outline:none;box-shadow:0 0 0 3px var(--ob-accent-24)}
+/* El "botón" puede ser un LINK ("Abrir Spotify" del hint Premium): misma pill,
+   sin subrayado ni margen de button. */
+#jr-src-hints a.jr-src-hint-btn{display:inline-flex;align-items:center;text-decoration:none}
+/* Guía inline de configuración de Spotify (pasos numerados, bajo el hint):
+   misma card visual que el hint, CTA "Cerrar" como pill. */
+#jr-src-hints .jr-setup{display:flex;flex-direction:column;gap:9px;padding:11px 12px;
+  border:1px solid var(--ob-accent-24);border-radius:var(--radius-lg,12px);
+  background:linear-gradient(180deg, var(--ob-glass-hi), transparent 55%), var(--ob-bg-2);
+  color:var(--ob-fg-2);font:400 var(--text-xs,11px) var(--font-ui)}
+#jr-src-hints .jr-setup b{color:var(--ob-fg-0);font-weight:600}
+#jr-src-hints .jr-setup ol{margin:0;padding-left:16px;display:flex;flex-direction:column;gap:5px}
+#jr-src-hints .jr-setup code{font:600 var(--text-xs,11px) var(--font-mono);color:var(--ob-accent);
+  background:var(--ob-bg-3);padding:1px 4px;border-radius:4px;word-break:break-all}
+#jr-src-hints .jr-setup .jr-src-hint-btn{margin-left:0;align-self:flex-start}
 
 .jr-now{display:flex;gap:14px;padding:0 16px 14px}
 .jr-now .jr-art{width:118px;height:118px;border-radius:var(--radius-xl,16px);

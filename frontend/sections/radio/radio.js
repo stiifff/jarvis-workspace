@@ -1399,18 +1399,21 @@
     q.placeholder = _t(_PH[f.id] || 'Buscá música o pegá un link de YouTube…');
   }
   const _hintsFuente = {};
-  // `extra` opcional: {boton: 'Conectá Spotify'} → cada línea del hint (salvo
-  // la de Premium, que pide otra cosa) se acompaña de un botón que llama al
-  // `login` de la fuente activa. REPLACE, no append: una fuente solo puede
-  // tener UNA línea activa — si re-emite el MISMO contenido, no se pisa nada
-  // (evita parpadeos y duplicados por re-emisión tardía).
+  // `extra` opcional: {boton: 'Conectá Spotify'} → cada línea del hint se
+  // acompaña de un botón que llama al `login` de la fuente activa;
+  // {boton, url} → el "botón" es un LINK (target _blank) a esa url (ej:
+  // "Abrir Spotify" de la cuenta Premium — ahí NO hay nada que loguear).
+  // REPLACE, no append: una fuente solo puede tener UNA línea activa — si
+  // re-emite el MISMO contenido, no se pisa nada (evita parpadeos y
+  // duplicados por re-emisión tardía).
   function hintDeFuente(fid, texto, extra) {
     if (!fid) return;
     const txt = (typeof texto === 'string' && texto.trim()) ? texto : null;
     const boton = (extra && extra.boton) ? extra.boton : null;
+    const url = (extra && extra.url) ? extra.url : null;
     const prev = _hintsFuente[fid];
-    if (prev && prev.txt === txt && prev.boton === boton) return;
-    if (txt) _hintsFuente[fid] = { txt: txt, boton: boton };
+    if (prev && prev.txt === txt && prev.boton === boton && prev.url === url) return;
+    if (txt) _hintsFuente[fid] = { txt: txt, boton: boton, url: url };
     else delete _hintsFuente[fid];
     _renderHints();
   }
@@ -1428,14 +1431,18 @@
       const b = document.createElement('div'); b.className = 'jr-src-hint';
       const span = document.createElement('span'); span.textContent = l;
       b.appendChild(span);
-      if (h && h.boton && !l.includes('Premium')) {
-        const bt = document.createElement('button'); bt.type = 'button'; bt.className = 'jr-src-hint-btn';
-        bt.textContent = h.boton;
-        bt.addEventListener('click', () => {
-          const f = _fuentes[_fuenteActiva];
-          if (f && typeof f.login === 'function') { try { f.login(); } catch {} }
-        });
-        b.appendChild(bt);
+      if (h && h.boton) {
+        let bt;
+        if (h.url) {
+          bt = document.createElement('a'); bt.href = h.url; bt.target = '_blank'; bt.rel = 'noopener noreferrer';
+        } else if (!l.includes('Premium')) {
+          bt = document.createElement('button'); bt.type = 'button';
+          bt.addEventListener('click', () => {
+            const f = _fuentes[_fuenteActiva];
+            if (f && typeof f.login === 'function') { try { f.login(); } catch {} }
+          });
+        }
+        if (bt) { bt.className = 'jr-src-hint-btn'; bt.textContent = h.boton; b.appendChild(bt); }
       }
       cont.appendChild(b);
     }

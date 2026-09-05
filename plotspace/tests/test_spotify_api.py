@@ -80,21 +80,26 @@ def _fijar_net(handler):
 
 
 def test_url_login_sin_client_id_es_vacio():
-    with mock.patch.dict(os.environ, {}, clear=True):
+    with mock.patch.dict(os.environ, {}, clear=True), \
+            mock.patch.object(sp, '_env_archivo', lambda: {}):
         assert sp.url_login('http://localhost:3000') == ''
 
 
 def test_url_login_persiste_pkce_y_pkce_ok():
-    from urllib.parse import unquote
+    from urllib.parse import unquote_plus
     with _entorno() as d:
         url = sp.url_login('http://localhost:3000/')
         assert url.startswith('https://accounts.spotify.com/authorize?')
-        params = dict((k, unquote(v)) for k, v in
+        params = dict((k, unquote_plus(v)) for k, v in
                       (p.split('=', 1) for p in url.split('?', 1)[1].split('&')))
         assert params['client_id'] == CLIENT_ID
         assert params['response_type'] == 'code'
         assert params['redirect_uri'] == 'http://localhost:3000/api/radio/spotify/callback'
         assert params['code_challenge_method'] == 'S256'
+        # El Web Playback SDK exige 'streaming' y la lectura de estado
+        # (play/pausa/posición) usa 'user-read-playback-state'.
+        assert 'streaming' in params['scope'].split()
+        assert 'user-read-playback-state' in params['scope'].split()
         assert 'state' in params and len(params['state']) >= 20
 
         pend = sp.pendiente()
@@ -153,10 +158,71 @@ def test_intercambiar_falla_sin_json():
 
 
 def test_buscar_sin_configuracion():
-    with mock.patch.dict(os.environ, {}, clear=True):
+    with mock.patch.dict(os.environ, {}, clear=True), \
+            mock.patch.object(sp, '_env_archivo', lambda: {}):
         with pytest.raises(sp.SpotifyError) as exc:
             asyncio.run(sp.buscar('queen'))
         assert 'SPOTIFY_CLIENT_ID' in str(exc.value)
+
+
+def test_client_id_desde_data_env():
+    """El env manda; si falta, cae a data/.env (la app instalada)."""
+    with tempfile.TemporaryDirectory() as d:
+        prev = datadir.DATA_DIR
+        datadir.DATA_DIR = d
+        try:
+            with open(os.path.join(d, '.env'), 'w', encoding='utf-8') as f:
+                f.write(f'SPOTIFY_CLIENT_ID={CLIENT_ID}\n'
+                        f'SPOTIFY_CLIENT_SECRET={CLIENT_SECRET}\n')
+            with mock.patch.dict(os.environ, {}, clear=True):
+                assert sp.client_id() == CLIENT_ID
+                assert sp.client_secret() == CLIENT_SECRET
+                # env manda sobre data/.env
+                with mock.patch.dict(os.environ, {'SPOTIFY_CLIENT_ID': 'otro'}):
+                    assert sp.client_id() == 'otro'
+        finally:
+            datadir.DATA_DIR = prev
+
+
+def test_callback_state_invalido_no_intercambia():
+    """state malo → redirect error y el code NO se canjea (sin POST a token)."""
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+    from plotspace.routers import radio
+
+    llamadas = []
+
+    def handler(m, url, kw):
+        llamadas.append(url)
+        raise AssertionError('no debe intercambiar con state inválido')
+
+    with _entorno() as d, _fijar_net(handler):
+        app = FastAPI()
+        app.include_router(radio.router)
+        client = TestClient(app)
+        sp.url_login('http://testserver')        # deja un pendiente con OTRO state
+        r = client.get('/api/radio/spotify/callback?code=CODIGO_MALO&state=otro',
+                       follow_redirects=False)
+        assert r.status_code == 307
+        assert '/workspace?spotify=error' in r.headers['location']
+        assert llamadas == []
+        assert sp._leer_token() is None
+
+
+def test_callback_replay_o_state_viejo():
+    """Callback sin state (o con state perso por un login viejo) → error."""
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+    from plotspace.routers import radio
+
+    with _entorno():
+        app = FastAPI()
+        app.include_router(radio.router)
+        client = TestClient(app)
+        r = client.get('/api/radio/spotify/callback?code=X',
+                       follow_redirects=False)
+        assert r.status_code == 307
+        assert 'spotify=error' in r.headers['location']
 
 
 def test_buscar_mapea_tracks():
@@ -257,6 +323,88 @@ def test_refresh_sin_refresh_token():
         with pytest.raises(sp.SpotifyError) as exc:
             asyncio.run(sp.buscar('q'))
         assert 'Sin sesión de Spotify' in str(exc.value)
+
+
+def test_refresh_concurrente_una_sola_llamada():
+    """Dos refreshes en paralelo: el lock asyncio serializa y el segundo NO
+    pisa con un POST doble (re-chequea el token ya refrescado)."""
+    with _entorno() as d:
+        sp._guardar_token({'access_token': 'AT-VIEJO', 'refresh_token': 'RT-1',
+                           'expires_at': time.time() - 10})
+        posts = []
+
+        def handler(m, url, kw):
+            posts.append(url)
+            time.sleep(0.05)     # mantener el primer POST en vuelo
+            return _FakeResp(200, {'access_token': 'AT-NUEVO',
+                                   'refresh_token': 'RT-2', 'expires_in': 3600})
+
+        async def doble_refresh():
+            return await asyncio.gather(sp.refresh(), sp.refresh())
+
+        with _fijar_net(handler):
+            r1, r2 = asyncio.run(doble_refresh())
+        assert len(posts) == 1                          # un solo POST a token
+        assert r1['access_token'] == 'AT-NUEVO'
+        assert r2['access_token'] == 'AT-NUEVO'         # el 2º usó el que ya se refrescó
+        tok = sp._leer_token()
+        assert tok['refresh_token'] == 'RT-2'
+
+
+def test_callback_ok_intercambia_y_guarda():
+    """state válido → POST authorization_code → token guardado + redirect ok."""
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+    from plotspace.routers import radio
+
+    def handler(m, url, kw):
+        assert url == 'https://accounts.spotify.com/api/token'
+        assert kw['data']['grant_type'] == 'authorization_code'
+        assert kw['data']['code'] == 'CODE-OK'
+        return _FakeResp(200, {'access_token': 'AT-OK', 'refresh_token': 'RT-ON',
+                               'expires_in': 3600})
+
+    with _entorno() as d, _fijar_net(handler):
+        app = FastAPI()
+        app.include_router(radio.router)
+        client = TestClient(app)
+
+        # el login previo deja el state+verifier en data/spotify-pkce.json
+        r = client.get('/api/radio/spotify/login')
+        assert r.status_code == 200 and r.json()['url']
+        pend = sp.pendiente()
+
+        r = client.get('/api/radio/spotify/callback',
+                       params={'code': 'CODE-OK', 'state': pend['state']},
+                       follow_redirects=False)
+        assert r.status_code == 307
+        assert '/workspace?spotify=ok' in r.headers['location']
+        tok = sp._leer_token()
+        assert tok and tok['access_token'] == 'AT-OK'
+
+
+def test_login_sin_client_id_error_limpio():
+    """/login 200 con {url:'', error} y /estado {configurado:False} — sin 500."""
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+    from plotspace.routers import radio
+
+    with tempfile.TemporaryDirectory() as d:
+        prev = datadir.DATA_DIR
+        datadir.DATA_DIR = d
+        try:
+            with mock.patch.dict(os.environ, {}, clear=True):
+                app = FastAPI()
+                app.include_router(radio.router)
+                client = TestClient(app)
+                r = client.get('/api/radio/spotify/login')
+                assert r.status_code == 200
+                assert r.json() == {'url': '', 'error': 'Spotify no está configurado (SPOTIFY_CLIENT_ID)'}
+                r = client.get('/api/radio/spotify/estado')
+                assert r.status_code == 200
+                assert r.json() == {'configurado': False, 'sesion': False}
+        finally:
+            datadir.DATA_DIR = prev
 
 
 def test_token_para_sdk():
