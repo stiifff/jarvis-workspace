@@ -241,7 +241,29 @@
 .mem-edge {
   stroke: var(--ob-accent-24);
   stroke-width: 1;
+  stroke-dasharray: 900;
+  animation: mem-draw 0.7s var(--ease-out) var(--d, 0ms) backwards;
+  transition: stroke var(--dur-1), stroke-width var(--dur-1), opacity var(--dur-1);
 }
+@keyframes mem-draw { from { stroke-dashoffset: 900; } to { stroke-dashoffset: 0; } }
+.mem-edge.activo { stroke: var(--ob-accent); stroke-width: 1.8; }
+.mem-edge.atenuado { opacity: 0.14; }
+.mem-nodo { cursor: pointer; transition: opacity var(--dur-1); }
+.mem-nodo.dim { opacity: 0.18; }
+.mem-nodo.hito circle { fill: var(--ob-accent-28); }
+.mem-grafo svg.sin-etiquetas .mem-nodo text { opacity: 0; transition: opacity var(--dur-1); }
+.mem-graf-ctrl { position: absolute; top: 10px; right: 12px; z-index: 2; display: flex; align-items: center; gap: 4px; }
+.mem-graf-ctrl button {
+  width: 30px; height: 30px; display: grid; place-items: center;
+  background: var(--ob-bg-2); color: var(--ob-fg-2);
+  border: 1px solid var(--ob-line-2); border-radius: var(--radius-sm); cursor: pointer;
+  font: 600 14px var(--font-ui);
+  transition: color var(--dur-1), border-color var(--dur-1), background var(--dur-1);
+}
+.mem-graf-ctrl button:hover { color: var(--ob-fg-0); border-color: var(--ob-accent); background: var(--ob-accent-08); }
+.mem-graf-zoom { min-width: 44px; text-align: center; font: 500 var(--text-2xs) var(--font-mono); letter-spacing: var(--ls-wide); color: var(--ob-fg-3); }
+.mem-graf-v { transition: transform var(--dur-2) var(--ease-out); }
+.mem-grafo.paneando .mem-graf-v { transition: none; }
 
 /* ══ Pestaña Live — constelación del enjambre ══════════════════════ */
 .mem-live { display: flex; flex: 1; min-height: 0; width: 100%; }

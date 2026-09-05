@@ -16,6 +16,7 @@
   let _liveVista  = 'pulso';       // 'pulso' | 'mapa'
   let _liveTimer  = null;          // limpieza de flashes
   let _mapaPos    = {};            // id de nodo → {x,y} del último layout (persistencia del grafo)
+  let _grafT      = { k: 1, x: 0, y: 0 };  // zoom + paneo de la vista Grafo
   let _salud      = null;          // lint del backend (/memory/salud)
 
   const esc = (s) => { const d = document.createElement('div'); d.textContent = String(s ?? ''); return d.innerHTML; };
@@ -310,10 +311,10 @@
     _renderBody();
   }
 
-  /* ── Grafo (force layout mini, SVG puro) ───────────────────── */
+  /* ── Grafo (force layout mini, SVG puro + zoom/paneo) ──────────── */
   function _renderGrafo(body) {
     if (!_memorias.length) {
-      body.innerHTML = '<div class="mem-vacio" style="flex:1;align-self:center">El grafo aparece cuando haya memorias enlazadas con [[wikilinks]].</div>';
+      body.innerHTML = `<div class="mem-vacio" style="flex:1;align-self:center">${_t('El grafo aparece cuando haya memorias enlazadas con [[wikilinks]].')}</div>`;
       return;
     }
     const W = 900, H = 520;
@@ -359,16 +360,24 @@
 
     body.innerHTML = `
       <div class="mem-grafo">
+        <div class="mem-graf-ctrl">
+          <button type="button" title="${_t('Alejar')}" data-act="out" aria-label="${_t('Alejar')}">−</button>
+          <span class="mem-graf-zoom" id="mem-graf-zoom">100%</span>
+          <button type="button" title="${_t('Acercar')}" data-act="in" aria-label="${_t('Acercar')}">+</button>
+          <button type="button" title="${_t('Ajustar')}" data-act="fit" aria-label="${_t('Ajustar')}">⤢</button>
+        </div>
         <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">
-          ${springs.map(([a, b]) =>
-            `<line class="mem-edge" x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b.x.toFixed(1)}" y2="${b.y.toFixed(1)}"/>`).join('')}
-          ${nodos.map(n => `
-            <g class="mem-nodo" data-slug="${esc(n.slug)}" transform="translate(${n.x.toFixed(1)},${n.y.toFixed(1)})">
-              <circle r="${7 + Math.min(n.grado * 2.5, 14)}"/>
-              <text x="0" y="${18 + Math.min(n.grado * 2.5, 14)}" text-anchor="middle">${esc(n.titulo.slice(0, 26))}</text>
-            </g>`).join('')}
+          <g class="mem-graf-v">
+            ${springs.map(([a, b], i) =>
+              `<line class="mem-edge" style="--d:${(i * 22).toFixed(0)}ms" x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b.x.toFixed(1)}" y2="${b.y.toFixed(1)}"/>`).join('')}
+            ${nodos.map(n => `
+              <g class="mem-nodo" data-slug="${esc(n.slug)}" transform="translate(${n.x.toFixed(1)},${n.y.toFixed(1)})">
+                <circle r="${7 + Math.min(n.grado * 2.5, 14)}"/>
+                <text x="0" y="${18 + Math.min(n.grado * 2.5, 14)}" text-anchor="middle">${esc(n.titulo.slice(0, 26))}</text>
+              </g>`).join('')}
+          </g>
         </svg>
-        <span class="mem-grafo-hint">click en un nodo = abrir · tamaño = conexiones</span>
+        <span class="mem-grafo-hint">${_t('click en un nodo = abrir · tamaño = conexiones · rueda = zoom · arrastrar = mover')}</span>
       </div>`;
 
     body.querySelectorAll('.mem-nodo').forEach(g =>
@@ -379,6 +388,102 @@
           t.classList.toggle('activo', t.dataset.tab === 'lista'));
         _renderBody();
       }));
+
+    // ── Zoom + paneo ────────────────────────────────────────────
+    const view = body.querySelector('.mem-grafo');
+    const svg  = body.querySelector('svg');
+    const grp  = body.querySelector('.mem-graf-v');
+    const zlbl = body.querySelector('#mem-graf-zoom');
+    const nodeEls = [...body.querySelectorAll('.mem-nodo')];
+    const edges   = [...body.querySelectorAll('.mem-edge')];
+
+    function aplicar() {
+      grp.setAttribute('transform', `translate(${_grafT.x.toFixed(1)},${_grafT.y.toFixed(1)}) scale(${_grafT.k.toFixed(3)})`);
+      svg.classList.toggle('sin-etiquetas', _grafT.k < 0.8);
+      if (zlbl) zlbl.textContent = Math.round(_grafT.k * 100) + '%';
+    }
+    function zoomEn(factor) {
+      const cx = W / 2, cy = H / 2;
+      const k2 = Math.max(0.3, Math.min(3.5, _grafT.k * factor));
+      _grafT = { k: k2,
+        x: cx - (cx - _grafT.x) * (k2 / _grafT.k),
+        y: cy - (cy - _grafT.y) * (k2 / _grafT.k) };
+      aplicar();
+    }
+    function fit() {
+      const xs = nodos.map(n => n.x), ys = nodos.map(n => n.y);
+      const minX = Math.min(...xs) - 50, maxX = Math.max(...xs) + 50;
+      const minY = Math.min(...ys) - 50, maxY = Math.max(...ys) + 50;
+      const k = Math.max(0.3, Math.min(2.5, Math.min(W / (maxX - minX), H / (maxY - minY)) * 0.92));
+      _grafT = { k: k, x: (W - (maxX + minX) * k) / 2, y: (H - (maxY + minY) * k) / 2 };
+      aplicar();
+    }
+
+    view.querySelector('[data-act="in"]').addEventListener('click', () => zoomEn(1.25));
+    view.querySelector('[data-act="out"]').addEventListener('click', () => zoomEn(1 / 1.25));
+    view.querySelector('[data-act="fit"]').addEventListener('click', fit);
+
+    view.addEventListener('wheel', (ev) => {
+      ev.preventDefault();
+      const r = svg.getBoundingClientRect();
+      const px = (ev.clientX - r.left) / r.width * W;
+      const py = (ev.clientY - r.top) / r.height * H;
+      const f = ev.deltaY < 0 ? 1.16 : 1 / 1.16;
+      const k2 = Math.max(0.3, Math.min(3.5, _grafT.k * f));
+      _grafT = { k: k2,
+        x: px - (px - _grafT.x) * (k2 / _grafT.k),
+        y: py - (py - _grafT.y) * (k2 / _grafT.k) };
+      aplicar();
+    }, { passive: false });
+
+    let down = null;
+    view.addEventListener('pointerdown', (ev) => {
+      if (ev.button !== 0) return;
+      down = { x: ev.clientX, y: ev.clientY, moved: false };
+    });
+    window.addEventListener('pointermove', (ev) => {
+      if (!down) return;
+      const r = svg.getBoundingClientRect();
+      if (!down.moved && Math.hypot(ev.clientX - down.x, ev.clientY - down.y) > 4) {
+        down.moved = true;
+        view.classList.add('paneando');
+      }
+      if (down.moved) {
+        ev.preventDefault();
+        _grafT.x += (ev.clientX - down.x) / r.width * W / _grafT.k;
+        _grafT.y += (ev.clientY - down.y) / r.height * H / _grafT.k;
+        down = { x: ev.clientX, y: ev.clientY, moved: true };
+        aplicar();
+      }
+    });
+    window.addEventListener('pointerup', () => { down = null; view.classList.remove('paneando'); });
+
+    // ── Highlight del subgrafo conectado (hover) ───────────────
+    nodeEls.forEach(g => {
+      g.addEventListener('pointerenter', () => {
+        const slug = g.dataset.slug;
+        const conn = new Set([slug]);
+        springs.forEach(([a, b]) => {
+          if (a.slug === slug) conn.add(b.slug);
+          if (b.slug === slug) conn.add(a.slug);
+        });
+        nodeEls.forEach(o => o.classList.toggle('dim', !conn.has(o.dataset.slug)));
+        edges.forEach((e, i) => {
+          const [a, b] = springs[i];
+          const toca = a.slug === slug || b.slug === slug;
+          e.classList.toggle('activo', toca);
+          e.classList.toggle('atenuado', !toca);
+        });
+        g.classList.add('hito');
+      });
+      g.addEventListener('pointerleave', () => {
+        nodeEls.forEach(o => o.classList.remove('dim'));
+        edges.forEach(e => e.classList.remove('activo', 'atenuado'));
+        g.classList.remove('hito');
+      });
+    });
+
+    fit();
   }
 
   /* ── Live (agentes en vivo) ────────────────────────────────── */

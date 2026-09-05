@@ -83,6 +83,7 @@
     "para adjuntarlo a la terminal": "to attach it to the terminal",
     "Al cargar": "On load",
     "Al hacer scroll": "On scroll",
+    "Ajustar": "Fit",
     "Alejar": "Zoom out",
     "Alinear": "Align",
     "Alternar panel del editor": "Toggle editor panel",
@@ -1296,6 +1297,7 @@
     "choques": "conflicts",
     "en cuarentena": "quarantined",
     "candidatas a guard": "guard candidates",
+    "click en un nodo = abrir · tamaño = conexiones · rueda = zoom · arrastrar = mover": "click a node = open its memory · size = connections · wheel = zoom · drag = pan",
   });
 })();
 
@@ -1642,5 +1644,6 @@
     "La memoria necesita un título": "The memory needs a title",
     "Proyecto no encontrado": "Project not found",
     "El proyecto no es un repo git": "The project is not a git repo",
+    "click en un nodo = abrir · tamaño = conexiones · rueda = zoom · arrastrar = mover": "click a node = open its memory · size = connections · wheel = zoom · drag = pan",
   });
 })();
