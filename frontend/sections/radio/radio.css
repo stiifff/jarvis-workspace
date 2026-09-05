@@ -118,18 +118,60 @@
 /* ── Fuentes (fila de pills SOBRE el buscador): la seleccionada es la mesa
    del buscador. En 'local' aparecen además la subida de música y el hint. ── */
 .jr-src{display:flex;align-items:center;gap:6px;padding:0 14px 8px;flex-wrap:wrap}
-.jr-src-pill{padding:4px 10px;border:1px solid var(--ob-line-1);border-radius:var(--radius-pill,999px);
-  background:var(--ob-bg-2);color:var(--ob-fg-3);font:500 var(--text-2xs,10px) var(--font-ui);
-  cursor:pointer;transition:color .18s,background .18s,border-color .18s,transform .18s}
-.jr-src-pill:hover{color:var(--ob-fg-1);border-color:var(--ob-line-2)}
-.jr-src-pill.on{color:var(--ob-accent-fg);border-color:var(--ob-accent-24);background:var(--ob-accent-14)}
-.jr-src-subir{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;
+/* Pill-ghost: borde line-2 en reposo, sin relleno; activa = señal acento-14
+   + texto fg-0 (único momento en que la pill se tija de violeta). Altura y
+   tipografía de 11px a juego con .jr-seg button (ambas ~27px). */
+.jr-src-pill{padding:6px 11px;border:1px solid var(--ob-line-2);border-radius:var(--radius-pill,999px);
+  background:transparent;color:var(--ob-fg-3);font:600 var(--text-xs,11px) var(--font-ui);
+  cursor:pointer;transition:color var(--dur-1) var(--ease-out),background var(--dur-1) var(--ease-out),border-color var(--dur-1) var(--ease-out),transform var(--dur-1) var(--ease-out)}
+.jr-src-pill:hover{color:var(--ob-fg-1);border-color:var(--ob-line-3)}
+.jr-src-pill:active{transform:scale(.96)}
+.jr-src-pill.on,.jr-src-pill[aria-pressed="true"]{color:var(--ob-fg-0);border-color:var(--ob-accent-24);background:var(--ob-accent-14)}
+.jr-src-pill:focus-visible{outline:none;box-shadow:0 0 0 3px var(--ob-accent-24)}   /* anillo de señal, sin rectángulo */
+/* Subir música (fuente local): pill LABEL discreta — mono 10px caps, muted;
+   hover la enciende (fg-0 sobre bg-3) sin robarle el CTA al buscador. */
+.jr-src-subir{display:inline-flex;align-items:center;gap:5px;padding:6px 10px;
   border:1px dashed var(--ob-line-2);border-radius:var(--radius-pill,999px);
-  color:var(--ob-fg-2);font:500 var(--text-2xs,10px) var(--font-ui);cursor:pointer;
-  transition:color .18s,border-color .18s,background .18s}
-.jr-src-subir:hover{color:var(--ob-accent-fg);border-color:var(--ob-accent-24);background:var(--ob-accent-08)}
+  color:var(--ob-fg-3);font:600 var(--text-2xs,10px) var(--font-mono);letter-spacing:var(--ls-caps);text-transform:uppercase;
+  cursor:pointer;transition:color var(--dur-1) var(--ease-out),background var(--dur-1) var(--ease-out),border-color var(--dur-1) var(--ease-out),transform var(--dur-1) var(--ease-out)}
+.jr-src-subir:hover{color:var(--ob-fg-0);background:var(--ob-bg-3)}
+.jr-src-subir:active{transform:scale(.96)}
+.jr-src-subir:focus-visible{outline:none;box-shadow:0 0 0 3px var(--ob-accent-24)}
 .jr-src-subir svg{width:11px;height:11px}
-.jr-src-hint{font:400 var(--text-2xs,10px) var(--font-ui);color:var(--ob-fg-4)}
+/* Micro-nota en la fila ("Los archivos van a data/music"). Va prefijada con #jr-src
+   para respirar por encima del bloque .jr-src-hint de los hints (spotify.js inyecta
+   un <style id="jr-src-hint-css"> con igual clase y viene DESPUÉS en cascada). */
+#jr-src .jr-src-hint{display:inline;padding:0;border:0;background:transparent;
+  font:400 var(--text-2xs,10px) var(--font-ui);color:var(--ob-fg-4)}
+
+/* ── Hints de estado de fuente (Spotify → #jr-src-hints) — vidrio tenue, borde
+   line-2, radio lg. El dot de la izquierda es el COLOR del caso (señal, no
+   relleno): default acento ("sesión no iniciada"), cian si NO hay botón de
+   conectar ("necesita cuenta Premium" — la fuente no muestra el CTA ahí),
+   y se reservan .hint-ok (--ob-run) / .hint-err (--ob-err-08) para cuando la
+   fuente emita esos casos. Todo prefijado con #: lo inyectado por spotify.js
+   pega 0,1,0 en la cascada — acá no queda ninguno al descubierto. ── */
+#jr-src-hints{padding:10px 14px 0;display:flex;flex-direction:column;gap:8px}
+#jr-src-hints .jr-src-hint{--jr-hint-c:var(--ob-accent);position:relative;display:flex;align-items:center;gap:10px;
+  padding:9px 12px;border:1px solid var(--ob-line-2);border-radius:var(--radius-lg,12px);
+  background:linear-gradient(180deg, var(--ob-glass-hi), transparent 55%), var(--ob-bg-2);
+  box-shadow:inset 0 1px 0 var(--ob-glass-hi);
+  color:var(--ob-fg-2);font:400 var(--text-xs,11px) var(--font-ui)}
+#jr-src-hints .jr-src-hint:not(:has(.jr-src-hint-btn)){--jr-hint-c:var(--ob-info)}
+#jr-src-hints .jr-src-hint.hint-ok{--jr-hint-c:var(--ob-run)}
+#jr-src-hints .jr-src-hint.hint-err{--jr-hint-c:var(--ob-err-08)}
+#jr-src-hints .jr-src-hint::before{content:"";flex:0 0 auto;width:7px;height:7px;border-radius:50%;
+  background:var(--jr-hint-c);box-shadow:0 0 0 3px color-mix(in oklch, var(--jr-hint-c) 22%, transparent)}
+#jr-src-hints .jr-src-hint b{color:var(--ob-fg-0);font-weight:600}
+/* CTA "Conectá Spotify": .ob-btn no existe en tokens — este es su look de
+   señal: bg accent-08 / borde accent-24 reposo, accent-14 al hover. */
+#jr-src-hints .jr-src-hint-btn{margin-left:auto;flex:0 0 auto;padding:6px 12px;
+  border:1px solid var(--ob-accent-24);border-radius:var(--radius-btn,7px);
+  background:var(--ob-accent-08);color:var(--ob-fg-0);font:600 var(--text-xs,11px) var(--font-ui);cursor:pointer;
+  transition:background var(--dur-1) var(--ease-out),border-color var(--dur-1) var(--ease-out),transform var(--dur-1) var(--ease-out)}
+#jr-src-hints .jr-src-hint-btn:hover{background:var(--ob-accent-14)}
+#jr-src-hints .jr-src-hint-btn:active{transform:scale(.97)}
+#jr-src-hints .jr-src-hint-btn:focus-visible{outline:none;box-shadow:0 0 0 3px var(--ob-accent-24)}
 
 .jr-now{display:flex;gap:14px;padding:0 16px 14px}
 .jr-now .jr-art{width:118px;height:118px;border-radius:var(--radius-xl,16px);
@@ -151,9 +193,14 @@
 .jr-chanlink:hover .jr-vercanal{opacity:1;background:var(--ob-accent-14)}
 .jr-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:auto}
 .jr-chip{display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border-radius:var(--radius-pill,999px);
-  background:var(--ob-bg-2);border:1px solid var(--ob-line-1);color:var(--ob-fg-2);font:500 var(--text-2xs,10px) var(--font-ui);white-space:nowrap}
+  background:var(--ob-bg-2);border:1px solid var(--ob-line-1);color:var(--ob-fg-2);font:500 var(--text-2xs,10px) var(--font-ui);white-space:nowrap;transition:border-color var(--dur-1) var(--ease-out)}
 .jr-chip svg{width:11px;height:11px;color:var(--ob-fg-3)}
 .jr-chip b{color:var(--ob-fg-0);font-weight:600}
+/* Números de datos (duración, vistas): tabular para que no baile el ancho.
+   Mientras la fuente no emita clase de tipo (look; la lógica la arregla otro
+   agente), al menos las cifras no tiemblan si el chip dice "YouTube" de
+   defecto en fuentes no-YouTube. */
+.jr-now .jr-chip b{font-variant-numeric:tabular-nums}
 
 .jr-transport{padding:0 16px 12px;display:flex;flex-direction:column;gap:12px}
 
@@ -306,15 +353,24 @@
 /* Filas (resultados / relacionados / canal) */
 .jr-row{display:flex;align-items:center;gap:11px;width:100%;padding:8px;border:1px solid transparent;background:transparent;
   border-radius:var(--radius-lg,12px);text-align:left;cursor:pointer;transition:background .18s,border-color .18s}
-.jr-row:hover{background:var(--ob-bg-2);border-color:var(--ob-line-1)}
+.jr-row:hover{background:var(--ob-bg-2);border-color:var(--ob-line-2)}
+.jr-row:focus-visible{outline:none;box-shadow:0 0 0 3px var(--ob-accent-24)}   /* anillo de señal */
 .jr-row:hover .jr-add{opacity:1}
 .jr-row.activa{background:var(--ob-accent-14);border-color:var(--ob-accent-24)}
 .jr-thumb{position:relative;width:74px;height:42px;border-radius:var(--radius,8px);flex:0 0 auto;overflow:hidden;background:var(--ob-bg-3)}
 .jr-thumb img{width:100%;height:100%;object-fit:cover;display:block}
 .jr-thumb .jr-viz{position:absolute;left:6px;bottom:5px;height:10px}
 .jr-dur{position:absolute;right:4px;bottom:4px;z-index:2;font:600 var(--text-2xs,10px) var(--font-mono);color:#fff;
-  background:oklch(0% 0 0 / .78);padding:1px 5px;border-radius:3px;letter-spacing:.02em}
+  background:oklch(0% 0 0 / .78);padding:1px 5px;border-radius:3px;letter-spacing:var(--ls-wide)}
 .jr-dur.live{background:var(--ob-info);color:#fff}
+/* Fuentes NO-YouTube (streams SomaFM, Spotify): miniaturas redondas de disco/
+   álbum 40px — el chip de duración (mono) flota como badge en la esquina.
+   Selectores por prefijo del id de la fila (data-vid); los thumbs de streams
+   son data-URI 74×42 que el cover recorta dentro del círculo. */
+.jr-row[data-vid^="soma:"] .jr-thumb,.jr-row[data-vid^="spotify:"] .jr-thumb{width:40px;height:40px;border-radius:var(--radius-pill,999px);
+  box-shadow:inset 0 0 0 1px oklch(100% 0 0 / .08)}
+.jr-row[data-vid^="soma:"] .jr-dur,.jr-row[data-vid^="spotify:"] .jr-dur{right:1px;bottom:1px;padding:1px 5px;border-radius:var(--radius-pill,999px)}
+.jr-row[data-vid^="soma:"] .jr-dur{background:var(--ob-info)}   /* en vivo: badge cian, como .jr-dur.live */
 .jr-rmeta{min-width:0;flex:1 1 auto;display:flex;flex-direction:column;gap:3px}
 .jr-rmeta b{font:600 var(--text-sm,12px) var(--font-ui);color:var(--ob-fg-0);line-height:1.3;
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
@@ -322,6 +378,7 @@
 .jr-add{flex:0 0 auto;width:30px;height:30px;border:0;background:transparent;border-radius:var(--radius-btn,7px);display:grid;place-items:center;
   color:var(--ob-fg-3);opacity:0;cursor:pointer;transition:opacity .18s,background .18s,color .18s}
 .jr-add:hover{background:var(--ob-bg-3);color:var(--ob-fg-0)}
+.jr-add:focus-visible{outline:none;box-shadow:0 0 0 3px var(--ob-accent-24)}
 .jr-add svg{width:17px;height:17px}
 
 /* Dots de continuación — el pie de toda lista: "hay más de esto".
@@ -331,6 +388,7 @@
   border:1px dashed var(--ob-line-1);background:transparent;border-radius:var(--radius-lg,12px);cursor:pointer;
   color:var(--ob-fg-3);transition:background .18s,border-color .18s,color .18s}
 .jr-more:hover{background:var(--ob-bg-2);border-color:var(--ob-accent-24);color:var(--ob-fg-1)}
+.jr-more:focus-visible{outline:none;box-shadow:0 0 0 3px var(--ob-accent-24)}
 .jr-more-txt{font:500 var(--text-xs,11px) var(--font-ui);letter-spacing:.01em}
 .jr-more-q{font:500 var(--text-xs,11px) var(--font-ui);color:var(--ob-fg-2);max-width:150px;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -357,6 +415,7 @@
 /* Cola */
 .jr-qrow{display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:var(--radius,8px);cursor:pointer;transition:background .18s}
 .jr-qrow:hover{background:var(--ob-bg-2)}
+.jr-qrow:focus-visible{outline:none;box-shadow:0 0 0 3px var(--ob-accent-24)}
 .jr-qart{width:40px;height:40px;border-radius:var(--radius-sm,6px);flex:0 0 auto}
 .jr-qart .jr-viz{height:14px}
 .jr-qrow .jr-rmeta b{-webkit-line-clamp:1}

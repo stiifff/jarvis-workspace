@@ -221,7 +221,9 @@
       const err = String(data.error);
       if (/configurad|CLIENT_ID/i.test(err)) {
         _hint('Spotify no está configurado', 'spotify:config');
-      } else if (/sesion|login|token|401|autoriz|auth/i.test(err)) {
+      } else if (/sesi[oó]n|login|token|401|autoriz|auth/i.test(err)) {
+        // OJO: el backend dice "Sin sesión de Spotify…" (con ó acentuada):
+        // /sesion/ plano NO matchea y el hint quedaba muerto.
         _hint('Sesión de Spotify no iniciada', 'spotify:sesion');
         _pedirLogin();
       }
@@ -461,6 +463,7 @@
   // ── boot ──
   function _boot() {
     _i18n();
+    _css();   // las clases .jr-src-hints las pinta el contenedor de radio.js
     _leerCallbackUri();
     _verificarSesion();
     if (registrar()) {
