@@ -61,6 +61,10 @@ Pick agents, how many, and a layout. Seven Claude Codes, a mix, or one shell. Th
   <img src="docs/images/new-terminal.png" alt="New terminal — pick Claude, Codex, Grok, layout, launch" width="920">
 </p>
 
+<p align="center">
+  <img src="docs/images/swarm.png" alt="Jarvis Workspace — a live grid of Claude Code agents on the same project" width="920">
+</p>
+
 ### Your accounts, not ours
 
 ⚙ → **Accounts**. Several logins per CLI, switch without logging in again. Native sessions (Grok, Claude, …) show up even if you never clicked Connect. Rate-limit? It rotates.
