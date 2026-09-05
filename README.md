@@ -77,6 +77,14 @@ Edit your project while the agent works in its own pane — file tree and a live
   <img src="docs/images/radio.png" alt="Radio — music search and playback open over the agent grid" width="920">
 </p>
 
+### Mobile Studio
+
+Preview your app in a live phone frame — add phone frames, web browsers or project notes to the canvas, zoom to taste. Phones connect to the Expo/Metro the agent started.
+
+<p align="center">
+  <img src="docs/images/mobile-studio.png" alt="Mobile Studio — iPhone 16 Pro frame, dock with phone, web, note" width="800">
+</p>
+
 ### Live on Discord
 
 Windows only: the launcher (`Jarvis.exe`) pushes your fleet to Discord — live activity, agent count and uptime while the swarm works.
