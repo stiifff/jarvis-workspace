@@ -10,7 +10,7 @@
 // reinicio, lo más rápido posible, desde el segundo donde quedó (boot temprano).
 //
 // MULTI-FUENTE (V1): el buscador del popover tiene un pill de FUENTE (YouTube,
-// Local, y las que registren otros agentes: spotify/streams). Cada fuente
+// Local, y las que registren otros agentes (spotify). Cada fuente
 // registra SU player y SUS endpoints vía window.JarvisRadio.registrarFuente()
 // (firma documentada abajo). `_cmd` despacha comandos al player de la pista
 // que está sonando: el resto del código no sabe de dónde sale el audio.
@@ -140,7 +140,7 @@
     return _players[fid] || _players.youtube || null;
   }
   // Adaptador del player de una fuente al vocabulario de la Radio. Los players
-  // de V2/V3 (spotify/streams) traen SU propia API (play/pause/seek(ms)/
+  // de V2 (spotify) trae SU propia API (play/pause/seek(ms)/
   // volumen/onEvento) y pueden NO cumplir el contrato mínimo de player acá:
   // este bridge traduce `cmd` (playVideo/pauseVideo/seekTo/setVolume/mute/
   // unMute) a su vocab y suscribe `onEvento` a los canales compartidos
@@ -470,7 +470,7 @@
       if (_pl.items.length) _renderPlaylistEn(box);
       else if (fid === 'local') { _listarLocal(box); return; }
       else if (f.catalogo) {
-        // Fuente con catálogo propio (streams): mostrar el catálogo entero
+        // Fuente con catálogo propio: mostrar el catálogo entero
         // (su buscar('') es un filtro local, sin red).
         try {
           const data = await f.buscar('');
@@ -776,7 +776,7 @@
       'Más como': 'More like',
       'No hay más por ahora': 'Nothing more for now',
       'Fuente': 'Source',
-      'YouTube': 'YouTube', 'Local': 'Local', 'Spotify': 'Spotify', 'Streams': 'Streams',
+      'YouTube': 'YouTube', 'Local': 'Local', 'Spotify': 'Spotify',
       'Subir música': 'Upload music',
       'Los archivos van a data/music': 'Files go to data/music',
       'No se pudo subir la música': "Couldn't upload the music",
@@ -1294,7 +1294,7 @@
     _buscando = false;
     if (id === 'local') { _listarLocal(rel); return; }
     if (f.catalogo) {
-      // Fuente con catálogo propio (streams): su buscar('') es un filtro local.
+      // Fuente con catálogo propio: su buscar('') es un filtro local.
       try {
         const data = await f.buscar('');
         if (_fuenteActiva !== id) return;   // el usuario re-cambó la fuente en el medio
@@ -1378,12 +1378,11 @@
     youtube: 'Buscá música o pegá un link de YouTube…',
     local: 'Buscá en data/music…',
     spotify: 'Buscá música o pegá un link de Spotify…',
-    streams: 'Elegí un stream en vivo…',
   };
   function _syncPlaceholder() {
     const q = $('#jr-q'); if (!q) return;
     const f = _intFuente(); if (!f) return;
-    q.placeholder = _PH[f.id] || 'Buscá música o pegá un link de YouTube…';
+    q.placeholder = _t(_PH[f.id] || 'Buscá música o pegá un link de YouTube…');
   }
   const _hintsFuente = {};
   // `extra` opcional: {boton: 'Conectá Spotify'} → cada línea del hint (salvo
@@ -1474,7 +1473,7 @@
 
   // ── Registro de fuentes + API pública ───────────────────────────────────────
   // registrarFuente() es la superficie ESTABLE para los demás agentes (spotify/
-  // streams). Cada fuente aporta SU buscador (buscar/mas/relacionados) y SU
+  // ). Cada fuente aporta SU buscador (buscar/mas/relacionados) y SU
   // player. Las etiquetas son las de las pills del popover. No romper la firma:
   // otros agentes ya la usan.
   //
@@ -1519,7 +1518,7 @@
   function registrarFuente(esp) {
     if (!esp || typeof esp.id !== 'string' || !esp.id) return null;
     if (_fuentes[esp.id]) return _fuentes[esp.id];   // idempotente: re-registrar no pisa
-    // Object.assign(esp, ...): conserva extras públicos (catalogo de streams,
+    // Object.assign(esp, ...): conserva extras públicos (catalogo,
     // login/hints de spotify) sin tocar el contrato de la firma.
     const f = Object.assign({}, esp, {
       id: esp.id,
@@ -1570,7 +1569,7 @@
   });
 
   // Fuente activa persistida (respetala al abrir; si no está registrada,
-  // queda el default youtube). Se re-lee en cada registro: spotify/streams
+  // queda el default youtube). Se re-lee en cada registro: spotify
   // llegan DESPUÉS del init y la preferencia debe aplicar igual.
   _leerFuentePersistida();
 
