@@ -79,10 +79,14 @@ Edit your project while the agent works in its own pane — file tree and a live
 
 ### Mobile Studio
 
-Preview your app in a live phone frame — add phone frames, web browsers or project notes to the canvas, zoom to taste. Phones connect to the Expo/Metro the agent started.
+Preview your app in a live phone frame — add phone frames, web browsers or project notes to the canvas, zoom to taste. Phones connect to the Expo/Metro the agent started: the empty canvas explains the three steps — start the project, run Metro, the app lands on the frame.
 
 <p align="center">
-  <img src="docs/images/mobile-studio.png" alt="Mobile Studio — iPhone 16 Pro frame, dock with phone, web, note" width="800">
+  <img src="docs/images/mobile-studio-waiting.png" alt="Mobile Studio — empty canvas waiting for the signal, with the 3-step guide: Expo project, Metro --web, live preview" width="800">
+</p>
+
+<p align="center">
+  <img src="docs/images/mobile-studio-phone.png" alt="Mobile Studio — iPhone 15 Pro frame on the canvas, dock with phone, web, note" width="800">
 </p>
 
 ### Live on Discord
