@@ -1538,6 +1538,8 @@
     "Contenido copiado": "Content copied",
     "El navegador no dejó copiar": "The browser didn't allow copying",
     "Agente": "Agent",
+    "Nota": "Note",
+    "Agregar una nota del proyecto (N)": "Add a project note (N)",
     "Nota sin título": "Untitled note",
     "Localhost activos": "Active localhosts",
     "1 localhost activo": "1 localhost active",
