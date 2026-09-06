@@ -1,6 +1,6 @@
 # Jarvis Workspace — one-command install for Windows.
 #
-#   irm https://raw.githubusercontent.com/stiifff/jarvis-workspace/main/install.ps1 | iex
+#   irm https://raw.githubusercontent.com/celsiusm/jarvis-workspace/main/install.ps1 | iex
 #
 # The engine is Linux (Python + tmux). On Windows it runs inside WSL2 Ubuntu.
 # This script: installs WSL if needed (one reboot), runs install.sh inside
@@ -9,7 +9,7 @@
 # Full app — same as Linux. You bring your own agent CLIs (Claude, Codex, …).
 
 $ErrorActionPreference = 'Stop'
-$RawInstall = 'https://raw.githubusercontent.com/stiifff/jarvis-workspace/main/install.ps1'
+$RawInstall = 'https://raw.githubusercontent.com/celsiusm/jarvis-workspace/main/install.ps1'
 
 function Write-Step([string]$Message) {
     Write-Host $Message
@@ -70,7 +70,7 @@ if [ ! -f "$REPO/plotspace/main.py" ]; then
     apt-get update -y
     apt-get install -y git curl
   fi
-  git clone --depth 1 https://github.com/stiifff/jarvis-workspace.git "$REPO"
+  git clone --depth 1 https://github.com/celsiusm/jarvis-workspace.git "$REPO"
 fi
 bash "$REPO/install.sh" --no-start
 '@

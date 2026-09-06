@@ -4,7 +4,7 @@ Jarvis Workspace is a **Linux** app (Python + uvicorn + **tmux**). On Windows
 the engine runs inside **WSL2 Ubuntu**. One command does the rest:
 
 ```powershell
-irm https://raw.githubusercontent.com/stiifff/jarvis-workspace/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/celsiusm/jarvis-workspace/main/install.ps1 | iex
 ```
 
 If WSL is missing, that installs Ubuntu and asks you to **reboot**, then run
@@ -40,7 +40,7 @@ first-boot user setup.
 under `/mnt/c/...`. tmux + heavy I/O on NTFS is painful.
 
 ```bash
-git clone https://github.com/stiifff/jarvis-workspace ~/jarvis-workspace
+git clone https://github.com/celsiusm/jarvis-workspace ~/jarvis-workspace
 cd ~/jarvis-workspace
 ```
 
@@ -105,7 +105,7 @@ Works if you prefer not to manage a venv inside WSL. You still need
 backend enabled.
 
 ```powershell
-git clone https://github.com/stiifff/jarvis-workspace
+git clone https://github.com/celsiusm/jarvis-workspace
 cd jarvis-workspace
 copy .env.example .env
 ```

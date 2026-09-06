@@ -3,7 +3,7 @@
 One command (needs [Homebrew](https://brew.sh); Xcode CLT if you don't have git yet):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/stiifff/jarvis-workspace/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/celsiusm/jarvis-workspace/main/install.sh | bash
 ```
 
 Same script as Linux: full app, `jarvis` on your PATH, opens `http://127.0.0.1:3000`.
@@ -18,7 +18,7 @@ xcode-select --install
 
 brew install python@3.12 tmux git ffmpeg
 
-git clone https://github.com/stiifff/jarvis-workspace
+git clone https://github.com/celsiusm/jarvis-workspace
 cd jarvis-workspace
 
 python3 -m venv venv

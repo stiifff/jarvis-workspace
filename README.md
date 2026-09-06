@@ -21,7 +21,7 @@ You open a project. Jarvis gives you a grid of live terminals. Claude Code, Code
 <h2 id="linux--macos">Linux / macOS</h2>
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/stiifff/jarvis-workspace/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/celsiusm/jarvis-workspace/main/install.sh | bash
 ```
 
 Then `jarvis`. Opens `http://localhost:3000`. macOS needs [Homebrew](https://brew.sh). Details: [Linux](docs/install/linux.md) · [macOS](docs/install/macos.md).
@@ -32,7 +32,7 @@ Then `jarvis`. Opens `http://localhost:3000`. macOS needs [Homebrew](https://bre
 <h2 id="windows">Windows</h2>
 
 ```powershell
-irm https://raw.githubusercontent.com/stiifff/jarvis-workspace/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/celsiusm/jarvis-workspace/main/install.ps1 | iex
 ```
 
 Engine runs in [WSL2](docs/install/windows.md). One reboot if WSL is new. Leaves **Jarvis.bat** on the Desktop. Details: [Windows](docs/install/windows.md).

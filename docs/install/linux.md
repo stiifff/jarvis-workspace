@@ -3,7 +3,7 @@
 One command (full app: Python venv, tmux, ffmpeg, every Jarvis feature):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/stiifff/jarvis-workspace/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/celsiusm/jarvis-workspace/main/install.sh | bash
 ```
 
 That clones to `~/jarvis-workspace`, puts `jarvis` on your PATH (`~/.local/bin`), and opens `http://127.0.0.1:3000`. Next time: `jarvis`.
@@ -15,7 +15,7 @@ No `.deb` / AppImage yet. Terminals are **tmux** sessions.
 ## Native (from source, manual)
 
 ```bash
-git clone https://github.com/stiifff/jarvis-workspace
+git clone https://github.com/celsiusm/jarvis-workspace
 cd jarvis-workspace
 
 sudo apt update

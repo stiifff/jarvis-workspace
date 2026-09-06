@@ -57,8 +57,8 @@ browser = ["playwright>=1.50.0", "Pillow>=10.0.0"]
 all = ["jarvis-workspace[voice,browser]"]
 
 [project.urls]
-Homepage = "https://github.com/stiifff/jarvis-workspace"
-Issues = "https://github.com/stiifff/jarvis-workspace/issues"
+Homepage = "https://github.com/celsiusm/jarvis-workspace"
+Issues = "https://github.com/celsiusm/jarvis-workspace/issues"
 
 [project.scripts]
 jarvis = "plotspace.cli:main"

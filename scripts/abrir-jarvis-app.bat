@@ -73,7 +73,7 @@ exit /b 0
 :sin_repo
 echo No encuentro Jarvis Workspace dentro de WSL.
 echo Clonalo ahi ^(nombre publico del repo^):
-echo   git clone https://github.com/stiifff/jarvis-workspace.git ~/jarvis-workspace
+echo   git clone https://github.com/celsiusm/jarvis-workspace.git ~/jarvis-workspace
 echo Si ya esta en otra ruta, setea la variable de entorno JARVIS_WSL_DIR
 echo a esa ruta Linux ^(ej. /home/vos/mis-apps/jarvis-workspace^).
 pause

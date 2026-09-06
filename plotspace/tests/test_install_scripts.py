@@ -96,7 +96,7 @@ def test_install_ps1_instala_wsl_y_deja_acceso_en_el_escritorio():
     assert 'Desktop' in src or 'Escritorio' in src
     assert 'abrir-jarvis-app.bat' in src
     assert 'install.sh' in src
-    assert 'stiifff/jarvis-workspace' in src
+    assert 'celsiusm/jarvis-workspace' in src
 
 
 def test_install_ps1_no_promete_motor_nativo_windows():
@@ -109,7 +109,7 @@ def test_readme_tiene_un_comando_por_sistema():
     readme = _leer(os.path.join(_RAIZ, 'README.md'))
     assert 'install.sh' in readme
     assert 'install.ps1' in readme
-    assert 'stiifff/jarvis-workspace' in readme
+    assert 'celsiusm/jarvis-workspace' in readme
 
 
 def test_readme_instalacion_arriba_antes_de_las_capturas():

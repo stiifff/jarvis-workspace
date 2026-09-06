@@ -1,5 +1,5 @@
 blank_issues_enabled: true
 contact_links:
   - name: Report a vulnerability
-    url: https://github.com/stiifff/jarvis-workspace/security/advisories/new
+    url: https://github.com/celsiusm/jarvis-workspace/security/advisories/new
     about: Private advisory — Jarvis runs commands on your machine.

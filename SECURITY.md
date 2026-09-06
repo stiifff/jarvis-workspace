@@ -11,5 +11,5 @@ files, and known secret patterns. Don't bypass it with `--no-verify`.
 
 ## Report a vulnerability
 
-Open a [private advisory](https://github.com/stiifff/jarvis-workspace/security/advisories/new),
+Open a [private advisory](https://github.com/celsiusm/jarvis-workspace/security/advisories/new),
 not a public issue. We aim to reply within 7 days.

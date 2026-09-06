@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Jarvis Workspace — one-command install for Linux and macOS.
 #
-#   curl -fsSL https://raw.githubusercontent.com/stiifff/jarvis-workspace/main/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/celsiusm/jarvis-workspace/main/install.sh | bash
 #
 # Or, inside a clone:  ./install.sh
 #
@@ -12,7 +12,7 @@
 # (Claude, Codex, Grok, …) — those you install and link in ⚙ → Accounts.
 set -euo pipefail
 
-REPO_URL="${JARVIS_REPO_URL:-https://github.com/stiifff/jarvis-workspace.git}"
+REPO_URL="${JARVIS_REPO_URL:-https://github.com/celsiusm/jarvis-workspace.git}"
 DEST_DEFAULT="$HOME/jarvis-workspace"
 MIN_PY="3.11"
 
@@ -25,12 +25,12 @@ usage() {
 install.sh — install Jarvis Workspace (Linux / macOS)
 
 Usage:
-  curl -fsSL https://raw.githubusercontent.com/stiifff/jarvis-workspace/main/install.sh | bash
+  curl -fsSL https://raw.githubusercontent.com/celsiusm/jarvis-workspace/main/install.sh | bash
   ./install.sh
   ./install.sh --dir ~/jarvis-workspace --no-start
 
 Windows: in PowerShell
-  irm https://raw.githubusercontent.com/stiifff/jarvis-workspace/main/install.ps1 | iex
+  irm https://raw.githubusercontent.com/celsiusm/jarvis-workspace/main/install.ps1 | iex
 
 Options:
   --dir PATH     Clone / use this directory (default: ~/jarvis-workspace)
