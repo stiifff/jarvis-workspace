@@ -23,7 +23,7 @@
   background: oklch(6% .01 300 / .62); backdrop-filter: blur(6px);
 }
 #modal-new-terminal .tl2-modal {
-  position: relative; width: min(calc(var(--jw-vw, 100vw) * .94), 460px); max-height: calc(var(--jw-vh, 100vh) * .92);
+  position: relative; width: min(calc(var(--jw-vw, 100vw) * .94), 600px); max-height: calc(var(--jw-vh, 100vh) * .92);
   display: flex; flex-direction: column; overflow: hidden;
   background: linear-gradient(180deg, var(--bg2), var(--bg1));
   border: 1px solid var(--line2); border-radius: var(--radius-xl);
@@ -145,6 +145,9 @@
 #modal-new-terminal .cli-logo-shell { display: inline-flex; align-items: center; justify-content: center; font-family: var(--mono); font-weight: 700; color: var(--fg2); }
 #modal-new-terminal .tl2-cli-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 #modal-new-terminal .tl2-cli-name { font: 600 12px var(--ui); color: var(--fg1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#modal-new-terminal .tl2-cli-row { display: flex; align-items: center; gap: 6px; min-width: 0; }
+#modal-new-terminal .tl2-cli-row .tl2-cli-sub { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#modal-new-terminal .tl2-cli-card.off .tl2-cli-sub { display: none; }
 #modal-new-terminal .tl2-cli-sub { font: 500 10px var(--mono); color: var(--fg3); text-transform: uppercase; letter-spacing: .06em; }
 #modal-new-terminal .tl2-cli-step { display: flex; align-items: center; gap: 1px; flex: none; background: var(--bg2); border: 1px solid var(--line2); border-radius: 8px; padding: 2px; }
 #modal-new-terminal .tl2-cli-step button { position: relative; width: 22px; height: 22px; border-radius: 6px; display: grid; place-items: center; color: var(--fg2); background: none; border: 0; font: 600 15px var(--ui); line-height: 1; cursor: pointer; transition: background var(--dur1), color var(--dur1); }
@@ -157,9 +160,10 @@
 #modal-new-terminal .tl2-cli-card:not(.active).off { background: var(--ob-bg-void); }
 #modal-new-terminal .tl2-cli-card.off .tl2-cli-name { color: var(--fg3); }
 #modal-new-terminal .tl2-cli-card.off .tl2-cli-badge { opacity: .45; }
-/* aviso de CLI sin instalar (chip ámbar, no bloquea la card) — se ENCOGE
-   antes que desbordar la card (min-content de la columna) */
-#modal-new-terminal .tl2-cli-falta { flex: 0 1 auto; align-self: center; min-width: 0; max-width: 92px; overflow: hidden; text-overflow: ellipsis; font: 600 8.5px var(--mono); text-transform: uppercase; letter-spacing: .05em; color: var(--work); background: color-mix(in oklch, var(--work) 12%, transparent); border: 1px solid color-mix(in oklch, var(--work) 35%, transparent); border-radius: 999px; padding: 2px 7px; white-space: nowrap; }
+/* aviso de CLI sin instalar (chip ámbar, no bloquea la card) — va en la segunda
+   línea de .tl2-cli-info, sola (la .sub se oculta en .off), así el texto se lee
+   COMPLETO y nunca le roba ancho al nombre del CLI. */
+#modal-new-terminal .tl2-cli-falta { flex: 0 0 auto; white-space: nowrap; font: 600 8.5px var(--mono); text-transform: uppercase; letter-spacing: .05em; color: var(--work); background: color-mix(in oklch, var(--work) 12%, transparent); border: 1px solid color-mix(in oklch, var(--work) 35%, transparent); border-radius: 999px; padding: 2px 7px; }
 /* 9 cards en 2 columnas: la impar del final ocupa el ancho completo (sin hueco) */
 #modal-new-terminal .tl2-cli-card:last-child:nth-child(odd) { grid-column: 1 / -1; }
 

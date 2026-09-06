@@ -3914,8 +3914,7 @@ function _tlRenderGrid() {
   cont.innerHTML = L.CLI_ORDEN.map(tipo => `
     <div class="tl2-cli-card" data-tipo="${tipo}">
       <span class="tl2-cli-badge">${window.cliLogo ? cliLogo(tipo, 18) : tipo}</span>
-      <span class="tl2-cli-info"><span class="tl2-cli-name">${L.CLI_LABELS[tipo]}</span><span class="tl2-cli-sub">${_TL_CLI_SUB[tipo] || ''}</span></span>
-      ${tipo !== 'manual' ? '<i class="tl2-cli-falta" hidden>Falta instalar</i>' : ''}
+      <span class="tl2-cli-info"><span class="tl2-cli-name">${L.CLI_LABELS[tipo]}</span><span class="tl2-cli-row"><span class="tl2-cli-sub">${_TL_CLI_SUB[tipo] || ''}</span>${tipo !== 'manual' ? '<i class="tl2-cli-falta" hidden>Falta instalar</i>' : ''}</span></span>
       <span class="tl2-cli-step">
         <button type="button" class="dec" aria-label="Menos ${L.CLI_LABELS[tipo]}">−</button>
         <span class="cnt">0</span>

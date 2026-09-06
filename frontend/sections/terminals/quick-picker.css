@@ -113,14 +113,13 @@
 /* desc + aviso "Falta instalar" en la misma línea (las filas no crecen) */
 /* ⚠ distinto de .qp-sub (subtítulo del header): no chocar los selectores. */
 .qp-desc { display: flex; align-items: center; gap: 7px; min-width: 0; }
-.qp-desc small { min-width: 0; }
+.qp-desc small { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .qp-falta {
-  flex: 0 1 auto; min-width: 0; max-width: 104px;
+  flex: 0 0 auto; white-space: nowrap;
   font: 600 9px var(--font-mono); text-transform: uppercase; letter-spacing: 0.05em;
   color: var(--ob-work); background: var(--ob-work-08);
   border: 1px solid color-mix(in oklch, var(--ob-work) 32%, transparent);
-  border-radius: 999px; padding: 1px 7px; white-space: nowrap;
-  overflow: hidden; text-overflow: ellipsis;
+  border-radius: 999px; padding: 1px 7px;
 }
 .qp-logo { width: 28px; height: 28px; border-radius: 8px; background: var(--ob-bg-3);
   border: 1px solid var(--ob-line-1);
