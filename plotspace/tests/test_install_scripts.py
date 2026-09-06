@@ -115,7 +115,7 @@ def test_readme_tiene_un_comando_por_sistema():
 def test_readme_instalacion_arriba_antes_de_las_capturas():
     """Un extraño no tiene que scrollear cuatro screenshots para instalar."""
     readme = _leer(os.path.join(_RAIZ, 'README.md'))
-    shot = readme.find('docs/images/workspace.png')
+    shot = readme.find('docs/images/home-empty.png')
     assert shot > 0
     assert readme.find('install.sh') < shot
     assert readme.find('install.ps1') < shot
