@@ -4077,11 +4077,27 @@ document.querySelectorAll('#tl-dist-modes button').forEach(b => b.addEventListen
 
 // ── Explorador de carpetas de la PC (GET /api/fs/list) ──
 let _tlFsPath = '/home/user', _tlFsParent = null, _tlFsTarget = 'path';
-function _tlOpenFS(target) {
+// ── Rutas base de ESTA máquina (hogar del usuario, no el de Jarvis) ──
+// El front NO hardcodea /home/user de la máquina del autor: se lo pide al
+// backend (expanduser) y siembra con eso. Fallback final: solo antes de
+// que la API responda.
+const _TL_LOC_DEF = '/home/user/proyectos';
+let _tlEnvP = null;
+function _tlEnviron() {
+  _tlEnvP ||= (async () => {
+    try {
+      const d = await (await fetch('/api/fs/hogar')).json();
+      return d && d.home ? d : null;
+    } catch { return null; }
+  })();
+  return _tlEnvP;
+}
+async function _tlOpenFS(target) {
   _tlFsTarget = target || 'path';
   const src = _tlFsTarget === 'loc' ? 'tl-new-loc' : 'tl-folder-input';
   const seed = (document.getElementById(src)?.value || '').trim();
-  _tlFsPath = seed.startsWith('/') ? seed.replace(/\/+$/, '') : '/home/user';
+  const env = (await _tlEnviron()) || {};
+  _tlFsPath = seed.startsWith('/') ? seed.replace(/\/+$/, '') : (env.home || '/home/user');
   document.getElementById('tl-fs')?.removeAttribute('hidden');
   _tlRenderFS();
 }
@@ -4136,14 +4152,21 @@ document.getElementById('tl-fs-pick')?.addEventListener('click', () => {
 // ── Modos Abrir/Crear + preview de creación + ubicaciones recientes ──
 let _tlMode = 'open';
 function _tlSlug(s) { return (s || '').trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9._-]/g, ''); }
-function _tlUpdatePrev() {
-  const loc = (document.getElementById('tl-new-loc')?.value || '/home/user/proyectos').replace(/\/+$/, '');
+async function _tlUpdatePrev() {
+  const env = (await _tlEnviron()) || {};
+  const loc = ((document.getElementById('tl-new-loc')?.value || '').trim() || env.proyectos || _TL_LOC_DEF).replace(/\/+$/, '');
   const nm = _tlSlug(document.getElementById('tl-new-name')?.value) || 'mi-app';
   const el = document.getElementById('tl-new-prev'); if (el) el.textContent = loc + '/' + nm;
   // Botón de base (.tl2-path): muestra la ubicación acortada (~) y su ruta completa
   // en el tooltip. La fuente sigue siendo el input oculto #tl-new-loc.
+  // El acortamiento usa el HOGAR REAL (Linux /home/x, macOS /Users/x), no un
+  // regex de /home/ embebido.
   const baseB = document.querySelector('#tl-base-new b');
-  if (baseB) baseB.textContent = loc.replace(/^\/home\/[^/]+/, '~') || '/';
+  if (baseB) {
+    const home = env.home;
+    baseB.textContent = home && loc.startsWith(home + '/') ? '~' + loc.slice(home.length)
+      : home && loc === home ? '~' : (loc || '/');
+  }
   document.getElementById('tl-base-new')?.setAttribute('title', loc);
 }
 // Sincroniza la tarjeta de "Abrir de la PC" desde #tl-folder-input (fuente): con
@@ -4189,7 +4212,15 @@ function abrirLauncher(opts = {}) {
   }
 
   const nombreEl = document.getElementById('tl-new-name'); if (nombreEl) nombreEl.value = '';
-  const locEl = document.getElementById('tl-new-loc'); if (locEl) locEl.value = '/home/user/proyectos';
+  const locEl = document.getElementById('tl-new-loc'); if (locEl) locEl.value = '';
+  // Default = carpeta de proyectos del usuario de ESTA máquina (/api/fs/hogar).
+  // Si la API todavía no respondió, el preview corrige al cargarla.
+  _tlEnviron().then(env => {
+    const el = document.getElementById('tl-new-loc');
+    if (el && !el.value) el.value = (env?.proyectos) || _TL_LOC_DEF;
+    _tlUpdatePrev();
+  }).catch(() => _tlUpdatePrev());
+  _tlUpdatePrev();
   _tlDist = 'mosaico';
   document.getElementById('tl-fs')?.setAttribute('hidden', '');
   document.querySelectorAll('#tl-dist-modes button').forEach(b => b.setAttribute('aria-checked', String(b.dataset.dist === 'mosaico')));
@@ -4341,7 +4372,8 @@ async function _tlLanzar() {
   if (_tlMode === 'new') {
     const nm = document.getElementById('tl-new-name')?.value.trim() || '';
     if (!nm) { toast('Poné un nombre para el proyecto', 'warning'); document.getElementById('tl-new-name')?.focus(); return; }
-    const loc = (document.getElementById('tl-new-loc')?.value || '/home/user/proyectos').replace(/\/+$/, '');
+    const env = await _tlEnviron();
+    const loc = ((document.getElementById('tl-new-loc')?.value || '').trim() || env?.proyectos || _TL_LOC_DEF).replace(/\/+$/, '');
     raw = loc + '/' + _tlSlug(nm);
   } else {
     raw = document.getElementById('tl-folder-input')?.value.trim() || '';

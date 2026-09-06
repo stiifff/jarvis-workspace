@@ -131,3 +131,17 @@ async def listar_dir(path: str = Query('')):
         raise HTTPException(status_code=403, detail="Sin permiso para leer la carpeta")
     except OSError:
         raise HTTPException(status_code=500, detail="No se pudo leer la carpeta")
+
+
+def hogar_de_la_maquina() -> dict:
+    """Rutas del usuario REAL de esta máquina (expanduser, nunca las de Jarvis):
+    home y la carpeta por-defecto para proyectos nuevos. El front la usa para
+    sembrar sus valores por-defecto y dejar de hardcodear /home/user — en una
+    máquina ajena (o macOS) el launcher debe proponer el homedir de ESA gente."""
+    home = os.path.expanduser('~')
+    return {'home': home, 'proyectos': os.path.join(home, 'proyectos')}
+
+
+@router.get("/hogar")
+async def ruta_hogar():
+    return hogar_de_la_maquina()
