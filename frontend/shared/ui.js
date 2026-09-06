@@ -230,11 +230,11 @@
 
   /* ── Logos de CLIs (SVGs vendoreados de @lobehub/icons-static-svg@1.91.0) ── */
   // 'manual' (shell) no tiene logo: devuelve un $ tipográfico.
-  const CLI_LOGOS = { claude: 'claude-color', codex: 'codex-color', opencode: 'opencode', qwen: 'qwen-color', antigravity: 'antigravity', grok: 'grok' };
+  const CLI_LOGOS = { claude: 'claude-color', codex: 'codex-color', opencode: 'opencode', qwen: 'qwen-color', antigravity: 'antigravity', grok: 'grok', cursor: 'cursor', pi: 'pi' };
   function cliLogo(tipo, size = 16) {
     const f = CLI_LOGOS[tipo];
     if (!f) return `<span class="cli-logo cli-logo-shell" style="width:${size}px;height:${size}px" aria-hidden="true">$</span>`;
-    const inv = (tipo === 'opencode' || tipo === 'antigravity' || tipo === 'grok') ? ' cli-logo-inv' : '';
+    const inv = ['opencode', 'antigravity', 'grok', 'cursor', 'pi'].includes(tipo) ? ' cli-logo-inv' : '';
     return `<img class="cli-logo${inv}" src="/static/shared/icons/${f}.svg?v=1" width="${size}" height="${size}" alt="" aria-hidden="true">`;
   }
 

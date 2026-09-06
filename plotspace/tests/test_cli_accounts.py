@@ -28,13 +28,16 @@ import plotspace.core.cli_accounts as ca
 # ── helpers de fixture ──────────────────────────────────────────────────────
 
 def _entorno(monkeypatch):
-    """Repunta HOME_DIR + SNAPSHOTS_DIR a tempdirs y limpia CODEX_HOME."""
+    """Repunta HOME_DIR + SNAPSHOTS_DIR a tempdirs, limpia CODEX_HOME y las vars
+    de config de Cursor (XDG_CONFIG_HOME / CURSOR_CONFIG_DIR) con sus defaults."""
     fresh_db()
     home = tempfile.mkdtemp(prefix="jarvis_home_")
     snaps = tempfile.mkdtemp(prefix="jarvis_snaps_")
     monkeypatch.setattr(ca, "HOME_DIR", home)
     monkeypatch.setattr(ca, "SNAPSHOTS_DIR", snaps)
     monkeypatch.delenv("CODEX_HOME", raising=False)
+    monkeypatch.delenv("XDG_CONFIG_HOME", raising=False)
+    monkeypatch.delenv("CURSOR_CONFIG_DIR", raising=False)
     return home, snaps
 
 
@@ -70,7 +73,7 @@ def _claude_login(home, email, token):
 
 def test_tipos_soportados(monkeypatch):
     _entorno(monkeypatch)
-    assert set(ca.TIPOS) == {"claude", "codex", "grok", "antigravity", "opencode", "qwen"}
+    assert set(ca.TIPOS) == {"claude", "codex", "grok", "antigravity", "opencode", "qwen", "pi", "cursor"}
     specs = ca._specs()
     for t in ca.TIPOS:
         assert t in specs and "label" in specs[t]
@@ -642,6 +645,70 @@ def test_opencode_identidad_es_proveedores(monkeypatch):
     assert p["email"] == "openrouter, zai-coding-plan"
 
 
+# ── pi (Earendil) — auth.json mapa proveedor→credencial, sin email ────────────
+# Pi persiste ~/.pi/agent/auth.json como `{}` tras /logout → la existencia del
+# archivo NO es sesión (verificado en el package 0.85.1: el delete de /logout
+# re-escribe el archivo con el objeto vacío). Las credenciales guardadas:
+# api_key {type,key} u oauth {type,access,refresh,expires} (+accountId solo para
+# openai-codex) — nunca email.
+
+def _pi_login(home, proveedores):
+    auth = os.path.join(home, ".pi", "agent", "auth.json")
+    os.makedirs(os.path.dirname(auth), exist_ok=True)
+    _escribir(auth, proveedores)
+    return auth
+
+
+def test_pi_auth_vacio_tras_logout_no_es_sesion(monkeypatch):
+    home, _ = _entorno(monkeypatch)
+    _pi_login(home, {})                     # /logout deja el archivo como {}
+    assert ca.esta_logueado("pi") is False
+    _pi_login(home, {"anthropic": {"type": "api_key", "key": "sk-ant-..."}})
+    assert ca.esta_logueado("pi") is True
+
+
+def test_pi_identidad_es_proveedores(monkeypatch):
+    home, _ = _entorno(monkeypatch)
+    _pi_login(home, {"openai": {"type": "oauth", "access": "a", "refresh": "r",
+                                "expires": 1, "accountId": "acc-1"},
+                     "anthropic": {"type": "api_key", "key": "K"}})
+    assert ca.email_actual("pi") is None    # sin email → el watcher dedupea por huella
+    p = ca.capturar_actual("pi", "Earendil")
+    assert p["email"] == "anthropic, openai"
+
+
+def test_pi_switch_round_trip(monkeypatch):
+    home, snaps = _entorno(monkeypatch)
+    auth = _pi_login(home, {"anthropic": {"type": "oauth", "access": "AAA",
+                                          "refresh": "R-AAA", "expires": 999}})
+    pa = ca.capturar_actual("pi", "A")
+
+    _pi_login(home, {"openai": {"type": "oauth", "access": "BBB",
+                                "refresh": "R-BBB", "expires": 999}})
+    pb = ca.capturar_actual("pi", "B")
+
+    ca.usar(pa["id"])
+    assert json.load(open(auth, encoding="utf-8"))["anthropic"]["access"] == "AAA"
+    ca.usar(pb["id"])
+    assert json.load(open(auth, encoding="utf-8"))["openai"]["access"] == "BBB"
+    ca.recapturar(pb["id"])
+    assert ca.obtener_perfil(pb["id"])["email"] == "openai"
+
+
+def test_estado_adopta_sesion_nativa_de_pi(monkeypatch):
+    home, _ = _entorno(monkeypatch)
+    _pi_login(home, {"xai": {"type": "oauth", "access": "x", "refresh": "r",
+                             "expires": 1}})
+    est = ca.estado()
+    pi = next(c for c in est["clis"] if c["tipo"] == "pi")
+    assert pi["logueado"] is True
+    assert pi["home_sin_guardar"] is False
+    assert len(pi["cuentas"]) == 1
+    assert pi["cuentas"][0]["email"] == "xai"
+    est2 = ca.estado()
+    assert len(next(c for c in est2["clis"] if c["tipo"] == "pi")["cuentas"]) == 1
+
+
 def _agy_con_log(home, email, token='{"token": {"access_token": "ya29.OPACO"}}'):
     """agy: token opaco (SIN email) + una línea de auth en el log — de ahí es
     recuperable el email."""
@@ -710,6 +777,94 @@ def test_backfill_no_pisa_email_ya_detectado(monkeypatch):
     assert ca.obtener_perfil(p["id"])["email"] == "agent@example.com"
 
 
+# ── cursor — auth.json plano {accessToken,refreshToken,apiKey}, sin email ───
+# Cursor CLI (curl installer): la credencial vive en ~/.config/cursor/auth.json
+# (o $XDG_CONFIG_HOME/cursor/auth.json) y es JSON plano SIN identidad de cuenta;
+# agent logout la BORRA → la existencia ≈ sesión. El email best-effort sale del
+# authInfo de ~/.cursor/cli-config.json (lo escribe `agent login`), solo para
+# mostrar, igual patrón que antigravity.
+
+def _cursor_login(home, tokens=None, email=None):
+    """Login de cursor simulado: auth.json con access/refresh (+ opcionalmente
+    authInfo.email en el cli-config.json que el CLI escribe al terminar login)."""
+    auth = os.path.join(home, ".config", "cursor", "auth.json")
+    os.makedirs(os.path.dirname(auth), exist_ok=True)
+    _escribir(auth, tokens or {"accessToken": "csk-AAA", "refreshToken": "r-AAA"})
+    if email is not None:
+        cfg = os.path.join(home, ".cursor", "cli-config.json")
+        os.makedirs(os.path.dirname(cfg), exist_ok=True)
+        _escribir(cfg, {"version": 1, "authInfo": {"email": email}})
+    return auth
+
+
+def test_cursor_credencial_en_xdg_config(monkeypatch):
+    home, _ = _entorno(monkeypatch)
+    a = _cursor_login(home, {"accessToken": "csk-AAA"})
+    assert ca.esta_logueado("cursor") is True
+    # la credencial vive en el XDG default y el spec la expande igual
+    assert os.path.basename(a) == "auth.json"
+    # sin identidad en la credencial → email_actual None (el watcher dedupea por
+    # huella, NO se le mete un email inestable al igual que opencode/antigravity)
+    assert ca.email_actual("cursor") is None
+
+
+def test_cursor_identidad_para_mostrar_desde_authinfo(monkeypatch):
+    home, _ = _entorno(monkeypatch)
+    _cursor_login(home, {"accessToken": "csk-AAA"}, email="dev@cursor.dev")
+    assert ca.email_actual("cursor") is None        # dedup sigue por huella
+    p = ca.capturar_actual("cursor", "Cursor")
+    # la UI muestra el email que el CLI guarda en su cli-config.json (best-effort)
+    assert p["email"] == "dev@cursor.dev"
+
+
+def test_cursor_identidad_sin_authinfo_es_none(monkeypatch):
+    home, _ = _entorno(monkeypatch)
+    _cursor_login(home, {"accessToken": "csk-AAA"})
+    p = ca.capturar_actual("cursor", "Cursor")
+    assert p["email"] is None
+
+
+def test_cursor_switch_round_trip(monkeypatch):
+    home, _ = _entorno(monkeypatch)
+    auth = _cursor_login(home, {"accessToken": "AAA", "refreshToken": "R-AAA"})
+    pa = ca.capturar_actual("cursor", "A")
+
+    _escribir(auth, {"accessToken": "BBB", "refreshToken": "R-BBB"})
+    pb = ca.capturar_actual("cursor", "B")
+
+    ca.usar(pa["id"])                                # switch → restaura A
+    assert json.load(open(auth, encoding="utf-8"))["accessToken"] == "AAA"
+    ca.usar(pb["id"])
+    assert json.load(open(auth, encoding="utf-8"))["accessToken"] == "BBB"
+    # el cli-config.json (config grande, no credencial) NO se toca en el switch
+    assert ca._cursor_cli_config() == os.path.join(home, ".cursor", "cli-config.json")
+
+
+def test_cursor_xdg_config_home_override(monkeypatch):
+    home, snaps = _entorno(monkeypatch)
+    xdg = os.path.join(home, "xdg-config")
+    monkeypatch.setenv("XDG_CONFIG_HOME", xdg)
+    auth = os.path.join(xdg, "cursor", "auth.json")
+    os.makedirs(os.path.dirname(auth), exist_ok=True)
+    _escribir(auth, {"accessToken": "csk-APIKEY"})
+    assert ca.esta_logueado("cursor") is True
+    p = ca.capturar_actual("cursor", "XDG")
+    assert os.path.isfile(os.path.join(snaps, str(p["id"]), "auth.json"))
+
+
+def test_estado_adopta_sesion_nativa_de_cursor(monkeypatch):
+    home, _ = _entorno(monkeypatch)
+    _cursor_login(home, {"accessToken": "csk-NAV"}, email="luca@example.com")
+    est = ca.estado()
+    cur = next(c for c in est["clis"] if c["tipo"] == "cursor")
+    assert cur["logueado"] is True
+    assert cur["home_sin_guardar"] is False
+    assert len(cur["cuentas"]) == 1
+    assert cur["cuentas"][0]["email"] == "luca@example.com"
+    est2 = ca.estado()
+    assert len(next(c for c in est2["clis"] if c["tipo"] == "cursor")["cuentas"]) == 1
+
+
 if __name__ == "__main__":
     import traceback
 
@@ -759,7 +914,7 @@ def test_estado_sin_cuentas_respeta_orden_canonico(monkeypatch):
     monkeypatch.setattr(ca, "listar", lambda: [])
     monkeypatch.setattr(ca, "esta_logueado", lambda t: False)
     assert [c["tipo"] for c in ca.estado()["clis"]] == \
-        ["claude", "codex", "grok", "antigravity", "opencode", "qwen"]
+        ["claude", "codex", "grok", "antigravity", "opencode", "qwen", "pi", "cursor"]
 
 
 def test_estado_con_cuentas_suben_respetando_canonico(monkeypatch):
@@ -769,12 +924,12 @@ def test_estado_con_cuentas_suben_respetando_canonico(monkeypatch):
     monkeypatch.setattr(ca, "listar", lambda: [
         _perfil(1, "claude"), _perfil(2, "codex"), _perfil(3, "qwen")])
     assert [c["tipo"] for c in ca.estado()["clis"]] == \
-        ["claude", "codex", "qwen", "grok", "antigravity", "opencode"]
+        ["claude", "codex", "qwen", "grok", "antigravity", "opencode", "pi", "cursor"]
     # al agregar una cuenta de grok, grok vuelve ARRIBA de qwen (canónico)
     monkeypatch.setattr(ca, "listar", lambda: [
         _perfil(1, "claude"), _perfil(2, "codex"), _perfil(3, "qwen"), _perfil(4, "grok")])
     assert [c["tipo"] for c in ca.estado()["clis"]] == \
-        ["claude", "codex", "grok", "qwen", "antigravity", "opencode"]
+        ["claude", "codex", "grok", "qwen", "antigravity", "opencode", "pi", "cursor"]
 
 
 # ── Enlaces de cuenta: symlink en Unix, junction en Windows ──────────────

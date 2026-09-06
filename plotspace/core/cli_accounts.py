@@ -43,7 +43,8 @@ SNAPSHOTS_DIR = ruta_data("cli-accounts")
 # Orden CANÓNICO de la sección Cuentas (pedido del usuario 2026-07-10). El
 # frontend pinta las cards tal cual llegan de estado(), así que este orden ES
 # el de la UI; estado() además sube los CLIs CON cuentas guardadas (ver ahí).
-TIPOS = ["claude", "codex", "grok", "antigravity", "opencode", "qwen"]
+# Pi se agregó 2026-09-06 al FINAL para no mover el orden conocido.
+TIPOS = ["claude", "codex", "grok", "antigravity", "opencode", "qwen", "pi", "cursor"]
 
 
 class TipoDesconocido(Exception):
@@ -302,6 +303,12 @@ def _specs():
     def expandir(ruta):
         if ruta.startswith('$CODEX_HOME/'):
             return os.path.join(_codex_home(), *ruta[len('$CODEX_HOME/'):].split('/'))
+        if ruta.startswith('$XDG_CONFIG_HOME/'):
+            # Cursor (y otra app XDG) resuelven su config con `XDG_CONFIG_HOME`
+            # o, por defecto, `~/.config`. Sin esto, sesión real pasaba por
+            # desapercibida si el usuario tiene XDG_CONFIG_HOME set.
+            base = os.environ.get("XDG_CONFIG_HOME") or os.path.join(HOME_DIR, ".config")
+            return os.path.join(base, *ruta[len('$XDG_CONFIG_HOME/'):].split('/'))
         return os.path.join(HOME_DIR, *ruta.lstrip('~/').split('/'))
 
     salida = {}
@@ -380,6 +387,16 @@ def _opencode_proveedores(auth):
     return None
 
 
+def _pi_proveedores(auth):
+    """Pi (Earendil) tampoco tiene email único: ~/.pi/agent/auth.json es un mapa
+    proveedor → credencial (api_key u OAuth; OAuth solo lleva access/refresh/
+    expires, y `accountId` para el provider openai-codex — nunca email). Mismo
+    criterio que opencode: la identidad mostrable son los proveedor(es)."""
+    if isinstance(auth, dict) and auth:
+        return ", ".join(sorted(auth.keys())) or None
+    return None
+
+
 _AGY_EMAIL_RE = re.compile(r"authenticated successfully as (\S+@\S+)")
 
 
@@ -420,6 +437,42 @@ def _account_dir(account_id):
     return os.path.join(SNAPSHOTS_DIR, str(account_id))
 
 
+# ── Cursor CLI: configuración y credencial ──────────────────────────────────
+# Verificado contra el paquete real (cursor-agent 2026.09.02, bundle webpack):
+#   - credencial (cli-credentials): `(XDG_CONFIG_HOME || ~/.config)/cursor/auth.json`
+#     con {accessToken, refreshToken, apiKey, bedrockCredentials} en plano —
+#     SIN email ni identidad de cuenta.
+#   - config (cursor-config): `(CURSOR_CONFIG_DIR || XDG_CONFIG_HOME/cursor ||
+#     ~/.cursor)/cli-config.json`; `authInfo.email` se escribe ahí al terminar
+#     `agent login` (GetMe del dashboard) → identidad best-effort para la UI.
+#   - `auth.json` se borra con `agent logout` → existencia ≈ sesión.
+
+def _cursor_cred_file():
+    return os.path.join(
+        os.environ.get("XDG_CONFIG_HOME") or os.path.join(HOME_DIR, ".config"),
+        "cursor", "auth.json")
+
+
+def _cursor_cli_config():
+    d = os.environ.get("CURSOR_CONFIG_DIR")
+    if d:
+        return os.path.join(d, "cli-config.json")
+    xdg = os.environ.get("XDG_CONFIG_HOME")
+    if xdg:
+        return os.path.join(xdg, "cursor", "cli-config.json")
+    return os.path.join(HOME_DIR, ".cursor", "cli-config.json")
+
+
+def _cursor_authinfo_email():
+    """Email que Cursor CLI guarda en `authInfo` de su cli-config.json después de
+    un login exitoso. Best-effort para MOSTRAR (igual caso que agy/opencode): el
+    email no vive en la credencial (auth.json), así que no sirve para deduplicar.
+    El config lo reescribe el propio CLI y puede traer email vacío."""
+    cfg = _read_json(_cursor_cli_config()) or {}
+    em = (cfg.get("authInfo") or {}).get("email")
+    return em or None
+
+
 # ── detección de sesión activa en el HOME ───────────────────────────────────
 
 def esta_logueado(tipo):
@@ -429,6 +482,12 @@ def esta_logueado(tipo):
     if spec["modo"] == "claude":
         data = _read_json(spec["cred_file"]) or {}
         return bool(data.get("claudeAiOauth"))
+    if tipo == "pi":
+        # Pi persiste ~/.pi/agent/auth.json como `{}` tras /logout (el archivo
+        # nunca se borra) → la existencia del archivo NO es sesión; hay sesión
+        # real cuando el JSON es un dict con al menos una credencial.
+        data = _read_json(spec["files"][0]) or {}
+        return bool(isinstance(data, dict) and any(data.values()))
     return any(os.path.isfile(p) for p in spec.get("principales", spec["files"]))
 
 
@@ -452,8 +511,9 @@ def email_actual(tipo):
         # grok guarda el email DENTRO de la credencial (por-cuenta) → identifica la
         # cuenta igual que claude/codex: sirve para deduplicar en el watcher.
         return _grok_email(_read_json(_home_path_para(spec, "auth.json")) or {})
-    # opencode/antigravity: sin identidad ÚNICA fiable en la credencial (el watcher
-    # dedupea por huella). La etiqueta para la UI la resuelve identidad_mostrable().
+    # opencode/antigravity/pi/cursor: sin identidad ÚNICA fiable en la credencial (el
+    # watcher dedupea por huella). La etiqueta para la UI la resuelve
+    # identidad_mostrable().
     return None
 
 
@@ -470,8 +530,12 @@ def identidad_mostrable(tipo):
         return None
     if tipo == "opencode":
         return _opencode_proveedores(_read_json(_home_path_para(spec, "auth.json")) or {})
+    if tipo == "pi":
+        return _pi_proveedores(_read_json(_home_path_para(spec, "auth.json")) or {})
     if tipo == "antigravity":
         return _antigravity_email()
+    if tipo == "cursor":
+        return _cursor_authinfo_email()
     return None
 
 
@@ -484,6 +548,8 @@ def identidad_desde_snapshot(tipo, account_id):
         return _grok_email(_read_json(os.path.join(d, "auth.json")) or {})
     if tipo == "opencode":
         return _opencode_proveedores(_read_json(os.path.join(d, "auth.json")) or {})
+    if tipo == "pi":
+        return _pi_proveedores(_read_json(os.path.join(d, "auth.json")) or {})
     return None
 
 

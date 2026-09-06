@@ -128,16 +128,19 @@ def test_agy_es_paste_code_y_sin_falso_device():
     # …por eso _leer_url lo anula cuando hay prompt de paste (paste manda).
 
 
-def test_login_manual_qwen_y_opencode():
-    # qwen 0.19+ (wizard «Connect a Provider»: ModelStudio/región/plan) y opencode
-    # (picker de proveedor) NO se automatizan a ciegas: van por alta MANUAL
-    # (comando en una terminal + watcher). Los CUATRO con login web quedan en ARGV
-    # — grok salió del modo manual: `grok login` es un device-flow automatizable
-    # (probe 2026-07-10, grok 0.2.93).
-    assert set(cl.LOGIN_MANUAL) == {"qwen", "opencode"}
+def test_login_manual_qwen_opencode_y_pi():
+    # qwen 0.19+ (wizard «Connect a Provider»: ModelStudio/región/plan), opencode
+    # (picker de proveedor) y pi (login = `/login` dentro del TUI, NO existe un
+    # subcomando `pi login` — verificado en el dist 0.85.1) NO se automatizan a
+    # ciegas: van por alta MANUAL (comando en una terminal + watcher). Los CON
+    # login web quedan en ARGV — grok salió del modo manual: `grok login` es un
+    # device-flow automatizable (probe 2026-07-10, grok 0.2.93), y Cursor es un
+    # browserflow con poll (ver CURSOR_OUT).
+    assert set(cl.LOGIN_MANUAL) == {"qwen", "opencode", "pi"}
     assert not (set(cl.LOGIN_MANUAL) & set(cl.LOGIN_ARGV))
-    assert set(cl.LOGIN_ARGV) == {"claude", "codex", "antigravity", "grok"}
+    assert set(cl.LOGIN_ARGV) == {"claude", "codex", "antigravity", "grok", "cursor"}
     assert cl.LOGIN_ARGV["grok"] == ["grok", "login"]
+    assert cl.LOGIN_ARGV["cursor"] == ["cursor-agent", "login"]
 
 
 # Salida REAL de `grok login` (grok 0.2.93, probe en HOME sandbox 2026-07-10):
@@ -159,6 +162,65 @@ def test_grok_device_flow_url_y_codigo():
     assert url == "https://accounts.x.ai/oauth2/device?user_code=2R3K-7E7N"
     assert cl._device_code(GROK_OUT) == "2R3K-7E7N"
     assert cl._es_paste_code(GROK_OUT) is False   # se confirma en el browser, no se pega
+
+
+# Salida de `agent login` (Cursor CLI 2026.09.02, del bundle oficial): browserflow
+# con challenge/verifier PKCE — imprime la URL del CLI (cursor.com/loginDeepControl)
+# y QUEDA POLEANDO hasta que el usuario autoriza en el navegador; recién entonces
+# escribe ~/.config/cursor/auth.json (el watcher lo captura). Con
+# NO_OPEN_BROWSER=1 no abre browser ni imprime QR a menos que se pida ('q').
+CURSOR_OUT = (
+    "\nWaiting for browser authentication...\n"
+    "Open a browser and navigate to this link: "
+    "https://cursor.com/loginDeepControl?challenge=oP5mkDyfnmJ99M1OKL6V3-0-PYkkBt9LZ1dGj7j9VI4"
+    "&uuid=39052162-8cf2-48c0-83b4-6e1ca195fb9c&mode=login&redirectTarget=cli\n\n"
+    "Press q to show a QR code to log in from another device.\n\n"
+)
+
+
+def test_cursor_browserflow_url_y_modo():
+    url = cl._url_authz(CURSOR_OUT)
+    assert url.startswith("https://cursor.com/loginDeepControl?")
+    assert "challenge=" in url and "uuid=" in url      # completa, sin cortar
+    # es un poll del backend de Cursor, no se pide ni pega código en el PTY
+    assert cl._es_paste_code(CURSOR_OUT) is False
+    assert cl._device_code(CURSOR_OUT) is None
+
+
+def test_spawn_cursor_no_browser_y_resuelve_local_bin(monkeypatch, tmp_path):
+    # Cursor: el login corre con NO_OPEN_BROWSER=1 (nosotros capturamos la URL) y
+    # el binario se resuelve contra ~/.local/bin (el dir del curl-installer), que
+    # puede no estar en el PATH del server.
+    import plotspace.core.cli_accounts as ca
+
+    bindir = tmp_path / "localbin"
+    bindir.mkdir()
+    home = str(tmp_path / "home")
+    monkeypatch.setattr(ca, "HOME_DIR", home)
+    fake = bindir / "cursor-agent"
+    fake.write_text("#!/bin/sh\n")
+    fake.chmod(0o755)
+    monkeypatch.setattr(cl, "_cursor_bin_dir", lambda: str(bindir))
+    monkeypatch.setitem(os.environ, "PATH", "/usr/bin:/bin")
+
+    capturado = {}
+
+    class _FakeProc:
+        def terminate(self, force=False):
+            pass
+
+    def _fake_spawn(argv, env=None, dimensions=None):
+        capturado["argv"] = list(argv)
+        capturado["env"] = dict(env or {})
+        return _FakeProc()
+
+    monkeypatch.setattr(cl.ptyprocess.PtyProcess, "spawn", staticmethod(_fake_spawn))
+    proc = cl._spawn("cursor")
+    assert proc is not None
+    # resuelto del dir del curl-installer, con ruta absoluta
+    assert capturado["argv"][0] == str(fake)
+    assert capturado["env"].get("NO_OPEN_BROWSER") == "1"
+    cl.cerrar("cursor")
 
 
 def test_env_antepone_el_bin_de_nvm(monkeypatch):

@@ -3,10 +3,11 @@
   'use strict';
 
   const MAX_TERMINALES = 12;  // espejo de plotspace/routers/terminals.py (MAX_TERMINALES)
-  const CLI_ORDEN  = ['claude', 'codex', 'opencode', 'qwen', 'antigravity', 'grok', 'manual'];
+  const CLI_ORDEN  = ['claude', 'codex', 'opencode', 'qwen', 'antigravity', 'grok', 'cursor', 'pi', 'manual'];
   const CLI_LABELS = { claude: 'Claude Code', codex: 'Codex',
                        opencode: 'OpenCode', qwen: 'Qwen Code',
                        antigravity: 'Antigravity', grok: 'Grok Build',
+                       cursor: 'Cursor', pi: 'Pi',
                        manual: 'Shell' };
 
   // Templates integrados (no borrables). Los del usuario viven en localStorage.

@@ -48,24 +48,37 @@ _URL_RE = re.compile(r'https?://[^\s\'"\x1b]+')
 # aun con sesión activa → sirve para agregar una SEGUNDA cuenta.
 # (Auditoría 2026-07-10 con probes reales en HOME sandbox, versiones:
 #  claude 2.1.207 · codex 0.144.0 · agy 1.1.1 · qwen 0.19.8 · opencode 1.17.12
-#  · grok 0.2.93.)
+#  · grok 0.2.93. Cursor CLI 2026-09-02 verificada contra el bundle del
+#  paquete: `agent login` imprime la URL del browserflow
+#  (https://cursor.com/loginDeepControl?challenge=…&uuid=…), NO abre nada con
+#  NO_OPEN_BROWSER=1, polea hasta que el usuario autoriza y recién ahí escribe
+#  auth.json → el watcher lo captura. Sin prefiltro de "ya logueado": el flujo
+#  re-dispara aun con sesión activa (sirve para la 2da cuenta).)
 LOGIN_ARGV = {
     "claude":   ["claude", "auth", "login", "--claudeai"],
     "codex":    ["codex", "login"],
     "antigravity": ["agy", "auth", "login"],
     "grok":     ["grok", "login"],
+    # El binario del PTY oculto es `cursor-agent` (legacy del curl-installer)
+    # y no `agent`: en el PATH del server suele haber OTROS `agent` sueltos
+    # (misma razón que la detección en core/clis.py).
+    "cursor":   ["cursor-agent", "login"],
 }
 
 # CLIs cuyo login es un wizard interactivo con decisiones del usuario (proveedor,
 # región, plan…) que NO se puede automatizar a ciegas desde un PTY oculto:
 #   - qwen 0.19+: «Connect a Provider» → ModelStudio/región/plan (3 pasos).
 #   - opencode: picker de proveedor + método (API key u OAuth según proveedor).
+#   - pi (Earendil): el login es `/login` DENTRO del TUI (picker de proveedor →
+#     método → OAuth con URL/device-code) — NO hay subcomando `pi login` (ver
+#     dist 0.85.1: solo `pi auth check|print-api-key|print-bearer-token`).
 # Para estos, el alta es MANUAL: el usuario corre el comando en una terminal
 # (Jarvis se la puede abrir con el wizard andando — botón del modal de alta) y el
 # watcher (cuenta_watch.vigilar_login) detecta la credencial nueva y la guarda sola.
 LOGIN_MANUAL = {
     "qwen":     "qwen",
     "opencode": "opencode auth login",
+    "pi":       "pi",
 }
 
 # Teclas previas por CLI: (frase que espera en pantalla → tecla a mandar). agy
@@ -143,6 +156,16 @@ def _nvm_bin_dir():
         return _helper()
     except Exception:
         return None
+
+
+def _cursor_bin_dir():
+    """Dir donde el curl-installer de Cursor CLI deja sus symlinks (agent /
+    cursor-agent): ~/.local/bin. El PATH del server suele no traerlo."""
+    try:
+        from plotspace.core import cli_accounts as _ca
+        return os.path.join(_ca.HOME_DIR, ".local", "bin")
+    except Exception:
+        return os.path.join(os.path.expanduser("~"), ".local", "bin")
 
 
 def _env():
@@ -235,6 +258,9 @@ def _spawn(tipo):
         return None
     cerrar(tipo)
     env = _env()
+    # Copia antes de resolver: la resolución de cursor/ptyprocess reemplaza
+    # argv[0] por una ruta absoluta y NO debe quedar pegada en LOGIN_ARGV.
+    argv = list(argv)
     if tipo == "codex":
         # Alta de una cuenta codex NUEVA: el login va a un CODEX_HOME staging AISLADO
         # y FRESCO (`_codex_login`), NUNCA al de la cuenta activa. Reusar el home de la
@@ -253,11 +279,27 @@ def _spawn(tipo):
         # Ver _agy_apartar_token: sin esto, con sesión activa agy se auto-loguea
         # con el token cacheado y el menú/URL no aparecen nunca (502).
         _agy_apartar_token()
+    if tipo == "cursor":
+        # `agent login` abre un browser propio salvo NO_OPEN_BROWSER=1 — nosotros
+        # capturamos la URL igual (el modal la abre en el navegador del usuario).
+        env["NO_OPEN_BROWSER"] = "1"
+        # El curl-installer deja los symlinks en ~/.local/bin, fuera del PATH del
+        # server usual; se resuelve 'cursor-agent' (fallback 'agent') contra un
+        # PATH extendido y se spawnae la ruta absoluta (mismo motivo que el nvm).
+        bindir = _cursor_bin_dir()
+        if bindir and bindir not in env["PATH"].split(os.pathsep):
+            path_ext = env["PATH"] + os.pathsep + bindir
+        else:
+            path_ext = env["PATH"]
+        for b in ("cursor-agent", "agent"):
+            ruta = shutil.which(b, path=path_ext)
+            if ruta:
+                argv[0] = ruta
+                break
     # ptyprocess resuelve argv[0] con el PATH del PROCESO (no el del env que le
     # pasamos): hay que resolverlo NOSOTROS contra el PATH extendido de _env()
     # (con el bin del nvm) y spawnear la ruta absoluta, o `codex`/`grok` caen al
     # shim de Windows cuando el server corre con un PATH pelado.
-    argv = list(argv)
     resuelto = shutil.which(argv[0], path=env.get('PATH'))
     if resuelto:
         argv[0] = resuelto

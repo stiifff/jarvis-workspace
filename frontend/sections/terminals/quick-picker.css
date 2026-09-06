@@ -17,8 +17,9 @@
 @keyframes qp-ovin { from { opacity: 0; } }
 
 .qp-panel {
-  width: min(580px, calc(var(--jw-vw, 100vw) * .94)); max-height: calc(var(--jw-vh, 100vh) * .92); overflow: auto;
-  position: relative; padding: 20px 20px 18px;
+  width: min(580px, calc(var(--jw-vw, 100vw) * .94)); max-height: calc(var(--jw-vh, 100vh) * .92);
+  overflow-y: auto; overflow-x: hidden;
+  position: relative; padding: 16px 20px 14px;
   border-radius: var(--radius-xl); border: 1px solid transparent; outline: none;
   background:
     linear-gradient(180deg, var(--ob-glass-hi), transparent 40%) padding-box,
@@ -61,7 +62,7 @@
 .qp-x svg { width: 11px; height: 11px; }
 
 /* ── Cabeceras de sección ── */
-.qp-sec { display: flex; align-items: baseline; gap: 10px; margin: 14px 2px 8px; }
+.qp-sec { display: flex; align-items: baseline; gap: 10px; margin: 10px 2px 6px; }
 .qp-lbl { font: 600 var(--text-2xs) var(--font-mono); letter-spacing: var(--ls-caps);
   text-transform: uppercase; color: var(--ob-fg-3); }
 .qp-fill { flex: 1; }
@@ -78,13 +79,13 @@
 .qp-hint b { color: var(--ob-accent-fg); font-weight: 600; }
 
 /* ── Grid de agentes ── */
-.qp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.qp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 /* con conteo IMPAR el último queda solo en su fila → centrado y con el mismo
    ancho de columna (simetría pedida por el usuario 2026-07-10) */
 .qp-row:last-child:nth-child(odd) { grid-column: 1 / -1; width: calc(50% - 4px); justify-self: center; }
 .qp-row {
-  display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
-  padding: 9px 11px; cursor: pointer; color: var(--ob-fg-1);
+  display: flex; align-items: center; gap: 9px; width: 100%; text-align: left;
+  padding: 7px 10px; cursor: pointer; color: var(--ob-fg-1);
   border-radius: var(--radius-lg); border: 1px solid transparent;
   background:
     linear-gradient(180deg, oklch(22% 0.02 300 / 0.7), oklch(18% 0.018 300 / 0.7)) padding-box,
@@ -93,13 +94,35 @@
 }
 .qp-row:hover { transform: translateY(-1px); box-shadow: var(--shadow-1); }
 .qp-row:active { transform: translateY(0) scale(0.99); }
+/* sin instalar → deshabilitada: sin hover ni transform (informa pero no suma) */
+.qp-row:disabled { cursor: not-allowed; }
+.qp-row:disabled:hover, .qp-row:disabled:active { transform: none; box-shadow: none; }
 .qp-row.has {
   background:
     linear-gradient(180deg, oklch(23% 0.026 300 / 0.85), oklch(19% 0.022 300 / 0.85)) padding-box,
     linear-gradient(168deg, var(--qp-acc-55), oklch(33% 0.03 300) 45%, var(--qp-info-30)) border-box;
   box-shadow: var(--shadow-1), 0 0 18px -6px var(--qp-acc-40);
 }
-.qp-logo { width: 30px; height: 30px; border-radius: 9px; background: var(--ob-bg-3);
+.qp-row.off {
+  background:
+    linear-gradient(180deg, oklch(15% 0.012 300 / 0.9), oklch(12% 0.01 300 / 0.9)) padding-box,
+    linear-gradient(168deg, oklch(22% 0.018 300), oklch(17% 0.014 300) 60%) border-box;
+}
+.qp-row.off .qp-txt b { color: var(--ob-fg-3); }
+.qp-row.off .qp-logo { background: var(--ob-bg-3); opacity: 0.5; }
+/* desc + aviso "Falta instalar" en la misma línea (las filas no crecen) */
+/* ⚠ distinto de .qp-sub (subtítulo del header): no chocar los selectores. */
+.qp-desc { display: flex; align-items: center; gap: 7px; min-width: 0; }
+.qp-desc small { min-width: 0; }
+.qp-falta {
+  flex: 0 1 auto; min-width: 0; max-width: 104px;
+  font: 600 9px var(--font-mono); text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--ob-work); background: var(--ob-work-08);
+  border: 1px solid color-mix(in oklch, var(--ob-work) 32%, transparent);
+  border-radius: 999px; padding: 1px 7px; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis;
+}
+.qp-logo { width: 28px; height: 28px; border-radius: 8px; background: var(--ob-bg-3);
   border: 1px solid var(--ob-line-1);
   display: flex; align-items: center; justify-content: center; flex: none; }
 .qp-txt { flex: 1; min-width: 0; }
@@ -167,7 +190,7 @@
 .qp-pd.sel small { color: var(--ob-accent-fg); }
 
 /* ── Pie: resumen + lanzar ── */
-.qp-foot { display: flex; align-items: center; gap: 12px; margin-top: 16px; }
+.qp-foot { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
 .qp-sum { flex: 1; font: 400 var(--text-xs) var(--font-ui); color: var(--ob-fg-3);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .qp-sum b { color: var(--ob-fg-1); font-weight: 600; }

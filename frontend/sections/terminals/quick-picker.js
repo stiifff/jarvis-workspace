@@ -13,10 +13,17 @@
     { tipo: 'qwen',        label: 'Qwen Code',   desc: 'El coder de Alibaba',    tecla: '4' },
     { tipo: 'antigravity', label: 'Antigravity', desc: 'El agente de Google',    tecla: '5' },
     { tipo: 'grok',        label: 'Grok Build',  desc: 'El agente de xAI',       tecla: '6' },
-    { tipo: 'manual',      label: 'Shell',       desc: 'WSL puro, sin agente',   tecla: '7' },
+    { tipo: 'cursor',      label: 'Cursor',      desc: 'El agente de Cursor',    tecla: '7' },
+    { tipo: 'pi',          label: 'Pi',          desc: 'El agente de Earendil',  tecla: '8' },
+    { tipo: 'manual',      label: 'Shell',       desc: 'WSL puro, sin agente',   tecla: '9' },
   ];
   function opcionPorTecla(k) { return OPCIONES.find(o => o.tecla === k) || null; }
   function moverSeleccion(idx, delta, total) { return ((idx + delta) % total + total) % total; }
+  // 'Digit7' → 6 (índice en OPCIONES); null si la tecla no es un dígito.
+  function indicePorDigito(codigo) {
+    const m = /^Digit(\d)$/.exec(codigo || '');
+    return m ? +m[1] - 1 : null;
+  }
 
   // Cantidad acotada a [1, cupo libre] (la conserva el stepper de cada CLI).
   function clampCantidad(n, disponibles) {
@@ -87,7 +94,8 @@
     return [auto, ...cat.filter(p => !cellsEq(p.cells, auto.cells))];
   }
 
-  const pure = { OPCIONES, opcionPorTecla, moverSeleccion, focoBloqueaAtajo,
+  const pure = { OPCIONES, opcionPorTecla, moverSeleccion, indicePorDigito,
+                 focoBloqueaAtajo,
                  clampCantidad, deltaCantidadPorTecla,
                  totalCounts, sumarCount, autoCells, autoDesc, cellsEq, tilesFor };
   global.QuickPicker = Object.assign(global.QuickPicker || {}, { _pure: pure, ...pure });
@@ -95,6 +103,10 @@
   if (typeof document !== 'undefined') {
     let _el = null, _onPick = null, _nombreProyecto = '', _prevFocus = null;
     let _counts = {}, _pdSel = 'auto', _tiles = [], _disponibles = 1, _existentes = 0;
+    // Estado de instalación por CLI (GET /api/clis): null = todavía no lo sé.
+    // Lo que falta instalar se pinta en negro con un aviso, pero SIGUE
+    // seleccionable — informar es distinto de bloquear.
+    let _clisEstado = null;
 
     // Bilingüe para strings COMPUESTAS (números adentro → el observer de i18n no
     // matchea por clave); las estáticas van en español y las traduce el observer.
@@ -206,9 +218,35 @@
         : n === 1 ? _L('Lanzar 1 terminal', 'Launch 1 terminal')
         : _L(`Lanzar ${n} terminales`, `Launch ${n} terminals`);
       _renderDisp();
+      _pintarFalta();
     }
 
-    function _sumar(tipo, delta) { _counts = sumarCount(_counts, tipo, delta, _disponibles); _render(); }
+    function _sumar(tipo, delta) {
+      // CLI no instalado: no se puede sumar (el estado llega siempre ANTES de
+      // abrir — el cacheo en JarvisClisEstado lo carga al arrancar la página).
+      if (_faltaDe(tipo)) return;
+      _counts = sumarCount(_counts, tipo, delta, _disponibles);
+      _render();
+    }
+
+    // ¿Este CLI falta en el sistema? (solo con estado conocido)
+    function _faltaDe(tipo) {
+      const st = (_clisEstado || []).find(c => c.id === tipo);
+      return !!st && !st.instalado;
+    }
+
+    // Aplica el estado de instalación (fila en negro + aviso, deshabilitada).
+    function _pintarFalta() {
+      if (!_el) return;
+      _el.querySelectorAll('.qp-row').forEach(r => {
+        const falta = _faltaDe(r.dataset.tipo);
+        r.classList.toggle('off', falta);
+        r.disabled = falta;                       // no seleccionable sin instalar
+        r.setAttribute('aria-disabled', String(falta));
+        const chip = r.querySelector('.qp-falta');
+        if (chip) chip.hidden = !falta;
+      });
+    }
 
     function _build() {
       _el = document.createElement('div');
@@ -233,7 +271,7 @@
             ${OPCIONES.map(o => `
               <button class="qp-row" data-tipo="${o.tipo}" type="button">
                 <span class="qp-logo">${window.cliLogo ? cliLogo(o.tipo, 18) : ''}</span>
-                <span class="qp-txt"><b>${o.label}</b><small>${o.desc}</small></span>
+                <span class="qp-txt"><b>${o.label}</b><span class="qp-desc"><small>${o.desc}</small><i class="qp-falta" hidden>Falta instalar</i></span></span>
                 <span class="qp-step" hidden><span class="qp-st-b" data-d="-1">−</span><b>0</b><span class="qp-st-b" data-d="1">+</span></span>
                 <kbd class="qp-tecla">${o.tecla}</kbd>
               </button>`).join('')}
@@ -269,10 +307,10 @@
       _el.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); cerrar(); return; }
         if (e.key === 'Enter')  { e.preventDefault(); e.stopPropagation(); _lanzar(); return; }
-        const dig = /^Digit([1-7])$/.exec(e.code);            // 1-7 suma · Shift resta
-        if (dig) {
+        const di = indicePorDigito(e.code);        // 1-9 suma · Shift resta
+        if (di != null && di >= 0 && di < OPCIONES.length) {
           e.preventDefault(); e.stopPropagation();
-          _sumar(OPCIONES[+dig[1] - 1].tipo, e.shiftKey ? -1 : +1);
+          _sumar(OPCIONES[di].tipo, e.shiftKey ? -1 : +1);
           return;
         }
         const dc = deltaCantidadPorTecla(e.key);              // ←/→ recorren disposiciones
@@ -305,10 +343,26 @@
       _existentes = Math.max(0, existentes | 0);
       _counts = { claude: 1 };     // default listo: Enter = 1 Claude, sin fricción
       _pdSel = 'auto';
+      // Estado desde la cache global (la carga el shell al arrancar): las filas
+      // pintan el aviso YA, sin el "1 segundo de nada". Después se refresca en
+      // el fondo por si cambió mientras la app está abierta.
+      _clisEstado = Array.isArray(global.JarvisClisEstado?.clis) ? global.JarvisClisEstado.clis : null;
       _el.hidden = false;
       _render();
       _el.querySelector('.qp-panel').setAttribute('tabindex', '-1');
       _el.querySelector('.qp-panel').focus();
+      // ¿Qué CLIs faltan instalar? Se pide por apertura (estado fresco); sin
+      // red, el picker funciona igual (las filas quedan con la cache).
+      fetch('/api/clis')
+        .then(r => (r.ok ? r.json() : null))
+        .then(d => {
+          if (d && !_el.hidden) {
+            _clisEstado = Array.isArray(d.clis) ? d.clis : null;
+            global.JarvisClisEstado = d;
+            _pintarFalta();
+          }
+        })
+        .catch(() => {});
     }
     function cerrar() {
       if (_el) _el.hidden = true;

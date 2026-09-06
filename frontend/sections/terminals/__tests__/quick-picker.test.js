@@ -2,15 +2,24 @@
 const assert = require('node:assert');
 const Q = require('../quick-picker.js');
 
-assert.strictEqual(Q.OPCIONES.length, 7);
+assert.strictEqual(Q.OPCIONES.length, 9);
 assert.deepStrictEqual(Q.OPCIONES.map(o => o.tipo),
-  ['claude', 'codex', 'opencode', 'qwen', 'antigravity', 'grok', 'manual']);
+  ['claude', 'codex', 'opencode', 'qwen', 'antigravity', 'grok', 'cursor', 'pi', 'manual']);
 assert.strictEqual(Q.opcionPorTecla('1').tipo, 'claude');
 assert.strictEqual(Q.opcionPorTecla('5').tipo, 'antigravity');
 assert.strictEqual(Q.opcionPorTecla('6').tipo, 'grok');
-assert.strictEqual(Q.opcionPorTecla('7').tipo, 'manual');
-assert.strictEqual(Q.opcionPorTecla('8'), null);
+assert.strictEqual(Q.opcionPorTecla('7').tipo, 'cursor');
+assert.strictEqual(Q.opcionPorTecla('8').tipo, 'pi');
+assert.strictEqual(Q.opcionPorTecla('9').tipo, 'manual');
+assert.strictEqual(Q.opcionPorTecla('10'), null);
 assert.strictEqual(Q.opcionPorTecla('x'), null);
+// indicePorDigito: 'DigitN' → índice en OPCIONES; el resto → null
+assert.strictEqual(Q.indicePorDigito('Digit7'), 6);
+assert.strictEqual(Q.indicePorDigito('Digit9'), 8);
+assert.strictEqual(Q.indicePorDigito('Digit0'), -1);   // fuera de rango: el keydown corta
+assert.strictEqual(Q.indicePorDigito('KeyA'), null);
+assert.strictEqual(Q.indicePorDigito(''), null);
+assert.strictEqual(Q.indicePorDigito(null), null);
 // navegación circular con flechas
 assert.strictEqual(Q.moverSeleccion(0, 1, 5), 1);
 assert.strictEqual(Q.moverSeleccion(4, 1, 5), 0);

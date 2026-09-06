@@ -1172,6 +1172,11 @@ async function inicializar() {
     window.QuickPicker?.init({ onPick: _quickCrearTerminal });
     document.getElementById('btn-quick-terminal')?.addEventListener('click', _abrirQuickPicker);
 
+    // Estado de instalación de CLIs AL ARRANCAR: queda cacheado en
+    // window.JarvisClisEstado para que picker/launcher pinten el aviso
+    // "Falta instalar" al instante cuando se abran (sin el "1 segundo de nada").
+    _tlEstadoFaltantes();
+
     // Menú de localhost activos (botón #jw-localhosts-btn con contador + popover
     // para ver los dev servers vivos del proyecto, abrirlos en el preview y
     // cerrarlos). Se nutre de GET /api/orchestrator/preview/{id}/servers.
@@ -3865,12 +3870,43 @@ function _tlRecordarRuta(ruta) {
 // Cambia un contador y sincroniza la UI en el lugar (sin re-render del grid,
 // para no reiniciar la animación de entrada de las cards).
 function _tlSetCount(tipo, n) {
+  // CLI sin instalar no se puede sumar (el estado viene cacheado del arranque).
+  const st = (_tlEstadoClis?.clis || []).find(c => c.id === tipo);
+  if (st && !st.instalado) return;
   _tlCounts[tipo] = window.JarvisLauncherState.clampContador(n, terminales.size, _tlCounts, tipo);
   _tlSync();
 }
 
 // ── Grid COMPACTO de cards por CLI (estilo prototipo) ──
-const _TL_CLI_SUB = { claude: 'anthropic', codex: 'openai', opencode: 'sst', qwen: 'alibaba', antigravity: 'google', grok: 'xai', manual: 'bash' };
+const _TL_CLI_SUB = { claude: 'anthropic', codex: 'openai', opencode: 'sst', qwen: 'alibaba', antigravity: 'google', grok: 'xai', cursor: 'anysphere', pi: 'earendil', manual: 'bash' };
+let _tlEstadoClis = null;   // GET /api/clis → qué CLIs faltan instalar (null = no lo sé aún)
+
+function _tlPintarFalta() {
+  document.querySelectorAll('#tl-grid .tl2-cli-card').forEach(card => {
+    const tipo = card.dataset.tipo;
+    if (tipo === 'manual') return;               // el shell no se instala
+    const st = (_tlEstadoClis?.clis || []).find(c => c.id === tipo);
+    const falta = !!st && !st.instalado;
+    card.classList.toggle('off', falta);
+    const chip = card.querySelector('.tl2-cli-falta');
+    if (chip) chip.hidden = !falta;
+    // sin instalar no se puede sumar: los botones mueren
+    card.querySelectorAll('.inc').forEach(b => { b.disabled = falta; });
+  });
+}
+
+function _tlEstadoFaltantes() {
+  fetch('/api/clis')
+    .then(r => (r.ok ? r.json() : null))
+    .then(d => {
+      if (!d) return;
+      _tlEstadoClis = d;
+      window.JarvisClisEstado = d;             // cache compartida con QuickPicker
+      _tlPintarFalta();
+    })
+    .catch(() => {});
+}
+
 function _tlRenderGrid() {
   const L = window.JarvisLauncherState;
   const cont = document.getElementById('tl-grid');
@@ -3879,6 +3915,7 @@ function _tlRenderGrid() {
     <div class="tl2-cli-card" data-tipo="${tipo}">
       <span class="tl2-cli-badge">${window.cliLogo ? cliLogo(tipo, 18) : tipo}</span>
       <span class="tl2-cli-info"><span class="tl2-cli-name">${L.CLI_LABELS[tipo]}</span><span class="tl2-cli-sub">${_TL_CLI_SUB[tipo] || ''}</span></span>
+      ${tipo !== 'manual' ? '<i class="tl2-cli-falta" hidden>Falta instalar</i>' : ''}
       <span class="tl2-cli-step">
         <button type="button" class="dec" aria-label="Menos ${L.CLI_LABELS[tipo]}">−</button>
         <span class="cnt">0</span>
@@ -3890,6 +3927,7 @@ function _tlRenderGrid() {
     card.querySelector('.inc').addEventListener('click', () => _tlSetCount(tipo, _tlCounts[tipo] + 1));
     card.querySelector('.dec').addEventListener('click', () => _tlSetCount(tipo, _tlCounts[tipo] - 1));
   });
+  _tlPintarFalta();
 }
 
 // ── Sincroniza contadores, badges, capacidad y CTA (en el lugar) ──
@@ -3902,7 +3940,7 @@ function _tlSync() {
     card.classList.toggle('active', n > 0);
     card.querySelector('.cnt').textContent = n;
     card.querySelector('.dec').disabled = n === 0;
-    card.querySelector('.inc').disabled = lleno;
+    card.querySelector('.inc').disabled = lleno || card.classList.contains('off');
   });
   _tlSyncCTA();
 
@@ -4162,6 +4200,7 @@ function abrirLauncher(opts = {}) {
   // (opts.ruta), arranca en "Abrir de la PC". El foco lo pone _tlSetMode.
   _tlSetMode(opts.ruta ? 'open' : 'new');
   _tlRenderGrid();
+  _tlEstadoFaltantes();
   _tlRenderRutas();
   _tlUpdatePrev();
   _tlSyncPick();            // refleja opts.ruta (o vacío) en la tarjeta de Abrir

@@ -69,6 +69,33 @@ def test_un_cli_desconocido_no_arma_un_comando():
     assert clis.comando_instalar('') is None
 
 
+def test_cursor_se_detecta_por_agent_o_cursor_agent():
+    """El curl-installer de Cursor crea DOS symlinks al mismo binario (`agent`
+    de nuevo nombre + `cursor-agent` legacy): con que éste o aquel exista
+    por el PATH, se da por instalado."""
+    for b in ('agent', 'cursor-agent'):
+        detectados = clis.detectar(existe_local=lambda x, path=None, b=b: x == b)
+        assert _por_id(detectados, 'cursor')['instalado'] is True, b
+    detectados = clis.detectar(existe_local=lambda b, path=None: b == 'codex')
+    assert _por_id(detectados, 'cursor')['instalado'] is False
+
+
+def test_cursor_no_se_instala_desde_npm():
+    """Cursor tiene su curl-installer oficial: no hay paquete npm que prometer
+    (mismo trato que Antigravity)."""
+    detectados = clis.detectar(existe_local=lambda b, path=None: False)
+    assert _por_id(detectados, 'cursor')['instalable'] is False
+    assert clis.comando_instalar('cursor') is None
+
+
+def test_pi_se_instala_con_ignore_scripts():
+    """El quickstart de Pi manda `npm install -g --ignore-scripts` — el
+    comando debe respetarlo tal cual."""
+    cmd = clis.comando_instalar('pi')
+    assert cmd == ['npm', 'install', '-g', '--ignore-scripts',
+                   '@earendil-works/pi-coding-agent'], cmd
+
+
 # ── el comando de instalación ────────────────────────────────────────────
 
 def test_instalar_en_el_sistema():

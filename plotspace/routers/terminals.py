@@ -209,6 +209,9 @@ _COMANDOS_CLI = {
     'qwen':        'qwen',
     'antigravity': 'agy',
     'grok':        'grok',
+    # Cursor CLI (curl-installer) se llama `agent`; Pi es el binario `pi`.
+    'cursor':      'agent',
+    'pi':          'pi',
 }
 
 
@@ -254,6 +257,13 @@ def _comando_lanzamiento(tipo_ia: Optional[str], session_uuid: Optional[str],
         # así que la reanudación post-reboot arranca FRESCO (best-effort hasta
         # que xAI sume el flag; revisar `grok --help` al actualizar el CLI).
         return 'grok'
+    if t == 'cursor':
+        # Cursor CLI (binario `agent`): `--continue` reanuda la sesión más
+        # reciente (igual que codex/opencode: best-effort por terminal).
+        return 'agent --continue' if es_reanudacion else 'agent'
+    if t == 'pi':
+        # Pi (@earendil-works/pi-coding-agent): `-c` continúa la más reciente.
+        return 'pi -c' if es_reanudacion else 'pi'
     return _COMANDOS_CLI.get(t)                    # None para manual/shell
 
 
@@ -264,7 +274,8 @@ def _comando_lanzamiento(tipo_ia: Optional[str], session_uuid: Optional[str],
 # postea el uuid VIVO a la DB en cada arranque (_guardar_session_uuid). qwen
 # queda AFUERA: necesita --session-id + --chat-recording en la línea y no hay
 # hook que capture el id después.
-_CLIS_ARRANQUE_VISIBLE = {'claude', 'codex', 'opencode', 'antigravity', 'grok'}
+_CLIS_ARRANQUE_VISIBLE = {'claude', 'codex', 'opencode', 'antigravity', 'grok',
+                          'cursor', 'pi'}
 
 
 def _arranque_visible(tipo_ia: Optional[str], comando_cli: Optional[str],

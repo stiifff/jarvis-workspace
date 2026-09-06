@@ -3,7 +3,7 @@ const assert = require('node:assert');
 const L = require('../launcher-state.js');
 
 // Orden estable de CLIs
-assert.deepStrictEqual(L.CLI_ORDEN, ['claude', 'codex', 'opencode', 'qwen', 'antigravity', 'grok', 'manual']);
+assert.deepStrictEqual(L.CLI_ORDEN, ['claude', 'codex', 'opencode', 'qwen', 'antigravity', 'grok', 'cursor', 'pi', 'manual']);
 
 // loteDesdeContadores: arma el batch con nombres numerados desde `desde`
 assert.deepStrictEqual(
@@ -38,13 +38,13 @@ assert.strictEqual(L.resumenCounts({ manual: 3 }), '3× Shell');
 // aplicarTemplate: clamp acumulativo contra el cupo libre, set completo
 assert.deepStrictEqual(
   L.aplicarTemplate({ claude: 2, codex: 1 }, 0),
-  { claude: 2, codex: 1, opencode: 0, qwen: 0, antigravity: 0, grok: 0, manual: 0 });
+  { claude: 2, codex: 1, opencode: 0, qwen: 0, antigravity: 0, grok: 0, cursor: 0, pi: 0, manual: 0 });
 assert.deepStrictEqual(
   L.aplicarTemplate({ claude: 8, codex: 5 }, 3),   // 9 libres: 8 claude + 1 codex
-  { claude: 8, codex: 1, opencode: 0, qwen: 0, antigravity: 0, grok: 0, manual: 0 });
+  { claude: 8, codex: 1, opencode: 0, qwen: 0, antigravity: 0, grok: 0, cursor: 0, pi: 0, manual: 0 });
 assert.deepStrictEqual(
   L.aplicarTemplate({ claude: 2 }, 12),            // sin cupo → todo 0
-  { claude: 0, codex: 0, opencode: 0, qwen: 0, antigravity: 0, grok: 0, manual: 0 });
+  { claude: 0, codex: 0, opencode: 0, qwen: 0, antigravity: 0, grok: 0, cursor: 0, pi: 0, manual: 0 });
 
 // mismosCounts: faltantes equivalen a 0
 assert.ok(L.mismosCounts({ claude: 1 }, { claude: 1, codex: 0 }));

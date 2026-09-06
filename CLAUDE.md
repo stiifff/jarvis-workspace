@@ -92,10 +92,26 @@ Visual detail lives in the memory notes; here, the stable + the rules:
 - **Dev-server auto-detection** (`core/dev_detect.py`, 2s poller): scrapes the tmux panes AND scans LISTEN ports (attribution by process), with TCP-check anti false-positive; WS `dev_server_detectado`/`dev_server_caido`; excludes :3000 (Jarvis) and :8081 (Metro). Feeds the `#jw-localhosts-btn` menu (in the Web Preview toolbar) — **careful: its ✕ KILLS the port's process**.
 - **Swarm environmental awareness**: `core/agent_watch.py` (1s poller) detects "was working and went quiet" without keywords → WS `agente_termino`/`agente_espera`/`agente_trabajando` (sounds, toggle `sonidoTareas`) + **aura** on the inactive card (`sections/terminals/terminal-aura.js`).
 - **Settings** (⚙, full-screen overlay): voice-PTT / shortcuts / appearance (theme + language) / accounts / skills&plugins / memory / workflows.
-- **Unified creation:** the strip's **New workspace** or **Ctrl+T** opens the "Add project" modal (Create/Open modes + folder explorer + CLI grid + distribution, **12 slots** `MAX_TERMINALES`; pure logic in `sections/panel/launcher-state.js`). **Ctrl+\\** opens the quick terminal picker (**6 options**: claude/codex/opencode/qwen/antigravity/shell).
+- **Unified creation:** the strip's **New workspace** or **Ctrl+T** opens the "Add project" modal (Create/Open modes + folder explorer + CLI grid + distribution, **12 slots** `MAX_TERMINALES`; pure logic in `sections/panel/launcher-state.js`). **Ctrl+\\** opens the quick terminal picker (**9 options**: claude/codex/opencode/qwen/antigravity/grok/cursor/pi/shell).
 - **Shortcuts:** Ctrl+B strip · Ctrl+T new project · Ctrl+\\ quick terminal · Ctrl+P dock (file palette if the editor is visible; Ctrl+Shift+P command palette) · Ctrl+E editor · Ctrl+J jarvis · Ctrl+K search project · Ctrl+1…9 jump to project N · Esc closes/de-maximizes. PTT voice configurable (default: hold AltLeft).
 - **Standalone editor:** `GET /editor?project=N` (`#jw-dock-external`, only on the editor tab).
-
+## UI del workspace ("Panel Único", desde 2026-06)
+Detalle visual completo: [[arquitectura-panel-unico]] · [[rediseno-violeta-2026-06]]. Acá, lo estable + las reglas:
+- **Franja de proyectos de 185px** (`#jw-strip`, Ctrl+B la oculta) con el botón **Nuevo workspace** `.sb-new-ghost` (el viejo `#jw-strip-new` ya no existe). **Barra de 40px** (`#jw-bar`): izquierda chip de versión + semáforo; centro breadcrumb; derecha `#terminals-reset-btn` · `#btn-quick-terminal` · separador · ⚙ `#jw-gear` · ▣ `#jw-dock-toggle`. (El toggle de sonido vive en ⚙→Voz, ya no en la barra; el menú de localhost vivos `#jw-localhosts-btn` se mudó a la toolbar del Web Preview — salió de esta barra 2026-07-09.)
+- **24 temas** (`frontend/shared/themes.js`, default `violeta`; incluye 2 CLAROS — `papel`, `alba`) aplicados vía `html[data-theme]`, overrides en `tokens.css`, + **filtro de Tonalidad** (matiz/saturación/profundidad — overrides OKLCH inline vía `JarvisThemes.setTinte`, persiste en `jarvis.tinte`). **REGLA DE ORO: NUNCA hardcodear hex — siempre `var(--ob-*)`** (con temas claros, un color oscuro fijo = texto ilegible). Logos de CLIs: `window.cliLogo(tipo, size)` (`shared/icons/`). Ver [[configuracion-rediseno-2026-07]].
+- **Escala de la app** (⚙→Apariencia→escala, 70–150%): `shared/escala.js` pone `zoom` en `<html>` y escala TODO (incluida la letra de las terminales, que refitean y avisan a tmux). **REGLA: las unidades de viewport NO se ajustan por zoom** — todo alto/ancho de pantalla va por `var(--jw-vh, 100vh)` / `var(--jw-vw, 100vw)` (definidas en `tokens.css`), nunca `vh`/`vw` pelados; y lo que deba adaptarse al ancho útil se hace con *container queries*, no con media queries. Ver [[escala-app-zoom-viewport]].
+- **i18n ES⇆EN** (`shared/i18n.js` + `i18n-dict.js`, selector en ⚙→Apariencia): los textos nuevos del frontend entran al diccionario. Ver [[i18n-idioma]].
+- **Dock derecho único** (`window.JarvisDock`, `sections/panel/panel.js`): pestañas preview · jarvis · editor · tasks · review · mobile (solo proyectos Expo; detecta el Metro que levantó el agente, NO lo arranca). Default 320px / MIN 300, splitter, maximizar solo editor/preview, badges de no-visto, persistencia por proyecto. El render usa `hidden` — **NUNCA animar width** (regla xterm).
+- **Cards de terminal** (`workspace.js`): chrome **"Glass Pro"** (píldora faux-glass — gradiente translúcido + bisel + brillo diagonal en `::before`; NUNCA `backdrop-filter` sobre el canvas de xterm). Logo de CLI con **halo de estado** (idle sin halo · thinking/watching verde · error rojo — hookeado a `:has(.t-status-*)`, reemplaza al pip). ✕ elimina, maximizar por card. `.t-name` lleva el **título vivo** del pane (qué hace el agente); el **nombre real** de la terminal vive en el `title` (hover) del logo, no en un renglón aparte — respetá `t-name-live`/`dataset.nombre`. **El logo NUNCA se oculta al achicarse** (identidad + estado); en cards angostas se suelta primero el grip y después el nombre (`t-narrow` <250px · `t-xnarrow` <150px). (El botón/modal Historial + `Ctrl+Shift+H` + el endpoint `/history` se removieron 2026-07-05.)
+- **El mouse APUNTA la terminal** (`shell/voice-target.js` + `shell/foco-hover.js`, cableados en `workspace.js`): tener el cursor sobre una card ya la hace destino del dictado, y tras un dwell de 200ms le pasa también el foco del teclado (escribís y mandás Enter sin clickear). Guardas que NO hay que romper: el destino de la voz se **congela** al empezar a grabar (`_activeVoiceSession`), el foco nunca se le roba a un campo de texto en uso, y hay gracia de 800ms mientras tipeás en otra terminal. Ver [[voz-destino-por-hover]] · [[foco-teclado-por-hover]].
+- **Layout de terminales** (`sections/terminals/terminal-layout.js`): modos **mosaico** (default) ⇄ **libre/vertical** (drag + resize por 4 esquinas), mínimo 280×160px por card, fuente fija 13px. El canvas xterm SIEMPRE sigue a su card (único freeze bajo 60×40px); quien cambia tamaños dispara `TerminalLayout.relayoutAll()` / `JarvisEditor.relayout()`. Ver [[terminales-modo-libre]].
+- **Web Preview** (`sections/preview/`): pestañas múltiples (máx 8, persistidas por proyecto). Todo va en iframe, y la embebibilidad se chequea server-side (`GET /api/orchestrator/preview/probe?url=`) para caer a la pantalla "el sitio bloqueó el embebido" con "Abrir en pestaña". **Buscar = navegar al buscador REAL** (`urlBusqueda`): texto suelto → Google, `yt …` → YouTube, y los accesos directos del estado vacío llevan a sus homes. El **menú de "Localhost activos"** (`#jw-localhosts-btn`, `dev-servers.js`) vive en su toolbar (`.wp-bar`): botón con contador que abre el popover de dev servers vivos (se oculta con 0). El SERP casero (`serp.html`, DuckDuckGo/YouTube scrapeados) y el **browser remoto** (Chromium server-side + screencast CDP) se ELIMINARON el 2026-07-26 — no los reintroduzcas. Ver [[preview-pestanas]] · [[preview-busqueda-serp]].
+- **Auto-detección de dev servers** (`core/dev_detect.py`, poller 2s): raspa los panes tmux Y escanea puertos LISTEN (atribución por proceso), con TCP-check anti falso-positivo; WS `dev_server_detectado`/`dev_server_caido`; excluye :3000 (Jarvis) y :8081 (Metro). Alimenta el menú `#jw-localhosts-btn` (en la toolbar del Web Preview) — **ojo: su ✕ MATA el proceso del puerto** ([[preview-pill-cierra-server]]). Ver [[dev-server-autodetect]].
+- **Conciencia ambiental del swarm**: `core/agent_watch.py` (poller 1s) detecta "trabajaba y se quedó quieto" sin keywords → WS `agente_termino`/`agente_espera`/`agente_trabajando` (sonidos, toggle `sonidoTareas`) + **aura** en la card no activa (`sections/terminals/terminal-aura.js`). Ver [[agent-watch-sonidos]] · [[aura-notificacion-cards]].
+- **Configuración** (⚙, overlay full-screen): voz-PTT / atajos / apariencia (tema + idioma) / cuentas / skills&plugins / memoria / workflows.
+- **Creación unificada:** el **Nuevo workspace** de la franja o **Ctrl+T** abre el modal "Agregar proyecto" (modos Crear/Abrir + explorador de carpetas + grid de CLIs + distribución, **12 cupos** `MAX_TERMINALES`; lógica pura en `sections/panel/launcher-state.js`). **Ctrl+\\** abre el picker de terminal rápida (**9 opciones**: claude/codex/opencode/qwen/antigravity/grok/cursor/pi/shell). Ver [[launcher-templates-y-grid]].
+- **Atajos:** Ctrl+B franja · Ctrl+T nuevo proyecto · Ctrl+\\ terminal rápida · Ctrl+P dock (palette de archivo si el editor está a la vista; Ctrl+Shift+P palette de comandos) · Ctrl+E editor · Ctrl+J jarvis · Ctrl+K buscar proyecto · Ctrl+1…9 saltar al proyecto N · Esc cierra/des-maximiza. PTT de voz configurable (default: mantener AltLeft).
+- **Editor standalone:** `GET /editor?project=N` (`#jw-dock-external`, solo en la pestaña editor).
 ### Swarm orchestration — subsystems
 - **Swarm watchdog** (`core/swarm_watchdog`, every 20s, threshold 180s, `WATCHDOG=off`): safety net that rescues lost `TASK_*` by re-capturing the full scrollback and emits `paso_estancado`/`paso_rescatado`; relies on the `iniciado_ts` sealed by `orchestrator.py`. (The **Command Deck UI** — Ctrl+Shift+K panel + `routers/deck.py` + `core/swarm_deck.py` — was removed: it wasn't used; swarm awareness covers the "when did it finish/wait".)
 - **Sentinel** (`core/sentinel.py`, every 2s, `SENTINEL=off`): step closure via `.jarvis/signals/terminal_<id>.json` (`{estado, motivo, memorias_usadas}`, one-shot) — the **PRIMARY** closure source; parsing of `TASK_*` from the pane stays as fallback. The `motivo` of a BLOCKED/ERROR **persists** (column in `task_events` + workflow step + broadcasts): it's the raw material of lessons.
@@ -224,7 +240,29 @@ Before answering anything about your configuration, active plugins, skills or pr
 1. Read this CLAUDE.md file completely
 2. Base your answer ONLY on what this file says
 3. Do NOT use memory from previous conversations for this
+ntes de responder cualquier pregunta sobre tu configuración, plugins activos, skills, o estado del proyecto:
+1. Leer este archivo CLAUDE.md completo
+2. Basar tu respuesta ÚNICAMENTE en lo que dice este archivo
+3. NO usar memoria de conversaciones anteriores para esto
 
+## Skills y plugins activos del proyecto
+
+### 🔌 Plugins activos
+
+- **ui-ux-pro-max**
+- **superpowers**
+- **static-analysis** — Static analysis toolkit with CodeQL, Semgrep, and SARIF parsing for security vulnerability detection
+- **frontend-design** — Frontend design skill for UI/UX implementation
+- **expo**
+- **context7**
+
+_Estado verificado al: 2026-09-06 14:43:15_
+
+### 📋 Skills del proyecto
+
+#### qa-browser-jarvis
+
+Skill qa-browser-jarvis — ver `.claude/skills/qa-browser-jarvis.md` (cómo verificar en browser + correr los tests)
 This section is regenerated by your editor's plugin system from the repo's local plugin/skill state. Don't edit between markers.
 <!-- JARVIS_SKILLS_END -->
 
@@ -337,5 +375,5 @@ The rules that matter:
 <!-- JARVIS_LECCIONES_START -->
 ## 📚 Swarm lessons (always loaded — from real failures and findings)
 
-This block is generated by the app from your local swarm memory (`.jarvis/memory/lecciones-del-enjambre.md`): it distills the mistakes and findings of *your own* agents in ≤20 short rules, and refreshes on every session. Don't edit between markers — write a `[leccion]` memory instead.
-<!-- JARVIS_LECCIONES_END -->
+
+This block is generated by the app from your local swarm memory (`.jarvis/memory/lecciones-del-enjambre.md`): it distills the mistakes and findings of *your own* agents in ≤20 short rules, and refreshes on every session. Don't edit between markers — write a `[leccion]` memory instead.<!-- JARVIS_LECCIONES_END -->

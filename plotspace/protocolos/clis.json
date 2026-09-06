@@ -80,5 +80,31 @@
       "~/.qwen/.env"
     ],
     "cuenta_file": "~/.qwen/google_accounts.json"
+  },
+  {
+    "id": "pi",
+    "label": "Pi (Earendil)",
+    "modo": "files",
+    "como_loguear": "pi → /login (dentro del TUI); API keys vía env o auth.json",
+    "_nota": "~/.pi/agent comparte el dir con settings.json/AGENTS.md global/sesiones: SOLO auth.json (igual regla que ~/.codex). auth.json persiste como {} tras /logout → la sesión real es un DICT no vacío (existe credencial) y sobrevive en verificación 0.85.1 del package.",
+    "files": [
+      "~/.pi/agent/auth.json"
+    ],
+    "principales": [
+      "~/.pi/agent/auth.json"
+    ]
+  },
+  {
+    "id": "cursor",
+    "label": "Cursor Agent",
+    "modo": "files",
+    "como_loguear": "agent login (browserflow) o CURSOR_API_KEY",
+    "_nota": "Cursor CLI (curl installer; binarios agent/cursor-agent). La credencial vive en $XDG_CONFIG_HOME/cursor/auth.json (default ~/.config/cursor/auth.json, Linux) con {accessToken, refreshToken, apiKey} en plano y SIN email; el snapshot lleva SOLO auth.json — ~/.cursor/cli-config.json (config grande que Cursor reescribe solo) no se toca.",
+    "files": [
+      "$XDG_CONFIG_HOME/cursor/auth.json"
+    ],
+    "principales": [
+      "$XDG_CONFIG_HOME/cursor/auth.json"
+    ]
   }
 ]

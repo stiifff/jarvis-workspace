@@ -24,8 +24,11 @@ import subprocess
 from typing import Dict, List, Optional
 
 # Cómo se llama el ejecutable de cada uno y de qué paquete sale. `None` en
-# `paquete` = no se instala por npm (Antigravity es una app de escritorio de
-# Google), así que se detecta pero no se ofrece instalar.
+# `paquete` = no se instala por npm (Antigravity es app de escritorio; Cursor
+# CLI tiene su curl-installer oficial), así que se detecta pero no se ofrece
+# botón de instalar. `binarios` (tupla) son alternativas del mismo CLI: con
+# que UNA exista por el PATH, se da por instalado. `npm_flags` se antepone al
+# paquete en `npm install -g`.
 CATALOGO = [
     {'id': 'claude',      'nombre': 'Claude Code', 'binario': 'claude',
      'paquete': '@anthropic-ai/claude-code'},
@@ -37,6 +40,20 @@ CATALOGO = [
      'paquete': '@qwen-code/qwen-code'},
     {'id': 'antigravity', 'nombre': 'Antigravity', 'binario': 'agy',
      'paquete': None},
+    {'id': 'grok',        'nombre': 'Grok Build',  'binario': 'grok',
+     'paquete': '@xai-official/grok'},
+    {'id': 'cursor',      'nombre': 'Cursor CLI',
+     # El curl-installer oficial crea DOS symlinks al mismo binario:
+     # `agent` (el nombre que documenta) y `cursor-agent` (legacy). Se sondea
+     # primero el legacy para no confundirlo con cualquier OTRO `agent` que
+     # ya ande en el PATH de la máquina.
+     'binarios': ('cursor-agent', 'agent'), 'paquete': None},
+    {'id': 'pi',          'nombre': 'Pi',          'binario': 'pi',
+     'paquete': '@earendil-works/pi-coding-agent',
+     # El quickstart de Pi manda `--ignore-scripts`: el paquete no necesita
+     # correr los scripts de lifecycle del install y algunos entornos las
+     # rechazan.
+     'npm_flags': ['--ignore-scripts']},
 ]
 
 
@@ -59,10 +76,15 @@ def detectar(existe_local=None) -> List[Dict]:
         # de bienvenida entera. Ante la duda, "no instalado": ofrecer
         # instalarlo es recuperable; decir que está y que falle al abrir la
         # terminal, no.
-        try:
-            instalado = existe_local(cli['binario'])
-        except Exception:
-            instalado = False
+        bins = cli.get('binarios') or ([cli['binario']] if cli.get('binario') else [])
+        instalado = False
+        for b in bins:
+            try:
+                if existe_local(b):
+                    instalado = True
+                    break
+            except Exception:
+                continue
         salida.append({
             'id': cli['id'],
             'nombre': cli['nombre'],
@@ -81,7 +103,7 @@ def comando_instalar(cli_id: str) -> Optional[List[str]]:
     cli = next((c for c in CATALOGO if c['id'] == cli_id), None)
     if not cli or not cli['paquete']:
         return None
-    return ['npm', 'install', '-g', cli['paquete']]
+    return ['npm', 'install', '-g', *(cli.get('npm_flags') or []), cli['paquete']]
 
 
 def hay_node(existe_local=None) -> bool:

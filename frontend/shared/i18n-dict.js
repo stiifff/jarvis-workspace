@@ -1284,6 +1284,9 @@
     "El agente de Google": "The Google agent",
     "WSL puro, sin agente": "Plain WSL, no agent",
     "El agente de xAI": "The xAI agent",
+    "El agente de Cursor": "The Cursor agent",
+    "El agente de Earendil": "The Earendil agent",
+    "Falta instalar": "Not installed",
     "El proyecto no tiene archivos todavía": "The project has no files yet",
 
     // Memoria — salud del linter + badges de estado
