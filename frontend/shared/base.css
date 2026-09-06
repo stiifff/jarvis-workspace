@@ -1591,6 +1591,15 @@ body.jw-rail .sb-snake { left: 50%; transform: translate(-50%, -50%); }   /* fig
   color: var(--ob-accent-fg); background: var(--ob-accent-14);
   box-shadow: inset 0 0 0 1px var(--ob-accent-24);
 }
+/* Stepper ± del modo preview: con UNA terminal el contador elige cuántas se
+   verán (2..6) — botones chicos mono encajados en el chip del count. */
+.tsnap-count button {
+  width: 16px; height: 16px; border-radius: 5px; display: inline-grid; place-items: center;
+  background: none; border: 1px solid var(--ob-line-2); color: var(--ob-fg-2);
+  font: 600 9px var(--font-mono); cursor: pointer; padding: 0; line-height: 1; vertical-align: middle;
+}
+.tsnap-count button:hover { background: var(--ob-bg-3); color: var(--ob-fg-0); }
+.tsnap-count em { font-style: normal; min-width: 14px; text-align: center; }
 .tsnap-rail { display: flex; align-items: flex-start; gap: 10px; }
 /* Cada preset: una "pantallita" con sus zonas + una etiqueta chica.
    Sirve tanto como <span> (modo arrastre, zonas) como <button> (modo pick por

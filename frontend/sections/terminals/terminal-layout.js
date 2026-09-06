@@ -1367,6 +1367,7 @@
     // una zona (la arrastrada la ocupa; el resto rellena en orden de lectura).
     let _snapBar = null;
     let _dispPresets = null;   // presets del panel abierto "en frío" (modo pick por ícono)
+    let _previewN = 2;         // preview de crecimiento con 1 sola terminal (cuántas se verán)
     const _SNAP_HINT = '<svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="2.5" width="12" height="11" rx="1.6"/><path d="M8 2.5v11M2 8h12"/></svg>';
     function _ensureSnapBar() {
       if (_snapBar) return _snapBar;
@@ -1379,10 +1380,35 @@
       // capturado por la card → este click nunca corre (lo gatea _dispOpen).
       bar.addEventListener('click', (e) => {
         if (!_dispOpen) return;
+        const cntBtn = e.target.closest('.tsnap-count-b');
+        if (cntBtn) {
+          _previewN = Math.min(6, Math.max(2, _previewN + Number(cntBtn.dataset.cnt)));
+          _hideGhost();                        // la proyección vieja no corresponde al nuevo conteo
+          _openDispPanel(document.getElementById('terminals-mode-btn'));
+          return;
+        }
         const tileEl = e.target.closest('.tsnap-tile');
         if (!tileEl || !_dispPresets) return;
         const p = _dispPresets[Number(tileEl.dataset.tile)];
-        if (p) { _aplicarPreset(p); _stampGhost(p.cells, -1); }
+        if (p) {
+          const previo = _snapBar.dataset.previo === '1';
+          _aplicarPreset(p); _stampGhost(p.cells, -1);
+          if (previo) {
+            // Preview con 1 sola terminal: la card NO se achica a la primera
+            // celda del preset (con N=6 quedaría en 1/6 de pantalla). El patrón
+            // queda guardado (_dist) y el "cómo se verá" lo muestran los tiles
+            // y el fantasma sellado; los add() futuros sí re-acomodan todo.
+            const ids = gridIds(_layout);
+            if (ids.length === 1) {
+              const solo = _free[ids[0]];
+              if (solo && (solo.w < 1 || solo.h < 1)) {
+                _free[ids[0]] = { x: 0, y: 0, w: 1, h: 1 };
+                render(); _refit(null, true); _persistLibre();
+              }
+            }
+            window.toast?.('Patrón guardado — las terminales nuevas seguirán este arreglo', 'success');
+          }
+        }
         _closeDispPanel();
       });
       // Modo pick: pasar el mouse por un tile PROYECTA ese arreglo sobre el grid
@@ -1624,6 +1650,8 @@
     function _closeDispPanel() {
       if (!_dispOpen) return;
       _dispOpen = false;
+      _previewN = 2;                                  // el preview de crecimiento se resetea
+      if (_snapBar) _snapBar.dataset.previo = '';
       document.removeEventListener('pointerdown', _onDocDisp, true);
       document.removeEventListener('keydown', _onKeyDisp, true);
       _hideSnapBar();
@@ -1637,17 +1665,26 @@
     function _openDispPanel(btn) {
       if (typeof document === 'undefined' || !_gridEl) return;
       const n = gridIds(_layout).length;
-      if (n < 2) return;                                  // con 1 sola no hay nada que distribuir
+      // Con UNA sola terminal el panel igual abre, en modo PREVIEW de cómo
+      // crecerá: muestra el arreglo para N futuras (2..6). Elegir un tile deja
+      // la familia guardada (_dist) → los próximos add() la re-aplican.
+      const previo = n < 2;                       // 1 sola terminal: preview de cómo crecerá
+      const N = previo ? _previewN : n;           // _previewN default 2
       const bar = _ensureSnapBar();
       if (bar._tsnapHideT) { clearTimeout(bar._tsnapHideT); bar._tsnapHideT = 0; }
       // El layout ACTUAL no se ofrece (pedido 2026-07-08): clickearlo era un
       // no-op — el panel muestra solo alternativas. (Antes se marcaba `.sel`;
       // ya no hay nada que marcar: lo que ves es siempre "otra cosa".)
-      const presets = sinPresetActual(snapPresets(n), _free);
+      const presets = sinPresetActual(snapPresets(N), _free);
       if (!presets.length) return;
       _dispPresets = presets;
-      bar.dataset.hintDef = 'Elegí una disposición';
-      let html = `<span class="tsnap-aura" aria-hidden="true"></span><span class="tsnap-hint">${_SNAP_HINT}<b>Elegí una disposición</b><span class="tsnap-count">${n}</span></span><span class="tsnap-rail">`;
+      bar.dataset.previo = previo ? '1' : '';
+      const hintDef = previo ? 'Así se verá al agregar terminales' : 'Elegí una disposición';
+      bar.dataset.hintDef = hintDef;
+      const cntHtml = previo
+        ? `<span class="tsnap-count"><button type="button" class="tsnap-count-b" data-cnt="-1">−</button><em>${N}</em><button type="button" class="tsnap-count-b" data-cnt="1">+</button></span>`
+        : `<span class="tsnap-count">${n}</span>`;
+      let html = `<span class="tsnap-aura" aria-hidden="true"></span><span class="tsnap-hint">${_SNAP_HINT}<b>${hintDef}</b>${cntHtml}</span><span class="tsnap-rail">`;
       presets.forEach((p, ti) => {
         html += `<button type="button" class="tsnap-tile" data-tile="${ti}" style="--i:${ti}"><span class="tsnap-frame">${_snapZonesHTML(p.cells)}</span><span class="tsnap-label">${p.label}</span></button>`;
       });

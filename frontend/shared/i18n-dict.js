@@ -517,6 +517,8 @@
     "Reordenar terminales (reset layout)": "Rearrange terminals (reset layout)",
     "Soltá en una zona": "Drop into a zone",
     "Elegí una disposición": "Pick a layout",
+    "Así se verá al agregar terminales": "This is how it will look as you add terminals",
+    "Patrón guardado — las terminales nuevas seguirán este arreglo": "Pattern saved — new terminals will follow this layout",
     "Disposición de terminales": "Terminal layout",
     "Lado a lado": "Side by side",
     "Arriba y abajo": "Top and bottom",
