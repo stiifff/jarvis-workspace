@@ -50,7 +50,7 @@ Full app (terminals, voice, preview, Mobile Studio, …). Link your own CLIs in 
 The empty workspace. One project, nothing running yet. New terminal, talk to Jarvis, or open the editor.
 
 <p align="center">
-  <img src="docs/images/workspace.png" alt="Empty Jarvis workspace — What are we building today?" width="920">
+  <img src="docs/images/home-empty.png" alt="Empty Jarvis workspace — What are we building today? Welcome card with new terminal, talk to Jarvis and editor shortcuts" width="920">
 </p>
 
 ### Launch a swarm
@@ -58,7 +58,7 @@ The empty workspace. One project, nothing running yet. New terminal, talk to Jar
 Pick agents, how many, and a layout. Seven Claude Codes, a mix, or one shell. They land in a live grid.
 
 <p align="center">
-  <img src="docs/images/new-terminal.png" alt="New terminal — pick Claude, Codex, Grok, layout, launch" width="920">
+  <img src="docs/images/launcher-batch.png" alt="New terminal — pick Claude, Codex, Grok, Cursor or Pi; not-installed chips, layout, launch" width="920">
 </p>
 
 <p align="center">
@@ -82,11 +82,11 @@ Edit your project while the agent works in its own pane — file tree and a live
 Preview your app in a live phone frame — add phone frames, web browsers or project notes to the canvas, zoom to taste. Phones connect to the Expo/Metro the agent started: the empty canvas explains the three steps — start the project, run Metro, the app lands on the frame. Mobile Studio also **detects Expo projects** — when the agent starts Metro, the mobile tab opens on its own (⚙ → Appearance → auto-start).
 
 <p align="center">
-  <img src="docs/images/mobile-studio-waiting.png" alt="Mobile Studio — empty canvas waiting for the signal, with the 3-step guide: Expo project, Metro --web, live preview" width="800">
+  <img src="docs/images/mobile-studio-signal.png" alt="Mobile Studio — empty canvas waiting for the signal, with the 3-step guide: Expo project, Metro --web, live preview" width="800">
 </p>
 
 <p align="center">
-  <img src="docs/images/mobile-studio-side.png" alt="Mobile Studio — the empty home and the studio side by side: iPhone 15 Pro frame, dock with phone, web, note" width="800">
+  <img src="docs/images/mobile-studio-live-frame.png" alt="Mobile Studio — the empty home and the studio side by side: iPhone 15 Pro frame, dock with phone, web, note" width="800">
 </p>
 
 ### Memory, as a neuron graph
@@ -110,7 +110,7 @@ Windows only: the launcher (`Jarvis.exe`) pushes your fleet to Discord — live 
 ⚙ → **Accounts**. Several logins per CLI, switch without logging in again. Native sessions (Grok, Claude, …) show up even if you never clicked Connect. Rate-limit? It rotates.
 
 <p align="center">
-  <img src="docs/images/accounts.png" alt="Settings → Accounts — Claude, Codex, Antigravity switchboard" width="920">
+  <img src="docs/images/accounts-switchboard.png" alt="Settings → Accounts — Claude, Codex, Antigravity switchboard" width="920">
 </p>
 
 ### Make it yours
@@ -118,7 +118,7 @@ Windows only: the launcher (`Jarvis.exe`) pushes your fleet to Discord — live 
 ⚙ → **Appearance**. 24 themes, tint, language, scale. The bench at the top is the live workspace.
 
 <p align="center">
-  <img src="docs/images/appearance.png" alt="Settings → Appearance — 24 themes, tint, scale" width="920">
+  <img src="docs/images/appearance-themes.png" alt="Settings → Appearance — 24 themes, tint, scale" width="920">
 </p>
 
 Also in the dock: web preview, editor, tasks, per-agent diff review. Hold your voice key to dictate (Groq's free Whisper API).
